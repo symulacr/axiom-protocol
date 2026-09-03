@@ -3,6 +3,10 @@
   Scope: landing, public hubs, console chrome. Unlayered and imported AFTER
   index.css so it wins cascade ties without !important. All new tokens live in
   the --aw-* namespace (contrast.test.ts owns index.css's token scopes).
+  The palette is expressed in OKLCH (ramps → semantic roles → legacy
+  aliases) and contrast-locked by aw-contrast.test.ts. Repeated surfaces,
+  shadows and motion values are deduplicated into the shared tokens — no
+  re-pinned hexes or ad-hoc durations in this layer.
   Motion is translateY-only where layout-relative (RTL-safe) and gated on BOTH
   reduced-motion channels: the OS media query and [data-reduce-motion="true"].
   Effect language is original (CSS/canvas), inspired by beam/metal/orbs/
@@ -15,19 +19,65 @@
 }
 
 :root {
-  --aw-copper: #d28b52;
-  --aw-copper-bright: #efae6b;
-  --aw-phosphor: #67e8b4;
-  --aw-teal: #3fbfae;
-  --aw-ink: #0b0e0f;
-  --aw-ink-2: #10161a;
-  --aw-line: rgba(239, 174, 107, 0.16);
-  --aw-line-soft: rgba(255, 255, 255, 0.07);
-  --aw-text-soft: rgba(235, 240, 238, 0.72);
+  /* ── OKLCH palette ───────────────────────────────────────────────
+     Lossless conversion of the shipped hexes (roundtrips to the same
+     sRGB). Ramps first, semantic roles second, legacy aliases last so
+     every existing rule keeps resolving. State roles are contrast-locked
+     by aw-contrast.test.ts (AA ≥ 4.5:1 on the ink ramp). */
+  --aw-copper-300: oklch(60% 0.11 55);
+  --aw-copper-400: oklch(69.7% 0.114 58.2);
+  --aw-copper-500: oklch(79.8% 0.113 65.8);
+  --aw-ink-900: oklch(16.1% 0.005 219.8);
+  --aw-ink-800: oklch(19.6% 0.012 237.4);
+  --aw-ink-700: oklch(21.7% 0.014 239.4);
+  --aw-paper-100: oklch(91.6% 0.014 74.4);
+  --aw-paper-300: oklch(77.9% 0.015 74.4);
+  --aw-mist: oklch(96.2% 0.007 164.9);
+
+  /* ── Semantic roles ───────────────────────────────────────────── */
+  --aw-accent: var(--aw-copper-400);
+  --aw-accent-strong: var(--aw-copper-500);
+  --aw-accent-pressed: var(--aw-copper-300);
+  --aw-text: var(--aw-paper-100);
+  --aw-text-soft: color-mix(in srgb, var(--aw-mist) 72%, transparent);
+  --aw-ok: oklch(84.4% 0.137 164.1);
+  --aw-info: oklch(73.1% 0.113 182.5);
+  --aw-warn: oklch(82% 0.12 78);
+  --aw-danger: oklch(66% 0.2 25);
+
+  /* ── Surfaces & lines (derived, not re-pinned) ────────────────── */
+  --aw-line: color-mix(in srgb, var(--aw-copper-500) 16%, transparent);
+  --aw-line-soft: color-mix(in srgb, white 7%, transparent);
+  --aw-glass: color-mix(in srgb, var(--aw-ink-900) 72%, transparent);
+  --aw-blur-nav: blur(16px) saturate(1.3);
+  --aw-blur-card: blur(14px);
+  --aw-card-grad: linear-gradient(
+    170deg,
+    color-mix(in srgb, var(--aw-ink-700) 88%, transparent),
+    color-mix(in srgb, var(--aw-ink-900) 92%, transparent)
+  );
+  --aw-hairline: inset 0 1px 0 var(--aw-line-soft);
+  --aw-shadow-plate: 0 40px 90px -50px rgb(0 0 0 / 0.9);
+  --aw-shadow-float: 0 24px 60px -30px rgb(0 0 0 / 0.85);
+  --aw-shadow-lift: 0 28px 64px -38px rgb(0 0 0 / 0.88);
+
+  /* ── Motion ladder (transitions.dev-style semantic scale) ─────── */
   --aw-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --aw-ease-io: cubic-bezier(0.65, 0, 0.35, 1);
+  --aw-dur-fast: 220ms;
+  --aw-dur-med: 420ms;
   --aw-dur: 640ms;
+  --aw-stagger: 120ms;
+
   --aw-grain-op: 0.05;
+
+  /* ── Legacy aliases (zero call-site churn) ────────────────────── */
+  --aw-copper: var(--aw-copper-400);
+  --aw-copper-bright: var(--aw-copper-500);
+  --aw-phosphor: var(--aw-ok);
+  --aw-teal: var(--aw-info);
+  --aw-ink: var(--aw-ink-900);
+  --aw-ink-2: var(--aw-ink-800);
 }
 
 /* ─── FX primitives ─────────────────────────────────────────────── */
@@ -101,6 +151,36 @@
   will-change: transform;
 }
 
+/* Thinking dots for agent working states (see ThinkingOrbs in fx.tsx). */
+.aw-thinking-orbs {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+}
+.aw-thinking-orb {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--aw-accent-strong);
+  opacity: 0.35;
+  animation: aw-orb-pulse 1.1s var(--aw-ease-io) infinite;
+}
+.aw-thinking-orb:nth-child(2) {
+  animation-delay: calc(var(--aw-stagger) * 1.5);
+}
+.aw-thinking-orb:nth-child(3) {
+  animation-delay: calc(var(--aw-stagger) * 3);
+}
+.aw-thinking-orbs.is-static .aw-thinking-orb {
+  animation: none;
+  opacity: 0.6;
+}
+
+@keyframes aw-orb-pulse {
+  0%, 100% { opacity: 0.35; transform: translate3d(0, 0, 0); }
+  45% { opacity: 1; transform: translate3d(0, -2px, 0); }
+}
+
 /* Mouse-tracked spotlight surface (SpotlightCard sets --aw-spot-x/-y). */
 .aw-spotlight {
   position: relative;
@@ -112,7 +192,7 @@
   border-radius: inherit;
   pointer-events: none;
   opacity: 0;
-  transition: opacity 420ms var(--aw-ease-out);
+  transition: opacity var(--aw-dur-med) var(--aw-ease-out);
   background: radial-gradient(
     340px circle at var(--aw-spot-x, 50%) var(--aw-spot-y, 50%),
     color-mix(in srgb, var(--aw-copper-bright) 13%, transparent),
@@ -135,9 +215,9 @@
   position: sticky;
   top: 0;
   z-index: 40;
-  background: color-mix(in srgb, var(--aw-ink) 72%, transparent);
-  backdrop-filter: blur(16px) saturate(1.3);
-  -webkit-backdrop-filter: blur(16px) saturate(1.3);
+  background: var(--aw-glass);
+  backdrop-filter: var(--aw-blur-nav);
+  -webkit-backdrop-filter: var(--aw-blur-nav);
   border-bottom: 1px solid var(--aw-line-soft);
 }
 
@@ -255,7 +335,7 @@
   transition: color var(--aw-dur) var(--aw-ease-out);
 }
 .landing-copy .trust-line .trust-item:hover {
-  color: #eef4f1;
+  color: var(--aw-mist);
 }
 
 /* Cinematic proof plate: deepen the poster grade and float the receipt. */
@@ -270,8 +350,8 @@
       color-mix(in srgb, var(--aw-ink) 74%, transparent)
     );
   box-shadow:
-    0 40px 90px -50px rgba(0, 0, 0, 0.9),
-    inset 0 1px 0 var(--aw-line-soft);
+    var(--aw-shadow-plate),
+    var(--aw-hairline);
 }
 .landing-visual.hero-visual-modern .hero-visual-poster {
   opacity: 0.5;
@@ -280,12 +360,12 @@
 
 .floating-receipt {
   background: color-mix(in srgb, var(--aw-ink-2) 78%, transparent);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: var(--aw-blur-card);
+  -webkit-backdrop-filter: var(--aw-blur-card);
   border: 1px solid var(--aw-line);
   box-shadow:
-    0 24px 60px -30px rgba(0, 0, 0, 0.85),
-    inset 0 1px 0 var(--aw-line-soft);
+    var(--aw-shadow-float),
+    var(--aw-hairline);
 }
 
 /* Marquee ticker: the JSX renders one aria-hidden track duplicated for the
@@ -320,12 +400,7 @@
 }
 .principles-grid .aw-spotlight.principle {
   border: 1px solid var(--aw-line-soft);
-  background:
-    linear-gradient(
-      170deg,
-      color-mix(in srgb, #141b20 88%, transparent),
-      color-mix(in srgb, var(--aw-ink) 92%, transparent)
-    );
+  background: var(--aw-card-grad);
   transition:
     transform var(--aw-dur) var(--aw-ease-out),
     border-color var(--aw-dur) var(--aw-ease-out),
@@ -335,7 +410,7 @@
   transform: translate3d(0, -6px, 0);
   border-color: transparent;
   box-shadow:
-    0 30px 60px -34px rgba(0, 0, 0, 0.85),
+    var(--aw-shadow-lift),
     0 0 0 1px var(--aw-line-soft);
 }
 
@@ -366,7 +441,7 @@
     linear-gradient(#000 0 0);
   mask-composite: exclude;
   opacity: 0;
-  transition: opacity 360ms var(--aw-ease-out);
+  transition: opacity var(--aw-dur-med) var(--aw-ease-out);
 }
 .aw-spotlight.principle:hover::after,
 .seo-link-grid > a:hover::after {
@@ -393,16 +468,16 @@
   background:
     linear-gradient(
       200deg,
-      color-mix(in srgb, #12191d 90%, transparent),
+      color-mix(in srgb, var(--aw-ink-700) 90%, transparent),
       color-mix(in srgb, var(--aw-ink) 94%, transparent)
     );
-  box-shadow: inset 0 1px 0 var(--aw-line-soft);
+  box-shadow: var(--aw-hairline);
   transition: box-shadow var(--aw-dur) var(--aw-ease-out);
 }
 .journey-card:hover {
   box-shadow:
-    inset 0 1px 0 var(--aw-line-soft),
-    0 26px 60px -40px rgba(0, 0, 0, 0.9);
+    var(--aw-hairline),
+    var(--aw-shadow-lift);
 }
 .journey-card .j-cta {
   transition:
@@ -459,9 +534,9 @@
   position: sticky;
   top: 0;
   z-index: 40;
-  background: color-mix(in srgb, var(--aw-ink) 72%, transparent);
-  backdrop-filter: blur(16px) saturate(1.3);
-  -webkit-backdrop-filter: blur(16px) saturate(1.3);
+  background: var(--aw-glass);
+  backdrop-filter: var(--aw-blur-nav);
+  -webkit-backdrop-filter: var(--aw-blur-nav);
   border-bottom: 1px solid var(--aw-line-soft);
 }
 
@@ -523,12 +598,12 @@
 
 .seo-proof-card {
   background: color-mix(in srgb, var(--aw-ink-2) 82%, transparent);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: var(--aw-blur-card);
+  -webkit-backdrop-filter: var(--aw-blur-card);
   border: 1px solid var(--aw-line);
   box-shadow:
-    0 30px 70px -40px rgba(0, 0, 0, 0.9),
-    inset 0 1px 0 var(--aw-line-soft);
+    var(--aw-shadow-lift),
+    var(--aw-hairline);
 }
 
 .seo-link-grid {
@@ -537,11 +612,7 @@
 .seo-link-grid > a {
   position: relative;
   border: 1px solid var(--aw-line-soft);
-  background: linear-gradient(
-    170deg,
-    color-mix(in srgb, #141b20 86%, transparent),
-    color-mix(in srgb, var(--aw-ink) 92%, transparent)
-  );
+  background: var(--aw-card-grad);
   transition:
     transform var(--aw-dur) var(--aw-ease-out),
     border-color var(--aw-dur) var(--aw-ease-out),
@@ -551,23 +622,24 @@
   transform: translate3d(0, -5px, 0);
   border-color: transparent;
   box-shadow:
-    0 26px 55px -36px rgba(0, 0, 0, 0.85),
+    var(--aw-shadow-lift),
     0 0 0 1px var(--aw-line-soft);
 }
 
 /* ─── Console chrome (app shell) ────────────────────────────────── */
 /* Subtle by design: the console is a data surface, not a marketing one.
-   Additions adapt to the light palette via color-mix on existing vars. */
+   --copper resolves from the app-shell palette when present and falls back
+   to the AW ramp otherwise (no hex re-pins). */
 
 .topbar {
-  box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--copper, #d28b52) 14%, transparent);
+  box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--copper, var(--aw-accent)) 14%, transparent);
 }
 
 .sidebar .nav-item.active {
-  background: color-mix(in srgb, var(--copper, #d28b52) 10%, transparent);
+  background: color-mix(in srgb, var(--copper, var(--aw-accent)) 10%, transparent);
   box-shadow:
-    inset 2px 0 0 var(--copper, #d28b52),
-    0 0 26px -12px color-mix(in srgb, var(--copper, #d28b52) 55%, transparent);
+    inset 2px 0 0 var(--copper, var(--aw-accent)),
+    0 0 26px -12px color-mix(in srgb, var(--copper, var(--aw-accent)) 55%, transparent);
 }
 
 /* Liquid-metal button sweep (metal.jakubantalik-inspired, original). */
@@ -627,18 +699,18 @@
 .aw-reveal.is-in .principle:nth-child(2),
 .aw-reveal.is-in .aw-parallax:nth-child(2) .journey-card,
 .aw-reveal.is-in .seo-link-grid a:nth-child(2) {
-  transition-delay: 120ms;
+  transition-delay: var(--aw-stagger);
 }
 .aw-reveal.is-in .principle:nth-child(3),
 .aw-reveal.is-in .seo-link-grid a:nth-child(3) {
-  transition-delay: 240ms;
+  transition-delay: calc(2 * var(--aw-stagger));
 }
 
 /* ─── Shared polish ─────────────────────────────────────────────── */
 
 ::selection {
   background: color-mix(in srgb, var(--aw-copper) 34%, transparent);
-  color: #f4efe9;
+  color: var(--aw-mist);
 }
 
 :focus-visible {
@@ -653,7 +725,8 @@
   .ticker .ticker-track,
   .aw-spotlight.principle:hover::after,
   .seo-link-grid > a:hover::after,
-  .button-primary:hover::after {
+  .button-primary:hover::after,
+  .aw-thinking-orb {
     animation: none !important;
   }
   .aw-reveal,
@@ -679,7 +752,8 @@
 [data-reduce-motion="true"] .ticker .ticker-track,
 [data-reduce-motion="true"] .aw-spotlight.principle:hover::after,
 [data-reduce-motion="true"] .seo-link-grid > a:hover::after,
-[data-reduce-motion="true"] .button-primary:hover::after {
+[data-reduce-motion="true"] .button-primary:hover::after,
+[data-reduce-motion="true"] .aw-thinking-orb {
   animation: none !important;
 }
 [data-reduce-motion="true"] .aw-reveal,

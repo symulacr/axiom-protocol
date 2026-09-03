@@ -429,3 +429,29 @@ export function OrbsField({
     />
   );
 }
+
+/** Discrete "thinking" dots for agent working states (aicss/orbs-inspired,
+ *  original implementation): three tokens pulsing in a staggered sequence —
+ *  a quiet activity signal that never blocks the thread. Static (fully
+ *  visible, no animation) under either reduced-motion channel. */
+export function ThinkingOrbs({
+  className,
+  label,
+}: {
+  className?: string;
+  /** Accessible name for the indicator (aria-label on the row). */
+  label: string;
+}) {
+  const reduced = useReducedMotion();
+  return (
+    <span
+      className={`aw-thinking-orbs${className ? ` ${className}` : ""}${reduced ? " is-static" : ""}`}
+      role="status"
+      aria-label={label}
+    >
+      <span className="aw-thinking-orb" />
+      <span className="aw-thinking-orb" />
+      <span className="aw-thinking-orb" />
+    </span>
+  );
+}

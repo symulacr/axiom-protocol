@@ -95,18 +95,17 @@ const pages: Record<PublicSeoSlug, PublicPage> = {
     title: "Agents with a\nvisible track record.",
     metaTitle: "Agent Provenance Workflows | Axiom",
     navLabel: "Explore agents",
-    accent:
-      "You can see what an agent is, what it did, and which records support it.",
+    accent: "See what an agent is, what it did, and what backs it.",
     metaDescription:
       "Explore Axiom's approach to on-chain agent provenance, operator activity and evidence-oriented workflows.",
     evidenceTitle: "What you can inspect",
     evidence: [
-      "Agent identity and observable activity",
-      "Operation-linked receipts and transaction states",
-      "Storage and proof references beside the action",
+      "Identity and activity",
+      "Receipts beside each operation",
+      "Storage and proof references",
     ],
     boundary:
-      "Axiom describes a human-controlled workflow; it does not claim autonomous behavior beyond the configured flows.",
+      "Human-controlled flows — no autonomous behavior beyond what you configure.",
     next: { href: PUBLIC_HUB_PATHS.proofs, label: "See how it works" },
     links: [
       { href: PUBLIC_HUB_PATHS.payments, label: "Programmable payments" },
@@ -126,9 +125,9 @@ const pages: Record<PublicSeoSlug, PublicPage> = {
       "Understand Axiom's evidence-oriented programmable payment workflow, including approval, receipts and finality states.",
     evidenceTitle: "What remains visible",
     evidence: [
-      "Exact approval and signing boundary",
-      "Submitted, confirming and confirmed receipt states",
-      "Protocol, royalty and vault context when configured",
+      "Approval and signing, kept separate",
+      "Each receipt state, explicit",
+      "Fee and vault context when set",
     ],
     boundary:
       "A receipt is an operational trace, not a financial, legal or regulatory guarantee.",
@@ -146,17 +145,17 @@ const pages: Record<PublicSeoSlug, PublicPage> = {
     metaTitle: "On-chain Receipts and Recovery | Axiom",
     navLabel: "Receipts",
     accent:
-      "Axiom surfaces receipt status, transaction identity and recovery context rather than flattening an operation into one generic success message.",
+      "Receipt status, transaction identity and recovery context — never one generic success message.",
     metaDescription:
       "Learn how Axiom presents operational receipts, transaction states and recovery context for Web3 workflows.",
     evidenceTitle: "Receipt lifecycle",
     evidence: [
-      "Approval and signature remain separate",
-      "Submission, confirmation and recovery are explicit",
-      "Hashes and contextual agent links stay available",
+      "Approval and signature, separate",
+      "Submission, confirmation, recovery — explicit",
+      "Hashes and agent links, one tap away",
     ],
     boundary:
-      "Finality and recovery states depend on the relevant network and operation; they are never represented as a universal guarantee.",
+      "Finality and recovery depend on the network and operation — never a universal guarantee.",
     next: {
       href: PUBLIC_HUB_PATHS.payments,
       label: "See programmable payments",
@@ -174,17 +173,17 @@ const pages: Record<PublicSeoSlug, PublicPage> = {
     metaTitle: "Verifiable 0G Storage Evidence | Axiom",
     navLabel: "Storage",
     accent:
-      "The Storage flow separates encryption, root hashing, publication, verification and availability rather than treating upload as a black box.",
+      "Encryption, root hashing, publication, verification, availability — each phase stays visible.",
     metaDescription:
       "Explore Axiom's verifiable 0G Storage workflow: publication, root hash, proof context, recovery and availability.",
     evidenceTitle: "Storage evidence",
     evidence: [
       "Root hash and publication reference",
-      "Optional encryption context and recovery state",
-      "Verification and availability expressed as separate phases",
+      "Encryption and recovery, when used",
+      "Verification and availability, separate phases",
     ],
     boundary:
-      "0G infrastructure capabilities and Axiom's current product integration are described separately; no absolute availability or privacy claim is made.",
+      "0G capabilities and Axiom's integration are described separately — no absolute availability or privacy claim.",
     next: {
       href: PUBLIC_HUB_PATHS.developers,
       label: "Open Storage quickstart",
@@ -202,17 +201,17 @@ const pages: Record<PublicSeoSlug, PublicPage> = {
     metaTitle: "Developer Entry Point | Axiom",
     navLabel: "Developers",
     accent:
-      "Use the public documentation path to understand a flow before entering a wallet-gated operator console.",
+      "Read the flow first; open the console only when an action needs your wallet.",
     metaDescription:
       "Axiom developer entry point for agent provenance, payment receipts and verifiable 0G Storage workflows.",
     evidenceTitle: "Build path",
     evidence: [
-      "Choose the agent, payment or Storage proof workflow",
+      "Pick a proof workflow: agent, payment, storage",
       "Review signing, receipt and failure states",
-      "Enter the app only when an action needs your wallet",
+      "Enter the app only to act",
     ],
     boundary:
-      "Integration details must remain aligned with the deployed contracts, network configuration and 0G SDK version used by the product.",
+      "Integration details track the deployed contracts, network config and 0G SDK.",
     next: { href: "/app", label: "Open operator console" },
     links: [
       { href: PUBLIC_HUB_PATHS.agents, label: "Agent architecture" },

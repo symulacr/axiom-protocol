@@ -1083,7 +1083,7 @@ const english: Copy = {
     titleLead: "Own an AI agent.",
     titleEmphasis: "Keep every action accountable.",
     description:
-      "Mint an intelligent NFT with a bounded vault. Your agent can work within rules you set, while every important action leaves a verifiable receipt.",
+      "Mint an agent with a bounded vault. It works inside rules you set; every action leaves a receipt.",
     nextSafeAction: "Next safe action",
     signatureBoundary: "How signing works",
     consoleAccess: "Console access",
@@ -1202,19 +1202,19 @@ const english: Copy = {
         {
           icon: "shield",
           title: "Bounded by design.",
-          body: "Every agent ships with an explicit vault and a daily spending limit. The vault is enforced on-chain — no off-chain guardrails to drift.",
+          body: "Every agent carries an on-chain vault with a daily limit. No off-chain guardrails to drift.",
           link: "Read the spec",
         },
         {
           icon: "receipt",
           title: "Receipts, not promises.",
-          body: "Each signature lands as an indexed receipt. The transaction center shows the proof — agent, block, outcome — beside the action that produced it.",
+          body: "Every signature lands as an indexed receipt — agent, block, outcome — beside the action.",
           link: "How receipts work",
         },
         {
           icon: "wallet",
           title: "Your wallet, your keys.",
-          body: "Non-custodial. Connect with the wallet you already use. No accounts, no emails — the signature is the identity, the receipt is the history.",
+          body: "Non-custodial. Connect the wallet you already use. No accounts, no emails.",
           link: "Wallet options",
         },
       ],
@@ -1224,14 +1224,14 @@ const english: Copy = {
       items: [
         {
           title: "Learn the boundary before you sign.",
-          body: "How Axiom splits signing from custody, what receipts look like, and which wallet choices keep your keys yours. No wallet required to read.",
+          body: "How signing splits from custody, what receipts look like, which wallets keep your keys yours. No wallet needed to read.",
           meta: "Read time · 3 min",
           cta: "How signing works",
           onClick: "onGuide",
         },
         {
           title: "Open the console and operate receipts.",
-          body: "Connect once to mint, fund, and run. Every signature lands as an indexed receipt beside the action that produced it.",
+          body: "Connect once to mint, fund and run. Every signature lands as a receipt beside its action.",
           meta: "Live · {count} agents online",
           cta: "Console access",
           onClick: "goToApp",
@@ -2323,19 +2323,19 @@ const french: Copy = {
         {
           icon: "shield",
           title: "Délimité par conception.",
-          body: "Chaque agent est livré avec un coffre explicite et une limite de dépenses quotidienne. Le coffre est appliqué on-chain — pas de garde-fous hors chaîne.",
+          body: "Chaque agent porte un coffre on-chain avec une limite quotidienne. Pas de garde-fous hors chaîne.",
           link: "Lire la spec",
         },
         {
           icon: "receipt",
           title: "Reçus, pas promesses.",
-          body: "Chaque signature devient un reçu indexé. Le centre de transactions montre la preuve — agent, bloc, résultat — à côté de l'action qui l'a produite.",
+          body: "Chaque signature devient un reçu indexé — agent, bloc, résultat — à côté de l'action.",
           link: "Comment fonctionnent les reçus",
         },
         {
           icon: "wallet",
           title: "Votre wallet, vos clés.",
-          body: "Non-dépositaire. Connectez-vous avec le wallet que vous utilisez déjà. Pas de comptes, pas d'emails — la signature est l'identité, le reçu est l'historique.",
+          body: "Non-dépositaire. Connectez le wallet que vous utilisez déjà. Pas de comptes, pas d'emails.",
           link: "Options de wallet",
         },
       ],
@@ -2345,14 +2345,14 @@ const french: Copy = {
       items: [
         {
           title: "Apprenez la limite avant de signer.",
-          body: "Comment Axiom sépare signature et garde, à quoi ressemblent les reçus, et quels wallets gardent vos clés. Pas besoin de wallet pour lire.",
+          body: "Comment la signature se sépare de la garde, à quoi ressemblent les reçus, quels wallets gardent vos clés. Pas de wallet pour lire.",
           meta: "Temps de lecture · 3 min",
           cta: "Comment fonctionne la signature",
           onClick: "onGuide",
         },
         {
           title: "Ouvrir la console et opérer les reçus.",
-          body: "Connectez-vous une fois pour minter, financer et opérer. Chaque signature devient un reçu indexé à côté de l'action qui l'a produite.",
+          body: "Connectez-vous une fois pour minter, financer et opérer. Chaque signature devient un reçu à côté de son action.",
           meta: "En direct · {count} agents en ligne",
           cta: "Accès console",
           onClick: "goToApp",
@@ -3425,19 +3425,19 @@ const german: Copy = {
         {
           icon: "shield",
           title: "Grenzen durch Design.",
-          body: "Jeder Agent wird mit einem expliziten Tresor und einem täglichen Ausgabenlimit ausgeliefert. Der Tresor wird on-chain durchgesetzt — keine Off-Chain-Absicherungen.",
+          body: "Jeder Agent trägt einen on-chain Tresor mit täglichem Limit. Keine Off-Chain-Absicherungen.",
           link: "Spec lesen",
         },
         {
           icon: "receipt",
           title: "Belege, keine Versprechen.",
-          body: "Jede Signatur landet als indexierter Beleg. Das Transaktions-Center zeigt den Beweis — Agent, Block, Ergebnis — neben der auslösenden Aktion.",
+          body: "Jede Signatur landet als indexierter Beleg — Agent, Block, Ergebnis — neben der Aktion.",
           link: "Wie Belege funktionieren",
         },
         {
           icon: "wallet",
           title: "Dein Wallet, deine Schlüssel.",
-          body: "Nicht-verwahrend. Verbinde dich mit dem Wallet, das du bereits nutzt. Keine Accounts, keine E-Mails — die Signatur ist die Identität, der Beleg ist der Verlauf.",
+          body: "Nicht-verwahrend. Verbinde das Wallet, das du bereits nutzt. Keine Accounts, keine E-Mails.",
           link: "Wallet-Optionen",
         },
       ],
@@ -3447,14 +3447,14 @@ const german: Copy = {
       items: [
         {
           title: "Lerne die Grenze, bevor du unterschreibst.",
-          body: "Wie Axiom Signieren und Verwahrung trennt, wie Belege aussehen und welche Wallets deine Schlüssel behalten. Kein Wallet zum Lesen nötig.",
+          body: "Wie Signieren und Verwahrung getrennt werden, wie Belege aussehen, welche Wallets deine Schlüssel behalten. Kein Wallet zum Lesen nötig.",
           meta: "Lesezeit · 3 min",
           cta: "Wie die Signatur funktioniert",
           onClick: "onGuide",
         },
         {
           title: "Öffne die Konsole und bediene Belege.",
-          body: "Verbinde dich einmal zum Minten, Finanzieren und Ausführen. Jede Signatur landet als indexierter Beleg neben der auslösenden Aktion.",
+          body: "Verbinde dich einmal zum Minten, Finanzieren und Ausführen. Jede Signatur landet als Beleg neben ihrer Aktion.",
           meta: "Live · {count} Agents online",
           cta: "Konsolenzugriff",
           onClick: "goToApp",

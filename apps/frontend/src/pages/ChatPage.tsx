@@ -120,12 +120,12 @@ import { useGasTank } from "../hooks/useGasTank.js";
 import {
   Textarea,
   ErrorRef,
-  Spinner,
   CopyButton,
   SectionTitle,
   MonoLabel,
 } from "../components/ui.js";
 import { Button } from "../components/axiom/Controls.js";
+import { ThinkingOrbs } from "../components/fx/fx.js";
 import {
   CornerDownLeft,
   Menu,
@@ -2016,7 +2016,7 @@ function ChatPageInner(): ReactElement {
                       gap: 8,
                     }}
                   >
-                    <Spinner size={14} variant="churn" />
+                    <ThinkingOrbs label={chatCopy.assistantResponding} />
                     <span style={{ color: "var(--copper-bright)" }}>
                       {phaseLabel(elapsed, toolRuns, streamText, chatCopy)}
                     </span>

@@ -47,6 +47,37 @@
 | Console pages | kicker-style page-head labels | none found (audit: structural classes only) — verified on all console routes |
 | copy.ts | now-unused `eyebrow` keys (en/fr/de) | removed |
 
+## Round 2 — research, OKLCH system, dedup, terse copy (2026-09-03)
+
+| Stage | Scope | Status |
+|---|---|---|
+| I | Research: opened/searched every shared URL (canvasui, beam, originkit, aicss, transitions.dev, metal, beautiful-ui, agentation, orbs, libraries.dev); saved component recipes + the transitions.dev motion-token scale as local refs (`.design-audit/refs/`) | done |
+| J | OKLCH color system in the `--aw-*` layer: ramps (copper 300–500, ink 700–900, paper, mist) → semantic roles (accent / accent-strong / accent-pressed / text / text-soft / ok / info / warn / danger) → legacy aliases; surfaces & lines derived via color-mix instead of re-pinned rgba/hex | done — pixel-faithful (oklch roundtrips to the shipped hexes) |
+| K | Contrast gate: `aw-contrast.test.ts` parses the `:root` block, converts oklch→sRGB, asserts AA ≥ 4.5:1 for all state roles on every ink surface + no raw hex pins + tokenized motion ladder; registered in the package test script | done — 6/6, suite now 156/156 |
+| L | CSS dedup: `--aw-glass`, `--aw-blur-nav/card`, `--aw-card-grad`, `--aw-shadow-plate/float/lift`, `--aw-hairline`, `--aw-stagger`, `--aw-dur-fast/med` replace repeated literals; console chrome `var(--copper, #d28b52)` fallback pins → ramp fallbacks; `axiom-seo-public.css` palette tokenized (copper rgba → color-mix, paper hexes → tokens) and dead `.seo-evidence-artifact` rules deleted | done |
+| M | Terse copy (cognitive-load pass): landing hero/principles/journey bodies trimmed ~35–45% in en/fr/de; hub accents/evidence/boundaries tightened (boundary truthfulness kept, never weakened); SEO meta titles/descriptions untouched | done — live-verified |
+| N | Chat working-state polish: `ThinkingOrbs` (aicss/orbs-inspired discrete activity dots) replaces the generic spinner in the assistant responding state; tokenized CSS, dual reduced-motion channels | done — anim verified live |
+
+**Round-2 discoveries**
+
+- `dev.mjs` builds the module graph **once at startup** into `dist-dev/` — it does
+  not watch app source. Source edits require a preview restart before they are
+  served; browser checks after edits must always follow a restart (a stale
+  build once passed a "verification" because old hexes and oklch compute to
+  identical colors — caught by string-level checks, not color checks).
+- canvasui.dev's html-in-canvas WebGL is an experimental Chrome origin-trial
+  API; per the no-dependency law the canvas-2D OrbsField remains the equivalent
+  original (and degrades to nothing, same as their fallback path).
+
+## Round-2 verify log
+
+| Time (UTC) | Check | Result | Evidence |
+|---|---|---|---|
+| 22:05 | Fresh build (preview restarted): landing hero gradient serves `oklch(...)` tokens; terse description + all 3 principle bodies live; 0 kickers; 0 console errors | pass | DOM eval, `after-21-landing-oklch.png` |
+| 22:05 | `/agents` hub: terse accent ("See what an agent is, what it did, and what backs it."), 0 artifact blocks, 0 console errors | pass | DOM eval |
+| 22:06 | `/chat`: renders, 0 console errors; probe element picks up `aw-orb-pulse` animation (ThinkingOrbs CSS live) | pass | DOM eval, `after-22-chat-oklch.png` |
+| 22:0x | Gates: typecheck exit 0; `bun run test` 156/156 (incl. new aw-contrast gate); lint 0 errors / 4 pre-existing warnings in untouched guard tests | pass | shell output |
+
 ## Verify log
 
 | Time (UTC) | Check | Result | Evidence |
