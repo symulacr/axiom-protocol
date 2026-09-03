@@ -929,6 +929,21 @@ export function AppShell({
       delete document.documentElement.dataset.reduceMotion;
     }
   }, [state.settings.reducedMotion]);
+  // Theme flips retrigger every color/background transition on the shell at
+  // once and smear instead of snapping. Freeze transitions for one frame
+  // around the swap (better-ui suppress-on-theme-switch recipe).
+  const themeRef = useRef(state.settings.theme);
+  useEffect(() => {
+    if (themeRef.current === state.settings.theme) return;
+    themeRef.current = state.settings.theme;
+    const root = document.documentElement;
+    root.classList.add("theme-switching");
+    void root.offsetWidth;
+    const raf = requestAnimationFrame(() =>
+      root.classList.remove("theme-switching"),
+    );
+    return () => cancelAnimationFrame(raf);
+  }, [state.settings.theme]);
   const className =
     `operator-preferences ${state.settings.reducedMotion ? "reduce-motion" : ""} ${state.settings.railHidden ? "rail-hidden" : ""}`.trim();
   return (

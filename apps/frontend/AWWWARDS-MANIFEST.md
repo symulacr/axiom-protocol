@@ -113,6 +113,39 @@ Not verified: 10%-speed visual motion replay (this model route cannot inspect
 pixels; motion was verified structurally — transition/animation properties,
 durations, easings, and static cues — not visually).
 
+## Round 4 — jakubkrehel/skills collection, better-interface review (2026-09-03)
+
+Installed the full 16-skill collection (MIT) under `skills/<name>/` (npx CLI
+prints its banner then waits on a TTY here; fetched from GitHub per the
+README's non-Claude instructions). Ran the `better-interface` orchestration:
+accessibility → layout → writing → typography → colors → UI.
+
+| Severity | Domain | Location | Change |
+|---|---|---|---|
+| MEDIUM | colors | `axiom-awwwards.css`, `axiom-seo-public.css` (34 refs) | Primitive tokens applied directly in component rules → semantic tier: `--aw-copper`→`--aw-accent`, `--aw-copper-bright`→`--aw-accent-strong`, hero live-dot → `--aw-ok`, `--aw-paper-100/300`→`--aw-text`/new `--aw-text-dim`. Brand-triad gradient refs keep the primitives (brand usage, not state). Pixel-faithful: verified identical computed colors live. |
+| MEDIUM | layout | `index.css` (~35 physical props) | RTL-correct logical swaps, all LTR-identical: `text-align: left`→`start` (16), `margin-left: auto`→`margin-inline-start` (11), accent-bar `border-left`→`border-inline-start`, receipt/mobile drawer anchoring + separators + chat list indent → logical |
+| MEDIUM | ui | `AppShell.tsx` + aw css | Theme flips smeared every color transition at once → one-frame `theme-switching` transition freeze (better-ui suppress recipe) |
+
+No escalation triggers fired (names/focus/keyboard/reduced-motion/320px/contrast/color-alone all verified clean — see verify log).
+
+Rejected: copper ramp hue drift 55→65.8° (shipped brand hexes; reporting per
+skill, not repainting), gradient interpolation space (established verified
+look), image outlines on screen-blend art slabs, raising `--icon-hit-md`.
+
+### Round-4 verify log
+
+| Time (UTC) | Check | Result | Evidence |
+|---|---|---|---|
+| 22:4x | 320px reflow (headless CDP): landing + /agents — no horizontal overflow, h1 clamps to 40px/33.6px | pass | `after-23/24-*-320.png` |
+| 22:4x | Accessible names: 0 unnamed of 18 interactive elements on landing; landmarks main/nav/footer present; exactly 1 h1 | pass | DOM eval |
+| 22:4x | Keyboard walk: tab stops land on nav links with visible 2px solid `:focus-visible` ring | pass | DOM eval |
+| 22:5x | Gates after fixes: typecheck 0, 156/156 tests, lint 0 errors (4 pre-existing warnings) | pass | shell output |
+| 22:5x | Fresh build: semantic-token swap pixel-faithful (`.p-icon` = exact copper-bright oklch, live dot = exact phosphor oklch); `text-align: start` rules served; console renders with chrome + active rail; 0 console errors on / and /transactions | pass | DOM eval |
+
+Not verified: 10%-speed visual motion replay and screen-reader announcements
+(no pixel/audio inspection on this route; verified structurally + via
+accessible-name/landmark/focus DOM checks).
+
 ## Round-2 verify log
 
 | Time (UTC) | Check | Result | Evidence |
