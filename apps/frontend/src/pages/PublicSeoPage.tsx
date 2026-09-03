@@ -1,6 +1,9 @@
-/* Copper Command Deck public discovery: evidence-first hubs, route-specific risk artifacts, and explicit console boundary. */
-import { useEffect, useState } from "react";
-import { apiFetch } from "../utils/apiFetch.js";
+/* Copper Command Deck public discovery: evidence-first hubs and an explicit
+   console boundary. AW round (2026-09-03): cinematic layer (fx kit +
+   axiom-awwwards.css); the artifact spec-blocks and EXAMPLE/LIVE DATA badges
+   are gone per the no-noise design law — the evidence checklist carries the
+   substance now. */
+import { useEffect } from "react";
 import {
   ArrowRight,
   CircleCheck,
@@ -11,17 +14,15 @@ import {
   ReceiptText,
   ShieldCheck,
 } from "../components/axiom/icons";
+import {
+  GrainOverlay,
+  OrbsField,
+  Reveal,
+  ScrollProgress,
+} from "../components/fx/fx";
 import { AxiomBrandMark } from "../components/axiom/BrandMark";
 import { PUBLIC_HUB_PATHS } from "../lib/routeRegistry.js";
 import "../styles/axiom-seo-public.css";
-
-/** Live on-chain registry counts for the agents hub artifact — null while
- * loading or when the backend is unreachable (card falls back to the
- * labeled specimen). */
-interface AgentRegistryStats {
-  totalMinted: number;
-  latestTokenId: string | null;
-}
 
 /** Create-or-update a document-head meta tag (description/robots share it). */
 function setMeta(name: string, content: string) {
@@ -70,30 +71,9 @@ function MultilineHeading({ text }: { text: string }) {
   );
 }
 
-function useAgentRegistryStats(enabled: boolean): AgentRegistryStats | null {
-  const [stats, setStats] = useState<AgentRegistryStats | null>(null);
-  useEffect(() => {
-    if (!enabled) return;
-    let cancelled = false;
-    apiFetch<AgentRegistryStats>("/v1/agents/stats")
-      .then((d) => {
-        if (!cancelled && typeof d?.totalMinted === "number") setStats(d);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, [enabled]);
-  return stats;
-}
-
 export type PublicSeoSlug =
   "agents" | "payments" | "proofs" | "storage" | "developers";
 
-type EvidenceArtifact = {
-  label: string;
-  rows: [string, string][];
-};
 type PublicPage = {
   title: string;
   metaTitle: string;
@@ -107,7 +87,6 @@ type PublicPage = {
   next: { href: string; label: string };
   links: { href: string; label: string }[];
   icon: typeof Network;
-  artifact: EvidenceArtifact;
   journey: string;
 };
 
@@ -135,15 +114,6 @@ const pages: Record<PublicSeoSlug, PublicPage> = {
       { href: PUBLIC_HUB_PATHS.developers, label: "Developer quickstart" },
     ],
     icon: Network,
-    artifact: {
-      label: "LIVE RECORD",
-      // Fallback rows while /v1/agents/stats is down; live reads replace them; never fabricate an agent id.
-      rows: [
-        ["AGENTS", "registry read…"],
-        ["WHAT THEY DID", "hash + metadata"],
-        ["LAST ACTIVITY", "tx hash + event"],
-      ],
-    },
     journey: "Trace an\nagent evidence path.",
   },
   payments: {
@@ -169,14 +139,6 @@ const pages: Record<PublicSeoSlug, PublicPage> = {
       { href: PUBLIC_HUB_PATHS.developers, label: "Payment integration guide" },
     ],
     icon: ReceiptText,
-    artifact: {
-      label: "ALLOWANCE ROUTE",
-      rows: [
-        ["APPROVAL", "exact amount"],
-        ["ROUTE", "vault → royalty"],
-        ["RECEIPT", "tx hash + event"],
-      ],
-    },
     journey: "Inspect the\nreceipt trail.",
   },
   proofs: {
@@ -205,14 +167,6 @@ const pages: Record<PublicSeoSlug, PublicPage> = {
       { href: PUBLIC_HUB_PATHS.developers, label: "Developer references" },
     ],
     icon: FileCheck2,
-    artifact: {
-      label: "LIFECYCLE",
-      rows: [
-        ["TX HASH", "0x…"],
-        ["STATE", "submitted → confirm"],
-        ["RECOVERY", "retry surface"],
-      ],
-    },
     journey: "Follow the\nfinality chain.",
   },
   storage: {
@@ -241,14 +195,6 @@ const pages: Record<PublicSeoSlug, PublicPage> = {
       { href: PUBLIC_HUB_PATHS.payments, label: "Payment receipts" },
     ],
     icon: ShieldCheck,
-    artifact: {
-      label: "PUBLICATION ROOT",
-      rows: [
-        ["ROOT", "0x…"],
-        ["PHASE", "publish → verify"],
-        ["AVAILABILITY", "separate state"],
-      ],
-    },
     journey: "Inspect the\nstorage root.",
   },
   developers: {
@@ -274,14 +220,6 @@ const pages: Record<PublicSeoSlug, PublicPage> = {
       { href: PUBLIC_HUB_PATHS.storage, label: "Storage evidence" },
     ],
     icon: Code2,
-    artifact: {
-      label: "IMPLEMENTATION PATH",
-      rows: [
-        ["SDK", "0G Storage SDK"],
-        ["FLOW", "sign → receipt"],
-        ["BOUNDARY", "sign-in required"],
-      ],
-    },
     journey: "Build from the\nfirst receipt.",
   },
 };
@@ -289,29 +227,6 @@ const pages: Record<PublicSeoSlug, PublicPage> = {
 export function PublicSeoPage({ slug }: { slug: PublicSeoSlug }) {
   const page = pages[slug];
   const Icon = page.icon;
-  const liveStats = useAgentRegistryStats(slug === "agents");
-  // Real registry counts replace the specimen rows once the chain read lands.
-  const artifact = (() => {
-    if (slug !== "agents" || !liveStats) return page.artifact;
-    if (liveStats.totalMinted === 0) {
-      return {
-        ...page.artifact,
-        rows: [
-          ["AGENTS", "none minted yet"],
-          ...page.artifact.rows.slice(1),
-        ] as [string, string][],
-      };
-    }
-    return {
-      ...page.artifact,
-      rows: [
-        ["AGENTS ON-CHAIN", String(liveStats.totalMinted)],
-        ["LATEST AGENT", `#${liveStats.latestTokenId ?? "?"}`],
-        ...page.artifact.rows.slice(2),
-      ] as [string, string][],
-    };
-  })();
-  const isLiveData = slug === "agents" && liveStats !== null;
   useEffect(() => {
     document.title = page.metaTitle;
     setMeta("description", page.metaDescription);
@@ -366,6 +281,8 @@ export function PublicSeoPage({ slug }: { slug: PublicSeoSlug }) {
   }, [page]);
   return (
     <main className={`seo-public seo-public--${slug}`} data-seo-page={slug}>
+      <ScrollProgress />
+      <GrainOverlay />
       <header className="seo-public-nav">
         <a className="seo-public-brand" href="/" aria-label="Axiom home">
           <AxiomBrandMark />
@@ -387,7 +304,9 @@ export function PublicSeoPage({ slug }: { slug: PublicSeoSlug }) {
         </a>
       </header>
       <section className="seo-hero">
+        <OrbsField />
         <div className="seo-route-rail" role="presentation" />
+        <Reveal>
         <div className="seo-hero-copy">
           <h1>
             <MultilineHeading text={page.title} />
@@ -403,23 +322,13 @@ export function PublicSeoPage({ slug }: { slug: PublicSeoSlug }) {
             </a>
           </div>
         </div>
+        </Reveal>
+        <Reveal delay={140}>
         <aside className="seo-proof-card">
           <div className="seo-proof-card-head">
             <Icon size={18} />
           </div>
           <strong>{page.evidenceTitle}</strong>
-          <div className="seo-evidence-artifact" aria-label={artifact.label}>
-            <div>
-              <span>{artifact.label}</span>
-            </div>
-            {artifact.rows.map(([label, value]) => (
-              <p key={label}>
-                <span>{label}</span>
-                <code>{value}</code>
-              </p>
-            ))}
-            <small>{isLiveData ? "LIVE CHAIN DATA" : "EXAMPLE DATA"}</small>
-          </div>
           <ul>
             {page.evidence.map((item) => (
               <li key={item}>
@@ -430,6 +339,7 @@ export function PublicSeoPage({ slug }: { slug: PublicSeoSlug }) {
           </ul>
           <p>{page.boundary}</p>
         </aside>
+        </Reveal>
       </section>
       <section className="seo-link-field" aria-labelledby="related-title">
         <div>
@@ -437,6 +347,7 @@ export function PublicSeoPage({ slug }: { slug: PublicSeoSlug }) {
             <MultilineHeading text={page.journey} />
           </h2>
         </div>
+        <Reveal>
         <div className="seo-link-grid">
           {page.links.map((link) => (
             <a key={link.href} href={link.href}>
@@ -445,6 +356,7 @@ export function PublicSeoPage({ slug }: { slug: PublicSeoSlug }) {
             </a>
           ))}
         </div>
+        </Reveal>
       </section>
       <footer className="seo-public-footer">
         <span>Built on 0G</span>

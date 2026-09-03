@@ -9,6 +9,7 @@ import { WagmiConfigProvider } from "./config/wagmi";
 import { UiStoreProvider } from "./lib/uiStore";
 import { getShortcutPath, isIndexablePath } from "./lib/routeRegistry";
 import "./styles/index.css";
+import "./styles/axiom-awwwards.css";
 
 const queryClient = new QueryClient({
   defaultOptions: {

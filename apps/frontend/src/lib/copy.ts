@@ -129,8 +129,6 @@ export type Copy = {
     tryAssistant: string;
     stripVerifySmall: string;
     stripOperateSmall: string;
-    /** R4: phosphor-dot eyebrow pill above the h1. */
-    eyebrow: string;
     /** R10: proof-field caption — small mono caption + Fraunces italic body. */
     proofCaptionSmall: string;
     proofCaptionBody: string;
@@ -194,7 +192,6 @@ export type Copy = {
     };
     /** L2-N6: principles section — 3 cards. */
     principles: {
-      eyebrow: string;
       /** Placeholders: `{emphasis}` opens <em>, `{endEmphasis}` closes it. */
       title: string;
       items: ReadonlyArray<{
@@ -206,11 +203,9 @@ export type Copy = {
     };
     /** L2-N7: journey section — 2 cards (replaces the strip). */
     journey: {
-      eyebrow: string;
       /** Placeholders: `{emphasis}` opens <em>, `{endEmphasis}` closes it. */
       title: string;
       items: ReadonlyArray<{
-        eyebrow: string;
         title: string;
         body: string;
         meta: string;
@@ -1098,7 +1093,6 @@ const english: Copy = {
     tryAssistant: "Try the assistant",
     stripVerifySmall: "No gas, no custody",
     stripOperateSmall: "Receipts beside action",
-    eyebrow: "On-chain agent protocol",
     proofCaptionSmall: "Sealed transfer",
     proofCaptionBody: "Every payload is re-keyed to its new owner.",
     previewAgentTitle: "Agent #7",
@@ -1203,7 +1197,6 @@ const english: Copy = {
       },
     },
     principles: {
-      eyebrow: "Three principles",
       title: "What makes Axiom {emphasis}different.{endEmphasis}",
       items: [
         {
@@ -1227,11 +1220,9 @@ const english: Copy = {
       ],
     },
     journey: {
-      eyebrow: "Pick one",
       title: "Two paths {emphasis}to start.{endEmphasis}",
       items: [
         {
-          eyebrow: "Journey A",
           title: "Learn the boundary before you sign.",
           body: "How Axiom splits signing from custody, what receipts look like, and which wallet choices keep your keys yours. No wallet required to read.",
           meta: "Read time · 3 min",
@@ -1239,7 +1230,6 @@ const english: Copy = {
           onClick: "onGuide",
         },
         {
-          eyebrow: "Journey B",
           title: "Open the console and operate receipts.",
           body: "Connect once to mint, fund, and run. Every signature lands as an indexed receipt beside the action that produced it.",
           meta: "Live · {count} agents online",
@@ -2223,7 +2213,6 @@ const french: Copy = {
     menuDevelopersHint: "APIs et outils pour développeurs",
     stripVerifySmall: "Sans gas, sans garde",
     stripOperateSmall: "Reçus à côté de l’action",
-    eyebrow: "Protocole d’agents on-chain",
     proofCaptionSmall: "Transfert scellé",
     proofCaptionBody:
       "Chaque payload est recréé pour son nouveau propriétaire.",
@@ -2329,7 +2318,6 @@ const french: Copy = {
       },
     },
     principles: {
-      eyebrow: "Trois principes",
       title: "Ce qui rend Axiom {emphasis}différent.{endEmphasis}",
       items: [
         {
@@ -2353,11 +2341,9 @@ const french: Copy = {
       ],
     },
     journey: {
-      eyebrow: "Choisissez",
       title: "Deux chemins {emphasis}pour commencer.{endEmphasis}",
       items: [
         {
-          eyebrow: "Parcours A",
           title: "Apprenez la limite avant de signer.",
           body: "Comment Axiom sépare signature et garde, à quoi ressemblent les reçus, et quels wallets gardent vos clés. Pas besoin de wallet pour lire.",
           meta: "Temps de lecture · 3 min",
@@ -2365,7 +2351,6 @@ const french: Copy = {
           onClick: "onGuide",
         },
         {
-          eyebrow: "Parcours B",
           title: "Ouvrir la console et opérer les reçus.",
           body: "Connectez-vous une fois pour minter, financer et opérer. Chaque signature devient un reçu indexé à côté de l'action qui l'a produite.",
           meta: "En direct · {count} agents en ligne",
@@ -3330,7 +3315,6 @@ const german: Copy = {
     menuDevelopersHint: "APIs und Entwickler-Tools",
     stripVerifySmall: "Kein Gas, keine Verwahrung",
     stripOperateSmall: "Belege neben der Aktion",
-    eyebrow: "On-Chain-Agenten-Protokoll",
     proofCaptionSmall: "Versiegelte Übertragung",
     proofCaptionBody:
       "Jede Nutzlast wird neu für ihren neuen Eigentümer verschlüsselt.",
@@ -3436,7 +3420,6 @@ const german: Copy = {
       },
     },
     principles: {
-      eyebrow: "Drei Prinzipien",
       title: "Was Axiom {emphasis}anders macht.{endEmphasis}",
       items: [
         {
@@ -3460,11 +3443,9 @@ const german: Copy = {
       ],
     },
     journey: {
-      eyebrow: "Wähle eines",
       title: "Zwei Wege {emphasis}zum Start.{endEmphasis}",
       items: [
         {
-          eyebrow: "Weg A",
           title: "Lerne die Grenze, bevor du unterschreibst.",
           body: "Wie Axiom Signieren und Verwahrung trennt, wie Belege aussehen und welche Wallets deine Schlüssel behalten. Kein Wallet zum Lesen nötig.",
           meta: "Lesezeit · 3 min",
@@ -3472,7 +3453,6 @@ const german: Copy = {
           onClick: "onGuide",
         },
         {
-          eyebrow: "Weg B",
           title: "Öffne die Konsole und bediene Belege.",
           body: "Verbinde dich einmal zum Minten, Finanzieren und Ausführen. Jede Signatur landet als indexierter Beleg neben der auslösenden Aktion.",
           meta: "Live · {count} Agents online",

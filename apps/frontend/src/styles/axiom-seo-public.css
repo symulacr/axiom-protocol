@@ -173,49 +173,6 @@
   font: 600 var(--fs-title)/1.1 Syne, sans-serif;
 }
 
-.seo-evidence-artifact {
-  margin: 0 0 var(--space-4);
-  padding: var(--space-3);
-  border: 1px solid rgba(210, 139, 82, 0.35);
-  background: #0d1011;
-  font-family: "JetBrains Mono", monospace;
-}
-
-.seo-evidence-artifact > div,
-.seo-evidence-artifact > p {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--space-3);
-  margin: 0;
-  padding: var(--space-2) 0;
-  border-bottom: 1px solid rgba(233, 226, 217, 0.09);
-  font-size: var(--fs-mono);
-  letter-spacing: 0.04em;
-}
-
-.seo-evidence-artifact > div span,
-.seo-evidence-artifact > p span {
-  color: #86817b;
-}
-
-.seo-evidence-artifact > div b {
-  color: var(--phosphor);
-  font-size: var(--fs-mono);
-}
-
-.seo-evidence-artifact code {
-  color: var(--completion-bright);
-  font: inherit;
-}
-
-.seo-evidence-artifact small {
-  display: block;
-  margin-top: var(--space-2);
-  color: var(--dim);
-  font-size: var(--fs-mono);
-  letter-spacing: 0.08em;
-}
-
 .seo-proof-card ul {
   display: grid;
   gap: var(--space-3);
@@ -359,8 +316,6 @@
   .seo-proof-card { padding: var(--space-5); }
   .seo-link-grid a { padding: var(--space-4) var(--space-3); }
   .seo-link-grid strong { font-size: 16px; }
-  .seo-evidence-artifact > div,
-  .seo-evidence-artifact > p { font-size: var(--fs-mono); }
   .seo-hero h1 { font-size: clamp(38px, 11.1vw, 46px); letter-spacing: -0.05em; }
 }
 

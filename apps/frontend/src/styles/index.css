@@ -201,8 +201,7 @@
 .landing-copy h1 i { font-style: italic; font-weight: 400; font-feature-settings: "ss01"; }
 /* R4: eyebrow pill — phosphor dot + mono caps above the h1.
    Sits inside .landing-copy so it inherits the grid alignment. */
-.landing-copy .eyebrow { display: inline-flex; align-items: center; gap: var(--space-2); padding: 6px 10px 6px 8px; margin-bottom: var(--space-3); border: 1px solid var(--line); border-radius: var(--radius-md); background: color-mix(in srgb, var(--copper) 8%, transparent); font: 500 var(--fs-mono)/1 "JetBrains Mono", monospace; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text); }
-.landing-copy .eyebrow::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--phosphor); box-shadow: 0 0 6px var(--phosphor); }.landing-copy>p { max-width:440px; color:var(--completion-muted); font-size:var(--fs-body); line-height:1.7; }.landing-visual { position:relative; min-height:580px; overflow:hidden; border:1px solid var(--completion-line); background:var(--surface-elevated); }.landing-visual>img { width:100%; height:100%; object-fit:cover; opacity:.65; mix-blend-mode:screen; }
+.landing-copy>p { max-width:440px; color:var(--completion-muted); font-size:var(--fs-body); line-height:1.7; }.landing-visual { position:relative; min-height:580px; overflow:hidden; border:1px solid var(--completion-line); background:var(--surface-elevated); }.landing-visual>img { width:100%; height:100%; object-fit:cover; opacity:.65; mix-blend-mode:screen; }
 @media (max-width: 900px) { .context-strip { grid-template-columns:repeat(2,1fr); }.context-cell:nth-child(2) { border-right:0; }.context-cell:nth-child(-n+2) { border-bottom:1px solid var(--completion-line); }.dashboard-split,.storage-grid,.settings-grid,.flow-layout { grid-template-columns:1fr; }.landing-main { grid-template-columns:1fr; }.landing-visual { min-height:420px; }.page-head-asymmetric { grid-template-columns:1fr; }.action-lane { min-height:0; }.thread-list { display:none; }.ops-summary { grid-template-columns:repeat(2,1fr); }.ops-summary-note { grid-column:span 2; }.recovery-404 { grid-template-columns:1fr; }.recovery-404-art { min-height:340px; max-height:43vh; border-right:0; border-bottom:1px solid var(--completion-line); }.recovery-404-copy { padding:44px var(--space-5) 60px; } }
 @media (max-width:700px) { .app-shell { display:block; }.sidebar { display:none; }.topbar { min-height:60px; padding:0 var(--space-4); }.session-top span,.session-top .status { display:none; }.ops-page { padding:var(--space-6) var(--space-4) 60px; }.page-head { display:grid; gap:var(--space-5); margin-bottom:var(--space-5); }.page-head h1 { font-size:var(--fs-display); }.page-head-actions { justify-content:flex-start; }.context-strip,.stats-grid { grid-template-columns:1fr; }.context-cell { border-right:0!important; border-bottom:1px solid var(--completion-line); }.context-cell:last-child { border-bottom:0; }.stats-grid { gap:1px; }.stat { padding:var(--space-3); }.agent-detail-head { grid-template-columns:48px 1fr; }.agent-grid,.execute-grid,.receipt-grid,.settings-select-row { grid-template-columns:1fr; }.transaction-table-head { display:none; }.transaction-row { grid-template-columns:minmax(0,1fr) auto 15px; }.transaction-row>.mono { display:none; }.transaction-age { display:none; }.flow-form { grid-template-columns:1fr; gap:0; }.flow-action { flex-wrap:wrap; }.not-integrated { grid-template-columns:1fr; padding:var(--space-5); }.not-integrated h2 { font-size:28px; }.landing-nav { padding:20px var(--space-4); }.landing-main { padding:58px var(--space-4) 52px; }.landing-copy h1 { font-size:clamp(42px, 13vw, 62px); }.landing-visual { min-height:360px; }.guide-copy h2,.wallet-gate-panel h1 { overflow-wrap:normal; }.notice-toast { right:12px; bottom:12px; max-width:calc(100vw - 24px); }.recovery-404-copy h1 { font-size:clamp(42px, 13vw, 62px); } }
 
@@ -3974,14 +3973,11 @@ strong {
 .principles-section { margin-top: 96px; }
 .journey-section { margin-top: 128px; margin-bottom: 128px; }
 .scroll-section .section-head { display: flex; flex-direction: column; gap: var(--space-2); margin-bottom: var(--space-6); }
-.scroll-section .section-eyebrow { display: inline-flex; align-items: center; gap: var(--space-2); font: 500 var(--fs-mono)/1 "JetBrains Mono", monospace; color: var(--muted); }
-.scroll-section .section-eyebrow .num { color: var(--copper); }
 .scroll-section h2 { margin: 0; font: 500 clamp(28px, 4vw, 48px)/1.1 var(--font-serif-display); letter-spacing: -0.025em; font-feature-settings: "ss01", "cv11"; color: var(--ink); }
 .scroll-section h2 em { font-style: italic; color: var(--copper-bright); font-weight: 400; }
 .principles-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-4); }
 .principle { display: grid; gap: var(--space-3); padding: var(--space-5); border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--panel); transition: background-color var(--motion-fade-220); }
 .principle:hover { background: color-mix(in srgb, var(--copper) 4%, var(--panel)); }
-.principle .p-num { font: 500 var(--fs-mono)/1 "JetBrains Mono", monospace; color: var(--copper); }
 .principle .p-icon { display: inline-grid; place-items: center; width: 32px; height: 32px; border: 1px solid var(--line); border-radius: var(--radius-md); color: var(--copper); }
 .principle h3 { margin: 0; font: italic 400 var(--fs-title)/1.15 var(--font-serif-display); font-feature-settings: "ss01"; color: var(--ink); }
 .principle p { margin: 0; color: var(--muted); font-size: var(--fs-body); line-height: 1.6; }
@@ -3993,7 +3989,6 @@ strong {
 .journey { display: grid; grid-template-columns: 1.5fr 1fr; gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: var(--radius-lg); overflow: hidden; }
 .journey-card { display: grid; gap: var(--space-3); padding: var(--space-5); background: var(--panel); transition: background-color var(--motion-fade-220); }
 .journey-card:hover { background: color-mix(in srgb, var(--copper) 4%, var(--panel)); }
-.journey-card .j-num { font: 500 var(--fs-mono)/1 "JetBrains Mono", monospace; color: var(--copper); }
 .journey-card h3 { margin: 0; font: 500 var(--fs-title)/1.15 var(--font-serif-display); letter-spacing: -0.015em; font-feature-settings: "ss01"; color: var(--ink); }
 .journey-card p { margin: 0; color: var(--muted); font-size: var(--fs-body); line-height: 1.6; }
 .journey-card .j-meta { color: var(--dim); font: 500 var(--fs-mono)/1 "JetBrains Mono", monospace; font-size: var(--fs-small); }
@@ -4082,11 +4077,6 @@ strong {
    Scoped to .landing-page so the console's --fs-mono contract is untouched. */
 .landing-page {
   --fs-mono: 13px;
-}
-
-/* ---- W5-2: coherent section numbering (01 hero / 02 principles / 03 journey) ---- */
-.landing-copy .eyebrow .num {
-  color: var(--copper);
 }
 
 /* ---- W5-3: mobile CTA row — labels never wrap, primary is full-width,

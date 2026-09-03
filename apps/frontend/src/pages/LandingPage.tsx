@@ -5,6 +5,10 @@
   dot + responsive hamburger), hero meta strip + trust-line + proof corners/
   label/hairline + floating receipt card, ticker, principles + journey
   sections, footer.
+  AW round (2026-09-03): cinematic layer (fx kit + axiom-awwwards.css) —
+  scroll progress, grain, hero orbs, reveal stagger, parallax journey,
+  spotlight principle cards, marquee ticker, wordmark footer. All kicker /
+  eyebrow / numbered-label spans removed per the no-noise design law.
 */
 import { useState } from "react";
 import {
@@ -31,11 +35,34 @@ import {
   useLandingTicker,
   TICKER_MAX_ITEMS,
 } from "../hooks/useLandingTicker.js";
+import {
+  CountUp,
+  GrainOverlay,
+  OrbsField,
+  Parallax,
+  Reveal,
+  ScrollProgress,
+  SpotlightCard,
+} from "../components/fx/fx.js";
 
-/** L2-N2: format the live agents count as a comma-grouped number. */
-function formatCount(n: number | null): string {
-  if (n === null) return "—";
-  return n.toLocaleString();
+/** Splits a "{count}" template so the live number can animate via CountUp;
+ *  templates without the placeholder render unchanged. */
+function CountText({
+  template,
+  value,
+}: {
+  template: string;
+  value: number | null;
+}) {
+  const [lead, tail = ""] = template.split("{count}");
+  if (lead === template) return <>{template}</>;
+  return (
+    <>
+      {lead}
+      <CountUp value={value} />
+      {tail}
+    </>
+  );
 }
 
 /** L2-N6: principle-card icon dispatch. */
@@ -110,6 +137,8 @@ export function Landing({
 
   return (
     <div className="landing-page">
+      <ScrollProgress />
+      <GrainOverlay />
       {/* L2-N1: expanded top nav. Logo gains the phosphor dot, 4 inline links
           visible at ≥980px, Connect pill, hamburger collapses to mobile. */}
       <header className="landing-nav">
@@ -175,11 +204,9 @@ export function Landing({
       </header>
 
       <main className="landing-main" id="hero">
+        <OrbsField />
+        <Reveal>
         <section className="landing-copy">
-          <span className="eyebrow">
-            <span className="num">01</span>
-            <span>{copy.landing.eyebrow}</span>
-          </span>
           <h1>
             <span>{copy.landing.titleLead}</span>
             <br />
@@ -197,9 +224,10 @@ export function Landing({
             </span>
             <span className="meta-item">
               <span className="dot copper" />
-              {interpolate(copy.landing.meta.agentsOnline, {
-                count: formatCount(agentsCount),
-              })}
+              <CountText
+                template={copy.landing.meta.agentsOnline}
+                value={agentsCount}
+              />
             </span>
           </div>
           <div className="button-row">
@@ -241,8 +269,10 @@ export function Landing({
             </span>
           </div>
         </section>
+        </Reveal>
         {/* L2-N4: proof plate chrome — corners, live label, hairline, floating
             receipt card. Existing hero-caption (R10) stays in place. */}
+        <Reveal delay={160}>
         <section className="landing-visual hero-visual-modern">
           <img
             className="hero-visual-poster"
@@ -300,6 +330,7 @@ export function Landing({
             </div>
           </div>
         </section>
+        </Reveal>
       </main>
 
       {/* L2-N5: live activity ticker. Renders the most recent events
@@ -316,9 +347,24 @@ export function Landing({
         {/* Wave 5: the track is aria-hidden — the section label above already
             names the rail, so screen readers hear the summary once instead of
             the row contents twice. */}
+        {/* Marquee: the track renders one aria-hidden copy of the rail twice —
+            the -50% translate loop is seamless because both halves are
+            identical. Hover pauses it so a row can be read. */}
         <div className="ticker-track" aria-hidden="true">
           {tickerItems.map((item, i) => (
             <span key={i} className="ticker-item">
+              <span
+                className={`dot ${item.dot === "warning" ? "warning" : ""}`}
+              />
+              <strong>{item.agent}</strong>
+              <span>
+                {" "}
+                · {item.action} · {item.ago}
+              </span>
+            </span>
+          ))}
+          {tickerItems.map((item, i) => (
+            <span key={`d-${i}`} className="ticker-item">
               <span
                 className={`dot ${item.dot === "warning" ? "warning" : ""}`}
               />
@@ -335,9 +381,6 @@ export function Landing({
       {/* L2-N6: principles section — three numbered cards. */}
       <section className="scroll-section principles-section" id="principles">
         <header className="section-head">
-          <span className="section-eyebrow">
-            <span className="num">02</span>// {copy.landing.principles.eyebrow}
-          </span>
           <h2
             dangerouslySetInnerHTML={{
               __html: interpolate(copy.landing.principles.title, {
@@ -347,10 +390,10 @@ export function Landing({
             }}
           />
         </header>
+        <Reveal>
         <div className="principles-grid">
           {copy.landing.principles.items.map((p, i) => (
-            <article key={i} className="principle">
-              <span className="p-num">0{i + 1}</span>
+            <SpotlightCard key={i} className="principle">
               <span className="p-icon" aria-hidden="true">
                 <PrincipleIcon name={p.icon} />
               </span>
@@ -359,17 +402,15 @@ export function Landing({
               <a href={PRINCIPLE_HREFS[i]} className="p-link">
                 {p.link} <ArrowRight size={14} aria-hidden="true" />
               </a>
-            </article>
+            </SpotlightCard>
           ))}
         </div>
+        </Reveal>
       </section>
 
       {/* L2-N7: journey section (replaces the strip — same destinations). */}
       <section className="scroll-section journey-section" id="journey">
         <header className="section-head">
-          <span className="section-eyebrow">
-            <span className="num">03</span>// {copy.landing.journey.eyebrow}
-          </span>
           <h2
             dangerouslySetInnerHTML={{
               __html: interpolate(copy.landing.journey.title, {
@@ -379,20 +420,17 @@ export function Landing({
             }}
           />
         </header>
+        <Reveal>
         <div className="journey">
           {copy.landing.journey.items.map((item, i) => (
-            <article key={i} className="journey-card">
-              <span className="j-num">// {item.eyebrow}</span>
+            <Parallax key={i} strength={i === 0 ? -30 : 30}>
+            <article className="journey-card">
               <h3 dangerouslySetInnerHTML={{ __html: item.title }} />
               <p dangerouslySetInnerHTML={{ __html: item.body }} />
               <div className="j-meta">
-                <strong
-                  dangerouslySetInnerHTML={{
-                    __html: interpolate(item.meta, {
-                      count: formatCount(agentsCount),
-                    }),
-                  }}
-                />
+                <strong>
+                  <CountText template={item.meta} value={agentsCount} />
+                </strong>
               </div>
               <button
                 type="button"
@@ -402,11 +440,14 @@ export function Landing({
                 {item.cta} <ArrowRight size={14} aria-hidden="true" />
               </button>
             </article>
+            </Parallax>
           ))}
         </div>
+        </Reveal>
       </section>
 
       {/* L2-N8: footer. */}
+      <Reveal>
       <footer className="landing-footer" id="footer">
         <small>{copy.landing.footer.credit}</small>
         <div className="footer-meta">
@@ -417,6 +458,7 @@ export function Landing({
           ))}
         </div>
       </footer>
+      </Reveal>
     </div>
   );
 }
