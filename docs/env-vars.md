@@ -173,3 +173,4 @@ apps/frontend/src/config/env.ts:23:export const CHAT_MODEL = resolveChatModel(im
 
 - `PROXY_BACKEND_URL` / `PROXY_ORACLE_URL`: **required** when `NODE_ENV=production` for `apps/frontend/server.mjs`.
 - Vercel static hosting does not bake Railway hosts; set `VITE_BACKEND_URL` / `VITE_ORACLE_URL` to absolute API origins if not same-origin.
+- Current production wiring (2026-09-03): frontend `https://axiom-protocol-nine.vercel.app` → backend `https://axiom-backend-production-4ac3.up.railway.app` (`VITE_BACKEND_URL` inlined at build; backend `AXIOM_FRONTEND_URL` mirrors the frontend origin for its fail-closed CORS).
