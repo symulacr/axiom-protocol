@@ -170,6 +170,50 @@ async function signOwnershipVerified(
   return tee;
 }
 
+/**
+ * Registry-wide mint stats for GET /v1/agents/stats. Mints are Transfer logs
+ * with the zero address as `from`. Full-range scan on purpose: a
+ * recent-window scan would undercount registries whose older mints fall
+ * outside the window. Capped public RPCs reject a full-range query as a
+ * definitive SERVER_ERROR (e.g. dRPC free tier: "ranges over 10000 blocks")
+ * and the shared FallbackProvider does not retry another transport on
+ * SERVER_ERROR — so the scan is retried a few times; the next transport pick
+ * usually tolerates full-range logs.
+ */
+export async function computeRegistryStats(
+  provider: ethers.Provider,
+  nftAddr: string,
+): Promise<{ totalMinted: number; latestTokenId: string | null }> {
+  const zeroPad = "0x" + "0".repeat(64);
+  const scan = () =>
+    provider.getLogs({
+      address: nftAddr,
+      fromBlock: 0,
+      toBlock: "latest",
+      topics: [TRANSFER_TOPIC, zeroPad],
+    });
+  let mintLogs: readonly ethers.Log[] = [];
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      mintLogs = await scan();
+      break;
+    } catch (err) {
+      if (attempt === 2) throw err;
+      await new Promise((resolve) => setTimeout(resolve, 250 * (attempt + 1)));
+    }
+  }
+  const mintIds = mintLogs.flatMap((logEntry) =>
+    logEntry.topics[3] ? [BigInt(logEntry.topics[3])] : [],
+  );
+  const tokenIds = new Set(mintIds);
+  const latestTokenId =
+    mintIds.length > 0 ? mintIds.reduce((a, b) => (b > a ? b : a)) : 0n;
+  return {
+    totalMinted: tokenIds.size,
+    latestTokenId: tokenIds.size > 0 ? latestTokenId.toString() : null,
+  };
+}
+
 export function registerAgentRoutes(
   app: Express,
   config: ServerConfig,
@@ -254,26 +298,7 @@ export function registerAgentRoutes(
         return;
       }
       try {
-        // Mints are Transfer logs with the zero address as `from` (topic1).
-        // Full-range indexed query: a recent-window scan would undercount
-        // registries whose older mints fall outside the window.
-        const zeroPad = "0x" + "0".repeat(64);
-        const mintLogs = await provider.getLogs({
-          address: nftAddr,
-          fromBlock: 0,
-          toBlock: "latest",
-          topics: [TRANSFER_TOPIC, zeroPad],
-        });
-        const mintIds = mintLogs.flatMap((logEntry) =>
-          logEntry.topics[3] ? [BigInt(logEntry.topics[3])] : [],
-        );
-        const tokenIds = new Set(mintIds);
-        const latestTokenId =
-          mintIds.length > 0 ? mintIds.reduce((a, b) => (b > a ? b : a)) : 0n;
-        const stats = {
-          totalMinted: tokenIds.size,
-          latestTokenId: tokenIds.size > 0 ? latestTokenId.toString() : null,
-        };
+        const stats = await computeRegistryStats(provider, nftAddr);
         mintStatsCache.set("global", stats);
         res.json(stats);
       } catch (err) {

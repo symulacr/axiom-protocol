@@ -11,9 +11,11 @@ import {
 } from "@axiom/config";
 import {
   assertTrustedOracleSigner,
+  computeRegistryStats,
   registerAgentRoutes,
   type OwnershipSignerOverride,
 } from "./agents.js";
+import { TRANSFER_TOPIC } from "@axiom/config/constants";
 import type { ServerConfig } from "../server.js";
 
 // ---- helpers ----------------------------------------------------------------
@@ -134,6 +136,59 @@ test("assertTrustedOracleSigner is domain-bound (wrong verifier's signature reje
     "signature minted for another verifier must not verify",
   );
   assert.equal(res.statusCode, 502);
+});
+
+// ---- unit: /v1/agents/stats registry scan (retry + dedupe) -----------------
+
+const STATS_NFT = ("0x" + "aa".repeat(20)) as Hex;
+
+function statsLog(tokenId: bigint) {
+  return {
+    topics: [
+      TRANSFER_TOPIC,
+      "0x" + "0".repeat(64),
+      "0x" + "0".repeat(40),
+      toBeHex(tokenId),
+    ],
+  };
+}
+
+test("computeRegistryStats retries a rejected full-range scan and dedupes token ids", async () => {
+  let calls = 0;
+  const provider = {
+    getLogs: async () => {
+      calls++;
+      if (calls === 1)
+        throw new Error(
+          "ranges over 10000 blocks are not supported on free plan",
+        );
+      return [statsLog(1n), statsLog(1n), statsLog(15n)];
+    },
+  };
+  const stats = await computeRegistryStats(
+    provider as unknown as Parameters<typeof computeRegistryStats>[0],
+    STATS_NFT,
+  );
+  assert.deepEqual(stats, { totalMinted: 2, latestTokenId: "15" });
+  assert.equal(calls, 2, "a rejected scan must be retried once");
+});
+
+test("computeRegistryStats gives up after exhausting retries", async () => {
+  const provider = {
+    getLogs: async () => {
+      throw new Error(
+        "ranges over 10000 blocks are not supported on free plan",
+      );
+    },
+  };
+  await assert.rejects(
+    () =>
+      computeRegistryStats(
+        provider as unknown as Parameters<typeof computeRegistryStats>[0],
+        STATS_NFT,
+      ),
+    /ranges over 10000 blocks/,
+  );
 });
 
 // ---- integration: the real /transfer route wiring --------------------------
