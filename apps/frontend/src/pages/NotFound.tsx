@@ -23,7 +23,12 @@ export default function Recovery404({ locale }: { locale: Locale }) {
   return (
     <div className="recovery-404">
       <div className="recovery-404-art">
-        <img src={MEDIA.recovery404} alt="Abstract recoverable Axiom route" />
+        <img
+          src={MEDIA.recovery404}
+          alt="Abstract recoverable Axiom route"
+          loading="lazy"
+          decoding="async"
+        />
       </div>
       <div className="recovery-404-copy">
         <Logo compact />

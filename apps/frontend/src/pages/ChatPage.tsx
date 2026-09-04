@@ -1232,7 +1232,7 @@ function ChatPageInner(): ReactElement {
             // loop after surfacing the same error card.
             const failMsg =
               streamErrorRef.current ??
-              (assistantContent ? null : "No response — try again.");
+              (assistantContent ? null : "No response: try again.");
             if (failMsg !== null) {
               if (!isStale()) {
                 lastStreamErrorRef.current = failMsg;
@@ -1393,7 +1393,7 @@ function ChatPageInner(): ReactElement {
           };
           if (msg.includes("429") || msg.toLowerCase().includes("rate limit")) {
             toast.error(
-              "Rate limited — wait a moment and try again.",
+              "Rate limited: wait a moment and try again.",
               toastOpts,
             );
           } else {
@@ -2066,7 +2066,8 @@ function ChatPageInner(): ReactElement {
                     setQueue(next);
                   }}
                 >
-                  ✕
+                  {/* SVG icon, not a text glyph (pro-max: no glyph icons). */}
+                  <X size={12} aria-hidden="true" />
                 </button>
               </span>
             ))}
@@ -2221,7 +2222,7 @@ function ChatPageInner(): ReactElement {
                 setTransferTokenId(null);
                 transferResolveRef.current?.reject(
                   new Error(
-                    "Transfer cancelled — no transaction was submitted.",
+                    "Transfer cancelled: no transaction was submitted.",
                   ),
                 );
                 transferResolveRef.current = null;

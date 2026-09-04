@@ -1311,7 +1311,7 @@ const english: Copy = {
   },
   staking: {
     lede: "Staking isn\u0027t part of Axiom.",
-    body: "Staking lives in the official 0G app — agents, vaults and receipts stay here.",
+    body: "Staking lives in the official 0G app : agents, vaults and receipts stay here.",
     openVault: "Go to my agents",
     backLabel: "Back to console",
     docsLink:
@@ -1603,17 +1603,17 @@ const english: Copy = {
     refillAction: "Claim free gas grant",
     sponsoredBadge: "sponsored",
     tankLowBanner:
-      "Your gas tank is nearly empty — ops keep running until your free grants run out.",
+      "Your gas tank is nearly empty : ops keep running until your free grants run out.",
     faucetBalanceLabel: "Test tokens",
     faucetEligibleBadge: "faucet available",
     faucetIneligibleBadge: "faucet claimed",
     faucetClaimAction: "Claim free test tokens",
-    depositQueued: "Deposit queued — track it in the transaction center.",
+    depositQueued: "Deposit queued : track it in the transaction center.",
     refillDone: "Gas grant claimed. Tank balance refreshed.",
     refillFailed:
-      "Gas grant claim failed — check your connection and try again.",
+      "Gas grant claim failed : check your connection and try again.",
     faucetDone: "Test tokens minted.",
-    faucetFailed: "Faucet claim failed — you may already have claimed.",
+    faucetFailed: "Faucet claim failed : you may already have claimed.",
   },
   storage: {
     title: "Store the payload, then verify its proof.",
@@ -1812,7 +1812,7 @@ const english: Copy = {
       "No confirmation after {seconds}s. Check the explorer; the row is marked Needs review.",
     receiptBodyConfirming: "Submitted, awaiting on-chain confirmation.",
     receiptRemedy:
-      "Reverted or timed out? Retry the transaction — raise gas if the network is busy, or check your connection.",
+      "Reverted or timed out? Retry the transaction : raise gas if the network is busy, or check your connection.",
     copyReceiptAction: "Copy receipt",
     openReceiptAction: "Open receipt",
     startAnotherAction: "Start another",
@@ -1984,7 +1984,7 @@ const english: Copy = {
     // W3-C Permit2 pay panel — terms render exactly what the signature permits.
     permit2Title: "Pay with Permit2",
     permit2Hint:
-      "Sign once — no approval transaction. The signature allows the payment processor to pull exactly this amount for this agent.",
+      "Sign once : no approval transaction. The signature allows the payment processor to pull exactly this amount for this agent.",
     permit2Cta: "Sign & pay",
     payAmountLabel: "Amount to pay",
     permit2LaneNote: (lane) =>
@@ -2008,13 +2008,13 @@ const english: Copy = {
     delegationInstall: "Sign & install",
     delegationRevoke: "Revoke",
     delegationNotConfigured:
-      "Delegation registry not configured yet — available after the next deployment.",
+      "Delegation registry not configured yet : available after the next deployment.",
     delegationTargetsLabel:
       "Allowed operations (contract:selector, one per line)",
     delegationTargetsPlaceholder: "0x…:0x1a2b3c4d",
     delegationOwnerOnly: "Only the agent owner sees this card.",
     delegationToast: (hash) => `Delegation updated (${hash.slice(0, 10)}…)`,
-    errDelegationForm: "Check the delegation fields — {error}",
+    errDelegationForm: "Check the delegation fields : {error}",
     errDelegationWallet: "Connect your wallet to install a delegation.",
   },
   transactions: {
@@ -2133,11 +2133,11 @@ const english: Copy = {
   checklist: {
     title: "Get your first agent working",
     dismiss: "Dismiss",
-    done: "Fleet active — your agents are funded and running.",
+    done: "Fleet active : your agents are funded and running.",
     steps: {
       mint: {
         label: "Mint your agent",
-        hint: "Register an agent — no funds needed yet.",
+        hint: "Register an agent : no funds needed yet.",
       },
       deposit: {
         label: "Fund its vault",
@@ -2447,7 +2447,7 @@ const french: Copy = {
   },
   staking: {
     lede: "Le staking ne fait pas partie d’Axiom.",
-    body: "Le staking passe par l’app officielle 0G — agents, coffres et reçus restent ici.",
+    body: "Le staking passe par l’app officielle 0G : agents, coffres et reçus restent ici.",
     openVault: "Aller à mes agents",
     backLabel: "Retour à la console",
     docsLink:
@@ -2740,19 +2740,19 @@ const french: Copy = {
     refillAction: "Réclamer une subvention de gaz",
     sponsoredBadge: "offert",
     tankLowBanner:
-      "Votre réservoir de gaz est presque vide — les opérations continuent jusqu'à épuisement de vos subventions gratuites.",
+      "Votre réservoir de gaz est presque vide : les opérations continuent jusqu'à épuisement de vos subventions gratuites.",
     faucetBalanceLabel: "Jetons de test",
     faucetEligibleBadge: "robinet disponible",
     faucetIneligibleBadge: "robinet réclamé",
     faucetClaimAction: "Réclamer les jetons de test",
     depositQueued:
-      "Dépôt en file — suivez-le dans le centre des transactions.",
+      "Dépôt en file : suivez-le dans le centre des transactions.",
     refillDone: "Subvention de gaz réclamée. Solde du réservoir actualisé.",
     refillFailed:
-      "Échec de la réclamation de gaz — vérifiez votre connexion et réessayez.",
+      "Échec de la réclamation de gaz : vérifiez votre connexion et réessayez.",
     faucetDone: "Jetons de test mintés.",
     faucetFailed:
-      "Échec de la réclamation du faucet — vous avez peut-être déjà réclamé.",
+      "Échec de la réclamation du faucet : vous avez peut-être déjà réclamé.",
   },
   storage: {
     ...english.storage,
@@ -2957,7 +2957,7 @@ const french: Copy = {
       "Aucune confirmation après {seconds} s. Vérifiez l’explorateur ; la ligne est marquée À examiner.",
     receiptBodyConfirming: "Soumis, en attente de confirmation on-chain.",
     receiptRemedy:
-      "Rejeté ou expiré ? Relancez la transaction — augmentez le gas si le réseau est chargé, ou vérifiez votre connexion.",
+      "Rejeté ou expiré ? Relancez la transaction : augmentez le gas si le réseau est chargé, ou vérifiez votre connexion.",
     copyReceiptAction: "Copier le reçu",
     openReceiptAction: "Ouvrir le reçu",
     startAnotherAction: "Recommencer",
@@ -3248,11 +3248,11 @@ const french: Copy = {
   checklist: {
     title: "Faites travailler votre premier agent",
     dismiss: "Fermer",
-    done: "Flotte active — vos agents sont financés et opérationnels.",
+    done: "Flotte active : vos agents sont financés et opérationnels.",
     steps: {
       mint: {
         label: "Créez votre agent",
-        hint: "Enregistrez un agent — aucun fonds requis pour l'instant.",
+        hint: "Enregistrez un agent : aucun fonds requis pour l'instant.",
       },
       deposit: {
         label: "Alimentez son vault",
@@ -3561,7 +3561,7 @@ const german: Copy = {
   },
   staking: {
     lede: "Staking ist nicht Teil von Axiom.",
-    body: "Staking läuft über die offizielle 0G-App — Agents, Vaults und Receipts bleiben hier.",
+    body: "Staking läuft über die offizielle 0G-App : Agents, Vaults und Receipts bleiben hier.",
     openVault: "Zu meinen Agents",
     backLabel: "Zurück zur Konsole",
     docsLink:
@@ -3851,20 +3851,20 @@ const german: Copy = {
     refillAction: "Gratis-Gas-Zuschuss anfordern",
     sponsoredBadge: "gratis",
     tankLowBanner:
-      "Dein Gas-Tank ist fast leer — Operationen laufen weiter, bis deine Gratis-Zuschüsse aufgebraucht sind.",
+      "Dein Gas-Tank ist fast leer : Operationen laufen weiter, bis deine Gratis-Zuschüsse aufgebraucht sind.",
     faucetBalanceLabel: "Test-Token",
     faucetEligibleBadge: "Hahn verfügbar",
     faucetIneligibleBadge: "Hahn abgerufen",
     faucetClaimAction: "Gratis Test-Token anfordern",
     depositQueued:
-      "Einzahlung eingereicht — im Transaktionscenter verfolgen.",
+      "Einzahlung eingereicht : im Transaktionscenter verfolgen.",
     refillDone:
       "Gas-Zuschuss angefordert. Tankkonto aktualisiert.",
     refillFailed:
-      "Gas-Zuschuss fehlgeschlagen — Verbindung prüfen und erneut versuchen.",
+      "Gas-Zuschuss fehlgeschlagen : Verbindung prüfen und erneut versuchen.",
     faucetDone: "Test-Token gemintet.",
     faucetFailed:
-      "Faucet-Anforderung fehlgeschlagen — möglicherweise bereits abgerufen.",
+      "Faucet-Anforderung fehlgeschlagen : möglicherweise bereits abgerufen.",
   },
   storage: {
     ...english.storage,
@@ -4071,7 +4071,7 @@ const german: Copy = {
       "Keine Bestätigung nach {seconds} s. Prüfen Sie den Explorer; die Zeile ist als Prüfbedarf markiert.",
     receiptBodyConfirming: "Eingereicht, wartet auf On-Chain-Bestätigung.",
     receiptRemedy:
-      "Zurückgesetzt oder abgelaufen? Wiederholen Sie die Transaktion — erhöhen Sie das Gas bei Netzüberlastung oder prüfen Sie Ihre Verbindung.",
+      "Zurückgesetzt oder abgelaufen? Wiederholen Sie die Transaktion : erhöhen Sie das Gas bei Netzüberlastung oder prüfen Sie Ihre Verbindung.",
     copyReceiptAction: "Beleg kopieren",
     openReceiptAction: "Beleg öffnen",
     startAnotherAction: "Neu beginnen",
@@ -4361,11 +4361,11 @@ const german: Copy = {
   checklist: {
     title: "Bringe deinen ersten Agenten ans Laufen",
     dismiss: "Ausblenden",
-    done: "Flotte aktiv — deine Agenten sind finanziert und laufen.",
+    done: "Flotte aktiv : deine Agenten sind finanziert und laufen.",
     steps: {
       mint: {
         label: "Minte deinen Agenten",
-        hint: "Registriere einen Agenten — noch keine Guthaben nötig.",
+        hint: "Registriere einen Agenten : noch keine Guthaben nötig.",
       },
       deposit: {
         label: "Fülle seinen Vault",

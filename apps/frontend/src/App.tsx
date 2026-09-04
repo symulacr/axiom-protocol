@@ -254,7 +254,12 @@ function Guide({
         onMouseDown={(event) => event.stopPropagation()}
       >
         <div className="guide-media">
-          <img src={item.image} alt="Axiom onboarding illustration" />
+          <img
+            src={item.image}
+            alt="Axiom onboarding illustration"
+            loading="lazy"
+            decoding="async"
+          />
         </div>
         <div className="guide-copy">
           <button
@@ -601,7 +606,7 @@ export function App(): ReactElement {
     const copy = getCopy(locale);
     const clean = location.pathname;
     if (clean === "/") {
-      document.title = "Axiom — Own an AI Agent On-Chain";
+      document.title = "Axiom: Own an AI Agent On-Chain";
       return;
     }
     const agentMatch = clean.match(/^\/agents\/(\d+)/);
@@ -885,7 +890,12 @@ function LockedRoute({
       </section>
       <aside className="locked-evidence">
         <div className="locked-preview">
-          <img src={gate.media} alt={`${gate.label} preview`} />
+          <img
+            src={gate.media}
+            alt={`${gate.label} preview`}
+            loading="lazy"
+            decoding="async"
+          />
           <div>
             <small>Preview — connect a wallet for live data.</small>
           </div>

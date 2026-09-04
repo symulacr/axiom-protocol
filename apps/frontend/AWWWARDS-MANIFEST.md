@@ -398,6 +398,50 @@ Verification: gates green (typecheck 0, 156/156, lint 0 errors); live checks on
 resolution, skeleton render, 0 console errors. Not verifiable here: live
 alertdialog on a real withdrawal (needs a connected wallet).
 
+## Round 14 — ui-ux-pro-max + humanize skills (2026-09-04)
+
+Both installed via tarball fallback (`skills/ui-ux-pro-max`, `skills/humanize`
+— trimmed to SKILL.md; the npx CLI persists nothing without a TTY). User
+constraints: execute all audits + fixes, deduplicate (reduce/keep LOC), zero
+new addons, and re-verify the zero-kicker/subtitle rule.
+
+**ui-ux-pro-max** (search tool run: `--design-system` for the product + `--domain ux`
+for forms/CLS/icon queries):
+
+| Guidance | Verdict | Action |
+|---|---|---|
+| Design-system match ("Trust & Authority", Swiss/minimal, dark supported) | structure confirmed | landing already runs Hero → Proof → Solution → CTA; offscreen-pause (R13), contrast/keyboard/reduced-motion (R10–13) all pre-verified |
+| Palette suggestion (gold + purple) | **rejected with reasoning** | repo brand is copper/phosphor on dark (user-mandated); skill itself says results are recommendations, never overrides |
+| Every input needs a visible label | PASS | every placeholder sits beside `label=` or an aria-label (field-label pattern, chat/search/command inputs) |
+| Lazy-load below-fold / on-demand images | **FIXED** | `loading="lazy" decoding="async"` on 404 art, wallet-gate art, onboarding illustrations, route-gate previews (hero/chat/flow images stay eager) |
+| SVG icons, no glyph/emoji icons | **FIXED** | chat queue-remove ✕ text glyph → X lucide SVG; no emoji icons render anywhere (⛓ exists only in a comment describing the removed anti-pattern) |
+| Contrast 4.5, aria, 44px touch, no h-scroll, semantic tokens, reduced-motion | PASS | all verified in R10–R13 with live measurement |
+
+**humanize** (41-pattern audit on all user-facing copy, EN/FR/DE):
+
+| Pattern | Verdict | Action |
+|---|---|---|
+| Em/en dashes (§16: none in final) | **FIXED — 39 strings** | 27 in copy.ts + 8 in PublicSeoPage.tsx + 3 inline ChatPage fallbacks + App.tsx tab title unified to the colon form (matches index.html). Live-verified: /storage/0g renders 0 em dashes |
+| AI vocabulary (seamless/robust/delve/elevate…) | PASS | zero matches |
+| Significance inflation / promotional language | PASS | zero matches |
+| -ing tails, vague attributions, rule-of-three padding | PASS | zero matches (prior terse-copy rounds) |
+| Working ✓ status glyph | kept | semantic state indicator, not decoration |
+
+**Deduplication (LOC: net negative, zero addons)**: removed the exact-duplicate
+`.public-locked .locked-route-main` block; `:root, :root` kept (documented
+minifier defense — removing it risks regression for no gain); humanize skill
+dir trimmed to SKILL.md only; no dependency added this round.
+
+**Kicker/subtitle/span sweep (fresh live evidence)**: 6 routes DOM-audited
+(landing, /agents, /proofs, /app, /chat, /transactions) for eyebrow/kicker
+classes, uppercase subtitle-spans before headings, and numbered chips —
+**0 findings on every route**. The hard rule holds.
+
+Verification: typecheck 0, 156/156 tests, lint 0 errors; live checks on the
+final build: em-dash-free rendered copy, colon boundary string live, 0 console
+errors, kicker sweep clean ×6. Dev server SIGTERM'd twice mid-round (external
+supervisor); recovered via preview_start and re-verified after each.
+
 ## Round-2 verify log
 
 | Time (UTC) | Check | Result | Evidence |

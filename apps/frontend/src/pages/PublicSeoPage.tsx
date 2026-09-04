@@ -1,7 +1,7 @@
 /* Copper Command Deck public discovery: evidence-first hubs and an explicit
    console boundary. AW round (2026-09-03): cinematic layer (fx kit +
    axiom-awwwards.css); the artifact spec-blocks and EXAMPLE/LIVE DATA badges
-   are gone per the no-noise design law — the evidence checklist carries the
+   are gone per the no-noise design law: the evidence checklist carries the
    substance now. */
 import { useEffect } from "react";
 import {
@@ -105,7 +105,7 @@ const pages: Record<PublicSeoSlug, PublicPage> = {
       "Storage and proof references",
     ],
     boundary:
-      "Human-controlled flows — no autonomous behavior beyond what you configure.",
+      "Human-controlled flows: no autonomous behavior beyond what you configure.",
     next: { href: PUBLIC_HUB_PATHS.proofs, label: "See how it works" },
     links: [
       { href: PUBLIC_HUB_PATHS.payments, label: "Programmable payments" },
@@ -120,7 +120,7 @@ const pages: Record<PublicSeoSlug, PublicPage> = {
     metaTitle: "Programmable Payment Receipts | Axiom",
     navLabel: "Payments",
     accent:
-      "Approval, submission and finality stay distinct — with the receipt to prove it.",
+      "Approval, submission and finality stay distinct: with the receipt to prove it.",
     metaDescription:
       "Understand Axiom's evidence-oriented programmable payment workflow, including approval, receipts and finality states.",
     evidenceTitle: "What remains visible",
@@ -145,17 +145,17 @@ const pages: Record<PublicSeoSlug, PublicPage> = {
     metaTitle: "On-chain Receipts and Recovery | Axiom",
     navLabel: "Receipts",
     accent:
-      "Receipt status, transaction identity and recovery context — never one generic success message.",
+      "Receipt status, transaction identity and recovery context: never one generic success message.",
     metaDescription:
       "Learn how Axiom presents operational receipts, transaction states and recovery context for Web3 workflows.",
     evidenceTitle: "Receipt lifecycle",
     evidence: [
       "Approval and signature, separate",
-      "Submission, confirmation, recovery — explicit",
+      "Submission, confirmation, recovery: explicit",
       "Hashes and agent links, one tap away",
     ],
     boundary:
-      "Finality and recovery depend on the network and operation — never a universal guarantee.",
+      "Finality and recovery depend on the network and operation: never a universal guarantee.",
     next: {
       href: PUBLIC_HUB_PATHS.payments,
       label: "See programmable payments",
@@ -173,7 +173,7 @@ const pages: Record<PublicSeoSlug, PublicPage> = {
     metaTitle: "Verifiable 0G Storage Evidence | Axiom",
     navLabel: "Storage",
     accent:
-      "Encryption, root hashing, publication, verification, availability — each phase stays visible.",
+      "Encryption, root hashing, publication, verification, availability: each phase stays visible.",
     metaDescription:
       "Explore Axiom's verifiable 0G Storage workflow: publication, root hash, proof context, recovery and availability.",
     evidenceTitle: "Storage evidence",
@@ -183,7 +183,7 @@ const pages: Record<PublicSeoSlug, PublicPage> = {
       "Verification and availability, separate phases",
     ],
     boundary:
-      "0G capabilities and Axiom's integration are described separately — no absolute availability or privacy claim.",
+      "0G capabilities and Axiom's integration are described separately: no absolute availability or privacy claim.",
     next: {
       href: PUBLIC_HUB_PATHS.developers,
       label: "Open Storage quickstart",

@@ -217,6 +217,8 @@ export function WalletGate({
           <img
             src="/brand/hero-seal-512.jpg"
             alt="Abstract Axiom wallet access nucleus"
+            loading="lazy"
+            decoding="async"
           />
           <div className="wallet-gate-art-copy">
             <strong>

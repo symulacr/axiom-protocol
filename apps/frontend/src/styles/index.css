@@ -241,7 +241,8 @@
 .locked-storage { --route-accent: var(--completion-copper); --route-surface: color-mix(in srgb, var(--completion-copper) 8%, transparent); }
 .locked-agent { --route-accent: var(--completion-copper); --route-surface: color-mix(in srgb, var(--completion-copper) 9%, transparent); }
 
-.public-locked .locked-route-main { min-height:100dvh; }
+/* R13 dedup: the min-height:100dvh re-declaration here duplicated the chained
+   .public-locked block above — removed. */
 .public-locked .locked-topbar { /* Intentional brand lock; see ledger L3-B9. */ border-bottom:1px solid var(--completion-line); background:rgba(11,14,15,.72); backdrop-filter:blur(16px); }
 /* Gate topbar chrome: logo and status chip own separate flex slots — the
    status label gets its own line-height so it never rides the wordmark's
