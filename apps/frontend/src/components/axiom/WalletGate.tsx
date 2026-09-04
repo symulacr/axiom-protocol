@@ -25,6 +25,11 @@ import { APP_CHAIN, APP_CHAIN_ID } from "../../config/wagmi.js";
 
 const SESSION_TTL_MS = 24 * 60 * 60 * 1000;
 
+/** EIP-6963 wallet announcement payload (UUID is the identity we track). */
+type EIP6963ProviderInfo = {
+  info: { uuid: string; name: string; rdns: string };
+};
+
 /** Hero alert glyph in `.wallet-state` — semantic exception to the 14/16/18 icon scale. */
 const WALLET_STATE_ICON_SIZE = 28;
 
@@ -58,10 +63,33 @@ export function WalletGate({
   const [connecting, setConnecting] = useState(false);
   const { connectAsync } = useConnect();
   const connectors = useConnectors();
-  // mipd-discovered injected wallets (bare injected() in config/wagmi);
-  // WalletConnect is the secondary mobile path, never the primary CTA.
+  // Config-declared connectors — NOT an installed-wallet signal: wagmi always
+  // lists the declared injected() connector even with no wallet installed
+  // (discovery happens at connect time). Real installs are detected via
+  // EIP-6963 announcements below.
   const injected = connectors.filter((c) => c.type === "injected");
   const mobileConnector = connectors.find((c) => c.type === "walletConnect");
+  // EIP-6963 announcements are the only reliable "wallet installed" signal.
+  // Collected into a ref (not state) because the requestProvider dispatch is
+  // synchronous: a later mount effect reads the ref in the same commit.
+  const announcedRef = useRef<EIP6963ProviderInfo[]>([]);
+  const [, setAnnouncedTick] = useState(0);
+  useEffect(() => {
+    const onAnnounce = (event: Event) => {
+      const info = (event as CustomEvent<EIP6963ProviderInfo>).detail?.info;
+      if (!info?.uuid) return;
+      if (announcedRef.current.some((p) => p.info.uuid === info.uuid)) return;
+      announcedRef.current.push({ info });
+      setAnnouncedTick((n) => n + 1);
+    };
+    window.addEventListener("eip6963:announceProvider", onAnnounce);
+    // Wallets announce at page load; re-request so a gate mounted later
+    // still receives them (spec: providers re-announce on every request).
+    window.dispatchEvent(new Event("eip6963:requestProvider"));
+    return () =>
+      window.removeEventListener("eip6963:announceProvider", onAnnounce);
+  }, []);
+  const hasInstalledWallet = announcedRef.current.length > 0;
   const { switchChainAsync } = useSwitchChain();
   const [error, setError] = useState<string | null>(null);
   const resumed = useRef(false);
@@ -182,18 +210,20 @@ export function WalletGate({
     : "connect";
 
   // Zero-interstitial open: mounting the gate continues the original click
-  // gesture — exactly one injected wallet connects immediately (extension
-  // popup, no second click); several wallets list inline; none starts the
-  // WalletConnect pairing directly. The panel stays for retries and manual
-  // paths.
+  // gesture — an installed (EIP-6963-announced) wallet connects immediately
+  // (extension popup, no second click); several wallets list inline. With NO
+  // installed wallet the panel opens CLEAN: no auto-firing (the old code
+  // auto-attempted the always-declared injected connector, failed instantly
+  // and painted a "no browser wallet detected" error beside two stacked
+  // CTAs). The primary CTA IS the one clean WalletConnect action, and the
+  // "no wallet detected" error only renders when no connector exists at all.
   const autoTried = useRef(false);
   useEffect(() => {
     if (view !== "connect" || autoTried.current) return;
     autoTried.current = true;
     if (injected.length > 1) setShowOptions(true);
-    else if (injected.length === 1) void connectInjected();
-    else if (mobileConnector) void connectMobile();
-    else setError(copy.wallet.noWalletDetected);
+    else if (hasInstalledWallet) void connectInjected();
+    else if (!mobileConnector) setError(copy.wallet.noWalletDetected);
     // Run once per mount: connectors and copy are stable for the gate lifetime.
   }, []);
 
@@ -243,11 +273,11 @@ export function WalletGate({
                   chooser modal. */}
               <Button
                 busy={connecting}
-                onClick={() =>
-                  injected.length > 1
-                    ? setShowOptions(true)
-                    : void connectInjected()
-                }
+                onClick={() => {
+                  if (injected.length > 1) setShowOptions(true);
+                  else if (hasInstalledWallet) void connectInjected();
+                  else if (mobileConnector) void connectMobile();
+                }}
                 icon={<LockKeyhole size={16} />}
               >
                 {copy.nav.connectWallet}
@@ -286,7 +316,10 @@ export function WalletGate({
                   })}
                 </div>
               )}
-              {mobileConnector && !showOptions && (
+              {/* Second choice only when the primary is the extension path —
+                  with no installed wallet the primary IS WalletConnect, so a
+                  duplicate "use mobile" button would be dead-weight UI. */}
+              {mobileConnector && hasInstalledWallet && !showOptions && (
                 <Button
                   variant="ghost"
                   className="wallet-gate-mobile-cta"
