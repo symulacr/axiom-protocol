@@ -1394,7 +1394,7 @@ const english: Copy = {
     statusReady: "Ready",
     statusOnline: "online",
     shortcutTitle: "Keyboard map",
-    shortcutHint: "Shortcuts navigate; they never sign.",
+    shortcutHint: "Shortcuts navigate. They never sign.",
     shortcutPalette: "Find actions, agents, receipts and routes",
     shortcutSurfaces: "Open main areas",
     shortcutFlows: "Open execution flows",
@@ -1564,8 +1564,8 @@ const english: Copy = {
     routingSummaryCheapest: "Lowest cost",
     routingStatusPinned: (address) =>
       `Pinned to ${address}. Every turn is served by this provider.`,
-    routingStatusCheapest: "Cheapest first; may change between turns.",
-    routingStatusAuto: "Fastest provider; follow-ups stay on it.",
+    routingStatusCheapest: "Cheapest first. The pick can change between turns.",
+    routingStatusAuto: "Fastest provider. Follow-ups stay on it.",
     phaseRunning: (names, elapsed) => `Running ${names}… (${elapsed}s)`,
     phaseStreaming: (elapsed) => `Streaming response… (${elapsed}s)`,
     phaseThinking: "Thinking…",
@@ -1646,7 +1646,7 @@ const english: Copy = {
     notIndexed: "not indexed",
     verifyTitle: "Verify on 0G",
     verifyHint:
-      "Paste a publication root hash to open the 0G storage indexer’s own record for it. Axiom never stores your files; verification happens on 0G infrastructure.",
+      "Paste a publication root hash to open the 0G storage indexer’s own record for it. Axiom never stores your files. Verification runs on 0G infrastructure.",
     verifyLabel: "Root hash to verify",
     verifyPlaceholder: "0x…",
     verifyAction: "Open 0G verification",
@@ -1708,7 +1708,7 @@ const english: Copy = {
       proofLine: "Records the provider route and execution evidence.",
       contextTitle: "Stream before result.",
       fieldLabel: "Instruction",
-      fieldHint: "Cancellable; streamed tokens appear below.",
+      fieldHint: "Cancellable. Streamed tokens appear below.",
       detail: "{action}, {reason}",
       notice: "Tick {outcome} for agent #{agent}. Stream receipt indexed.",
     },
@@ -1719,7 +1719,7 @@ const english: Copy = {
       receiptKind: "Deposit",
       consequence: "Move the reviewed amount into this agent's vault.",
       proofLine:
-        "Encodes via the vault relay; value equals the reviewed amount.",
+        "Encodes via the vault relay. Value equals the reviewed amount.",
       contextTitle: "Review before value moves.",
       fieldLabel: "Amount",
       fieldHint: "The resulting vault balance appears in review.",
@@ -1733,7 +1733,7 @@ const english: Copy = {
       receiptKind: "Withdraw",
       consequence: "Move the reviewed amount out of this agent's vault.",
       proofLine:
-        "Encodes via the vault relay; the remaining balance is shown above.",
+        "Encodes via the vault relay. The remaining balance is shown above.",
       contextTitle: "Balance before withdrawal.",
       fieldLabel: "Amount",
       fieldHint: "The resulting vault balance appears in review.",
@@ -1779,7 +1779,7 @@ const english: Copy = {
     errRecipientAddress: "Recipient must be a valid 0x address.",
     errRecipientKey: "Recipient public key must be 64 bytes of hex (0x…).",
     errRecipientKeyIsAddress:
-      "This looks like an Ethereum address (42 chars); a transfer needs the receiver's public key (132 chars). See “How to get it” below.",
+      "This looks like an Ethereum address (42 chars). A transfer needs the receiver's public key (132 chars). See “How to get it” below.",
     transferKeyWalkthroughTitle: "How to get it",
     transferKeyWalkthroughSteps: [
       "The receiver opens their wallet and picks the account that will hold the agent",
@@ -1809,7 +1809,7 @@ const english: Copy = {
     receiptBodyReverted:
       "Reverted on-chain. The transaction center row offers recovery.",
     receiptBodyStale:
-      "No confirmation after {seconds}s. Check the explorer; the row is marked Needs review.",
+      "No confirmation after {seconds}s. Check the explorer. The row is marked Needs review.",
     receiptBodyConfirming: "Submitted, awaiting on-chain confirmation.",
     receiptRemedy:
       "Reverted or timed out? Retry the transaction : raise gas if the network is busy, or check your connection.",
@@ -1871,7 +1871,7 @@ const english: Copy = {
     transferAgentTitle: (id) => `Transfer agent #${id}`,
     handoffTitle: "Receiver on another device?",
     handoffBody:
-      "Send this link. They sign it; paste their result here, then you submit.",
+      "Send this link. They sign it and paste the result here. Then you submit.",
     handoffCopyLink: "Copy approval link",
     handoffLinkCopied: "Approval link copied. Send it to the receiver.",
     handoffPasteLabel: "Paste approval link",
@@ -2082,7 +2082,7 @@ const english: Copy = {
     chat: {
       titleLead: "Chat that knows",
       titleEmphasis: "your setup.",
-      copy: "Ask about your agents; chat knows your session.",
+      copy: "Ask about your agents. Chat knows your session.",
     },
     mint: {
       titleLead: "Name your agent",
@@ -2092,12 +2092,12 @@ const english: Copy = {
     payment: {
       titleLead: "Pay exactly",
       titleEmphasis: "what you approve.",
-      copy: "Approve exactly what you pay; fees shown up front.",
+      copy: "Approve exactly what you pay. Fees are shown up front.",
     },
     transfer: {
       titleLead: "Transfers your receiver",
       titleEmphasis: "co-signs.",
-      copy: "Receiver co-signs; expiry is enforced.",
+      copy: "Receiver co-signs. Expiry is enforced.",
     },
     storage: {
       titleLead: "Storage you can",
@@ -2112,7 +2112,7 @@ const english: Copy = {
     agentsList: {
       titleLead: "Browse agents,",
       titleEmphasis: "before you commit.",
-      copy: "See the whole roster; connect to open yours.",
+      copy: "See the whole roster. Connect to open yours.",
     },
     tick: {
       titleLead: "Run one agent task,",

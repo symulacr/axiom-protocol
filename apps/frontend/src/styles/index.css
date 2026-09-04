@@ -1658,7 +1658,10 @@ body .icon-button.landing-menu-trigger { display: grid; width: var(--icon-hit-lg
 /* Inline conflict list (was the nested modal's .connect-options). */
 .connect-options-inline { display: grid; gap: var(--space-2); }
 .connect-options-inline .button { transition: transform var(--motion-fade-220), box-shadow var(--motion-fade-220); }
-.connect-options-inline .button:hover { transform: translateY(-1px); box-shadow: 0 8px 20px color-mix(in srgb, var(--copper) 16%, transparent); }
+@media (hover: hover) and (pointer: fine) {
+  /* R17: lift only on real pointers (touch false-hover guard). */
+  .connect-options-inline .button:hover { transform: translateY(-1px); box-shadow: 0 8px 20px color-mix(in srgb, var(--copper) 16%, transparent); }
+}
 /* WalletConnect SDK pairing card — code surfaces inline, one panel total. */
 .wallet-pairing { display: grid; gap: var(--space-2); padding: var(--space-3); border: 1px solid var(--line); background: var(--bg-2); }
 .wallet-pairing strong { font: var(--fw-title) var(--fs-body) Syne, sans-serif; }
@@ -1941,6 +1944,20 @@ input[type="range"] {
   box-shadow: var(--shadow-modal-sm);
 }
 .filters-popover .filter { width: 100%; text-align: start; }
+/* R17 (improve-animations): the popover teleported in — trigger-anchored
+   surfaces must rise from their origin. Occasional toggling, so a keyframe
+   enter is safe (no rapid retargeting). */
+.filters-popover {
+  transform-origin: top right;
+  animation: filters-popover-rise 180ms var(--motion-ease) both;
+}
+@keyframes filters-popover-rise {
+  from { opacity: 0; transform: scale(0.97) translateY(4px); }
+  to   { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .filters-popover { animation: none; }
+}
 .filters-trigger { display: inline-flex; align-items: center; gap: var(--space-1); }
 
 /* L3-B12: single light-theme mechanism = the .light class chain (canonical
@@ -4252,10 +4269,19 @@ strong {
       border-color var(--motion-fade-220),
       transform var(--motion-fade-220);
   }
+  /* R17: transform lives in the hover/pointer-gated block below; touch
+     devices keep the border tint without the false-hover lift. */
+  .principle:hover,
+  .journey-card:hover {
+    border-color: color-mix(in srgb, var(--copper) 45%, var(--line));
+  }
+}
+/* R17 (improve-animations): hover MOTION only on real pointers — touch fires
+   false hovers on tap, so the lift is gated; the border tint stays for all. */
+@media (hover: hover) and (pointer: fine) {
   .principle:hover,
   .journey-card:hover {
     transform: translateY(-2px);
-    border-color: color-mix(in srgb, var(--copper) 45%, var(--line));
   }
 }
 
