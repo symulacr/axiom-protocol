@@ -142,6 +142,22 @@ export function WalletGate({
     }
   };
 
+  // R11: mobile path goes straight to the WalletConnect connector — the
+  // chooser modal detour (gate → chooser → WalletConnect) is the friction
+  // this removes. The chooser stays for the >1 injected-wallet conflict.
+  const connectMobile = async () => {
+    if (!mobileConnector) return;
+    setError(null);
+    setConnecting(true);
+    try {
+      await connectAsync({ connector: mobileConnector });
+    } catch (err) {
+      setError(humanizeError(err));
+    } finally {
+      setConnecting(false);
+    }
+  };
+
   const view: "connect" | "wrong-network" = wrongNetwork
     ? "wrong-network"
     : "connect";
@@ -218,7 +234,8 @@ export function WalletGate({
                 <Button
                   variant="ghost"
                   className="wallet-gate-mobile-cta"
-                  onClick={() => setChooserOpen(true)}
+                  busy={connecting}
+                  onClick={() => void connectMobile()}
                 >
                   {copy.wallet.useMobileWallet}
                 </Button>

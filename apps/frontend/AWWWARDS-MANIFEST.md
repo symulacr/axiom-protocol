@@ -305,6 +305,27 @@ Artifacts documented (not defects): gradient-clipped display `<i>`/`<span>`
 (`color: transparent`, glyphs painted by the AA-gated accent ramp); skip-link
 measured unfocused (off-canvas until `:focus`).
 
+## Round 11 — landing layout, interactivity, wallet friction (2026-09-04)
+
+User-reported: right-side hero space dead, ticker width, repetition, side space
+wasted, modal connect friction, cards overlaid by text. Measured with
+`.design-audit/landing-space-audit.mjs` (per-width: section widths, ticker,
+hero split, overlap detection) at 390/768/1024/1440/1920.
+
+| Issue | Before (measured) | After (measured) |
+|---|---|---|
+| Hero visual plate collapsed on desktop — `block-size: min(100%, 420px)` resolved against a content-free grid item (poster `display:none`) → plate = its 2px borders; receipt/caption floated over nothing ("cards overlayed by text") | visual h **2px** at 768/1024/1440/1920 | **420–640px** at every width (aspect-ratio 5/6, floors/caps); poster renders; 0 spills/overlaps |
+| Dead side space (max-width 1180 container) | **18.1%** at 1440, **38.5%** at 1920 | **0%** at 1440, **18.8%** at 1920 (1560 cap keeps line lengths sane); ticker now full-bleed (w = viewport at all widths) |
+| Hero right side not interactive | pointer-inert art slab | `aw-spotlight` pointer-tracked glow (existing FX contract), whole plate is one `/proofs` link (`proof-plate-link`, focus ring, a11y label ×3 locales), receipt card lifts on hover (reduced-motion safe) |
+| Wallet connect friction (gate → chooser modal → WalletConnect) | mobile CTA opened the chooser | mobile CTA connects the walletConnect connector **directly**; chooser remains only for the >1 injected-wallet conflict |
+| Copy repetition / cognitive load | "receipt" ×7 on one page; "non-custodial" ×2; 3-clause journey bodies | deduped + condensed across EN/FR/DE (description, journey bodies, principles[2]); "receipt" now ~4, no verbatim repeats |
+
+Verification: space audit re-run clean (0 overflow, 0 spills at all 5 widths);
+plate click → `/proofs` live; spotlight + link + hover computed styles
+verified; 0 console errors; 156/156 tests; typecheck 0; lint 0 errors.
+Not verifiable in this sandbox: the WalletConnect QR handshake itself (no
+wallet) — source-verified only.
+
 ## Round-2 verify log
 
 | Time (UTC) | Check | Result | Evidence |

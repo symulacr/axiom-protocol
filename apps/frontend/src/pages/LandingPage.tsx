@@ -10,7 +10,7 @@
   spotlight principle cards, marquee ticker, wordmark footer. All kicker /
   eyebrow / numbered-label spans removed per the no-noise design law.
 */
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   CircleHelp,
   Globe2,
@@ -103,6 +103,7 @@ export function Landing({
 }) {
   const copy = getCopy(locale);
   const [menuOpen, setMenuOpen] = useState(false);
+  const plateRef = useRef<HTMLElement | null>(null);
   const stats = useLandingStats();
   // networkChain is the configured chain (APP_CHAIN_ID) — the landing no
   // longer claims a hardcoded mainnet id on a testnet build.
@@ -277,7 +278,26 @@ export function Landing({
         {/* L2-N4: proof plate chrome — corners, live label, hairline, floating
             receipt card. Existing hero-caption (R10) stays in place. */}
         <Reveal delay={160}>
-        <section className="landing-visual hero-visual-modern">
+        <section
+          className="landing-visual hero-visual-modern aw-spotlight"
+          ref={plateRef}
+          onPointerMove={(event) => {
+            // Same contract as fx.tsx SpotlightCard: the ::before glow tracks
+            // the cursor through --aw-spot-x/-y.
+            const el = plateRef.current;
+            if (!el) return;
+            const rect = el.getBoundingClientRect();
+            el.style.setProperty("--aw-spot-x", `${event.clientX - rect.left}px`);
+            el.style.setProperty("--aw-spot-y", `${event.clientY - rect.top}px`);
+          }}
+        >
+          {/* R11: the whole plate is one click target to the proofs hub —
+              the receipt card is display content, not a separate control. */}
+          <a
+            className="proof-plate-link"
+            href="/proofs"
+            aria-label={copy.landing.proofPlateA11y}
+          />
           <img
             className="hero-visual-poster"
             src="/brand/hero-seal-512.jpg"

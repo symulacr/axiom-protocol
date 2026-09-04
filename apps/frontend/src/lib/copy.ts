@@ -131,6 +131,7 @@ export type Copy = {
     stripOperateSmall: string;
     /** R10: proof-field caption — small mono caption + Fraunces italic body. */
     proofCaptionSmall: string;
+    proofPlateA11y: string;
     proofCaptionBody: string;
     /** T4: real product preview inside the hero plate (self-demonstrating). */
     previewAgentTitle: string;
@@ -1083,7 +1084,7 @@ const english: Copy = {
     titleLead: "Own an AI agent.",
     titleEmphasis: "Keep every action accountable.",
     description:
-      "Mint an agent with a bounded vault. It works inside rules you set; every action leaves a receipt.",
+      "Mint an agent with a bounded vault. It works inside rules you set.",
     nextSafeAction: "Next safe action",
     signatureBoundary: "How signing works",
     consoleAccess: "Console access",
@@ -1094,6 +1095,7 @@ const english: Copy = {
     stripVerifySmall: "No gas, no custody",
     stripOperateSmall: "Receipts beside action",
     proofCaptionSmall: "Sealed transfer",
+    proofPlateA11y: "Open the proofs hub",
     proofCaptionBody: "Every payload is re-keyed to its new owner.",
     previewAgentTitle: "Agent #7",
     previewAgentDesc: "Oracle attestations, every 10 minutes",
@@ -1214,7 +1216,7 @@ const english: Copy = {
         {
           icon: "wallet",
           title: "Your wallet, your keys.",
-          body: "Non-custodial. Connect the wallet you already use. No accounts, no emails.",
+          body: "Connect the wallet you already use. No accounts, no emails.",
           link: "Wallet options",
         },
       ],
@@ -1224,14 +1226,14 @@ const english: Copy = {
       items: [
         {
           title: "Learn the boundary before you sign.",
-          body: "How signing splits from custody, what receipts look like, which wallets keep your keys yours. No wallet needed to read.",
+          body: "How signing splits from custody, and which wallets keep your keys yours. No wallet needed to read.",
           meta: "Read time · 3 min",
           cta: "How signing works",
           onClick: "onGuide",
         },
         {
           title: "Open the console and operate receipts.",
-          body: "Connect once to mint, fund and run. Every signature lands as a receipt beside its action.",
+          body: "Connect once to mint, fund and run. The console tracks each step.",
           meta: "Live · {count} agents online",
           cta: "Console access",
           onClick: "goToApp",
@@ -2203,7 +2205,7 @@ const french: Copy = {
     titleLead: "Possédez des agents IA",
     titleEmphasis: "qui travaillent pour vous.",
     description:
-      "Mintez un agent sur 0G, mettez vos fonds au travail et gardez le contrôle. Chaque étape est signée par votre wallet et laisse un reçu.",
+      "Mintez un agent sur 0G, mettez vos fonds au travail et gardez le contrôle.",
     nextSafeAction: "Prochaine action sûre",
     signatureBoundary: "Comment fonctionne la signature",
     consoleAccess: "Accès console",
@@ -2214,6 +2216,7 @@ const french: Copy = {
     stripVerifySmall: "Sans gas, sans garde",
     stripOperateSmall: "Reçus à côté de l’action",
     proofCaptionSmall: "Transfert scellé",
+    proofPlateA11y: "Ouvrir le hub des preuves",
     proofCaptionBody:
       "Chaque payload est recréé pour son nouveau propriétaire.",
     previewAgentTitle: "Agent nº 7",
@@ -2335,7 +2338,7 @@ const french: Copy = {
         {
           icon: "wallet",
           title: "Votre wallet, vos clés.",
-          body: "Non-dépositaire. Connectez le wallet que vous utilisez déjà. Pas de comptes, pas d'emails.",
+          body: "Connectez le wallet que vous utilisez déjà. Pas de comptes, pas d'emails.",
           link: "Options de wallet",
         },
       ],
@@ -2345,14 +2348,14 @@ const french: Copy = {
       items: [
         {
           title: "Apprenez la limite avant de signer.",
-          body: "Comment la signature se sépare de la garde, à quoi ressemblent les reçus, quels wallets gardent vos clés. Pas de wallet pour lire.",
+          body: "Comment la signature se sépare de la garde et quels wallets gardent vos clés. Pas de wallet pour lire.",
           meta: "Temps de lecture · 3 min",
           cta: "Comment fonctionne la signature",
           onClick: "onGuide",
         },
         {
           title: "Ouvrir la console et opérer les reçus.",
-          body: "Connectez-vous une fois pour minter, financer et opérer. Chaque signature devient un reçu à côté de son action.",
+          body: "Connectez-vous une fois pour minter, financer et opérer. La console suit chaque étape.",
           meta: "En direct · {count} agents en ligne",
           cta: "Accès console",
           onClick: "goToApp",
@@ -3305,7 +3308,7 @@ const german: Copy = {
     titleLead: "Eigene KI-Agents,",
     titleEmphasis: "die für dich arbeiten.",
     description:
-      "Minte einen Agent auf 0G, lass deine Mittel arbeiten und behalte die Kontrolle. Jeder Schritt wird von deinem Wallet signiert und hinterlässt einen Beleg.",
+      "Minte einen Agent auf 0G, lass deine Mittel arbeiten und behalte die Kontrolle.",
     nextSafeAction: "Nächste sichere Aktion",
     signatureBoundary: "Wie die Signatur funktioniert",
     consoleAccess: "Konsolenzugriff",
@@ -3316,6 +3319,7 @@ const german: Copy = {
     stripVerifySmall: "Kein Gas, keine Verwahrung",
     stripOperateSmall: "Belege neben der Aktion",
     proofCaptionSmall: "Versiegelte Übertragung",
+    proofPlateA11y: "Proofs-Hub öffnen",
     proofCaptionBody:
       "Jede Nutzlast wird neu für ihren neuen Eigentümer verschlüsselt.",
     previewAgentTitle: "Agent Nr. 7",
@@ -3437,7 +3441,7 @@ const german: Copy = {
         {
           icon: "wallet",
           title: "Dein Wallet, deine Schlüssel.",
-          body: "Nicht-verwahrend. Verbinde das Wallet, das du bereits nutzt. Keine Accounts, keine E-Mails.",
+          body: "Verbinde das Wallet, das du bereits nutzt. Keine Accounts, keine E-Mails.",
           link: "Wallet-Optionen",
         },
       ],
@@ -3447,14 +3451,14 @@ const german: Copy = {
       items: [
         {
           title: "Lerne die Grenze, bevor du unterschreibst.",
-          body: "Wie Signieren und Verwahrung getrennt werden, wie Belege aussehen, welche Wallets deine Schlüssel behalten. Kein Wallet zum Lesen nötig.",
+          body: "Wie Signieren und Verwahrung getrennt werden und welche Wallets deine Schlüssel behalten. Kein Wallet zum Lesen nötig.",
           meta: "Lesezeit · 3 min",
           cta: "Wie die Signatur funktioniert",
           onClick: "onGuide",
         },
         {
           title: "Öffne die Konsole und bediene Belege.",
-          body: "Verbinde dich einmal zum Minten, Finanzieren und Ausführen. Jede Signatur landet als Beleg neben ihrer Aktion.",
+          body: "Verbinde dich einmal zum Minten, Finanzieren und Ausführen. Die Konsole verfolgt jeden Schritt.",
           meta: "Live · {count} Agents online",
           cta: "Konsolenzugriff",
           onClick: "goToApp",
