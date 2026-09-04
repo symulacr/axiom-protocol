@@ -95,10 +95,10 @@ createRoot(rootEl).render(
       </WagmiConfigProvider>
       <Toaster
         position="bottom-right"
-        // 3s applies to success/info only — error toasts pass duration: Infinity per-call
-        // (toastError in pages/shared.ts, GasTankCard, ChatPage) per the U24 Notice-rail
-        // policy: errors persist until dismissed.
-        duration={3000}
+        // 5s floor for timed success/info toasts (motion-and-zoom); error and
+        // action toasts pass duration: Infinity per-call (toastError in
+        // pages/shared.ts, GasTankCard, ChatPage undo) per the U24 policy.
+        duration={5000}
         toastOptions={{
           style: {
             background: "var(--panel)",

@@ -1519,6 +1519,9 @@ function ChatPageInner(): ReactElement {
       // Recoverable: deleting a chat is not irreversible, so offer undo.
       if (removed) {
         toast(chatCopy.deletedToast, {
+          // The action (undo) is the only recovery path — it must not ride an
+          // auto-dismissing toast (motion-and-zoom: action toasts persist).
+          duration: Infinity,
           action: {
             label: chatCopy.undo,
             onClick: () => {

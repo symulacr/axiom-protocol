@@ -2230,8 +2230,15 @@ body.light .filters-popover {
 .rail-reopen:hover { background: color-mix(in srgb, var(--copper) 16%, transparent); }
 
 /* 13. Skip-to-content (U27): hidden until keyboard-focused; jumps past the command rail. */
-.skip-link { position: fixed; top: -60px; left: var(--space-4); z-index: calc(var(--layer-topbar) + 1); padding: var(--space-2) var(--space-4); background: var(--completion-panel); color: var(--ink); border: 1px solid var(--completion-copper); font: 500 var(--fs-small) 'JetBrains Mono', monospace; transition: top var(--dur-fast) var(--ease); }
+.skip-link { position: fixed; top: -60px; inset-inline-start: var(--space-4); z-index: calc(var(--layer-topbar) + 1); padding: var(--space-2) var(--space-4); background: var(--completion-panel); color: var(--ink); border: 1px solid var(--completion-copper); font: 500 var(--fs-small) 'JetBrains Mono', monospace; transition: top var(--dur-fast) var(--ease); }
 .skip-link:focus { top: var(--space-2); }
+
+/* Touch behavior (a11y hit-areas): kill the double-tap-zoom delay and the
+   default gray tap flash on interactive surfaces — the design's own press
+   and hover accents are the feedback. */
+a, .button, .icon-button, .nav-item, .filter, .transaction-row, .agent-row,
+.activity-row, .chat-history__item, .prompt-card, .text-link, .nav-connect,
+.j-cta { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
 
 /* C-02 follow-through: this un-layered restatement of .filter.active wins
    over any layered base rule regardless of specificity. */

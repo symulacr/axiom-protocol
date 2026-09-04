@@ -216,6 +216,37 @@ audio, pixel inspection (route limitation).
 
 
 
+## Round 8 — better-accessibility execution (2026-09-04)
+
+Exhaustive execution of the pasted `better-accessibility` skill with all six
+references (forms, focus-and-keyboard, hit-areas, motion-and-zoom,
+screen-readers, semantics-and-aria). The audit walked every reference rule;
+most of the codebase already conforms deeply (shared `useModalDismiss`
+contract: Esc + Tab trap + initial focus + restore on every dialog; Field
+component: label htmlFor + aria-invalid + aria-describedby + inputMode;
+dual reduced-motion channels; hover-paused ticker; 24px hit floor + 40px
+halos; no positive tabindex; no `div onClick` outside the documented backdrop
+leg; focus-visible rings throughout; FX layers pointer-events:none).
+
+| Severity | Location | Before → After |
+|---|---|---|
+| HIGH | `ChatPage.tsx` delete toast | Only undo path auto-dismissed at the Toaster's 3s default (data loss on a schedule) → `duration: Infinity` |
+| MEDIUM | `FlowPage.tsx` openReview | Submit errors announced but focus stayed on the trigger → focus moves to the first invalid control (rAF + `[aria-invalid=true], .field-error *`); agent select gains `aria-invalid` |
+| MEDIUM | `Controls.tsx` field-message | `role="alert"` (assertive) on field-tied errors → `role="status"` (polite; describedby + focus-first-invalid carry the announcement) |
+| MEDIUM | `App.tsx` | SPA route changes moved no focus → focus `<main>` (tabindex -1, preventScroll) on every route change, both shells; `main` elements get static `tabIndex={-1}` for skip-link focus landing |
+| MEDIUM | `LandingPage.tsx` | No skip-to-content on the public landing (console had U27) → skip link added as first focusable, target `#hero`; `.skip-link` CSS `left` → `inset-inline-start` (round-4 leftover) |
+| LOW | `main.tsx` Toaster / `App.tsx` notice | Timed toasts at 3s/4s, under the 5s floor, no hover-pause → 5000ms + notice timer pauses on hover/focus (mouse and focus capture) |
+| LOW | `index.css` | No `touch-action: manipulation` / `-webkit-tap-highlight-color` → both on all interactive surfaces |
+
+Verified live: skip link is first tab stop, hidden at -60px, visible at 8px on
+focus, Enter lands focus on `main#hero`; SPA nav (Transactions → Overview)
+lands focus on the new view's main; `touch-action: manipulation` +
+`tap-highlight: transparent` computed on `.j-cta`; 156/156 tests, typecheck 0,
+lint 0 errors; 0 console errors. Not verified: wallet-gated form submit focus
+flow and undo-toast persistence in the running app (gate unreachable in this
+sandbox — code-verified); screen-reader audio; 200% zoom (320px reflow is the
+stricter equivalent and passes).
+
 ## Round-2 verify log
 
 | Time (UTC) | Check | Result | Evidence |

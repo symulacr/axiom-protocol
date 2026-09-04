@@ -980,7 +980,7 @@ export function AppShell({
             </button>
           )}
         </div>
-        <main id="main-content" className="main">
+        <main id="main-content" className="main" tabIndex={-1}>
           <Topbar
             state={state}
             session={state.session}

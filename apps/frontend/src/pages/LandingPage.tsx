@@ -139,6 +139,10 @@ export function Landing({
     <div className="landing-page">
       <ScrollProgress />
       <GrainOverlay />
+      {/* U27 parity with the console: keyboard bypass of the landing nav. */}
+      <a className="skip-link" href="#hero">
+        {copy.a11y.skipToContent}
+      </a>
       {/* L2-N1: expanded top nav. Logo gains the phosphor dot, 4 inline links
           visible at ≥980px, Connect pill, hamburger collapses to mobile. */}
       <header className="landing-nav">
@@ -203,7 +207,7 @@ export function Landing({
         </div>
       </header>
 
-      <main className="landing-main" id="hero">
+      <main className="landing-main" id="hero" tabIndex={-1}>
         <OrbsField />
         <Reveal>
         <section className="landing-copy">
