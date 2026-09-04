@@ -828,3 +828,44 @@
     display: none;
   }
 }
+
+/* R19: wallet connect popover. The connect attempt fires directly in the
+   click gesture; the centered modal, scrim, art slab and hero copy are gone.
+   The panel is a compact status surface anchored under the header and shows
+   only what needs attention: a conflict chooser, the WalletConnect pairing
+   code, an error with retry, or the wrong-network switch. Tokens resolve
+   through the body.light overrides in index.css. */
+.wallet-gate-layer > .wallet-gate {
+  pointer-events: auto;
+  position: absolute;
+  top: clamp(72px, 11vh, 108px);
+  right: clamp(16px, 4vw, 48px);
+  width: min(400px, calc(100vw - 2 * clamp(16px, 4vw, 48px)));
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  background: var(--aw-glass);
+  backdrop-filter: var(--aw-blur-nav);
+  -webkit-backdrop-filter: var(--aw-blur-nav);
+  border: 1px solid var(--aw-line);
+  border-radius: 14px;
+  box-shadow: var(--aw-shadow-float), var(--aw-hairline);
+}
+.wallet-gate-head { margin-bottom: 0; }
+.wallet-gate-close {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+  z-index: 1;
+}
+.wallet-gate-status { margin: 0; color: var(--muted); font-size: var(--fs-body); }
+.wallet-gate-retry { margin-top: var(--space-2); }
+@media (max-width: 700px) {
+  .wallet-gate-layer > .wallet-gate {
+    top: auto;
+    bottom: 16px;
+    right: 12px;
+    left: 12px;
+    width: auto;
+  }
+}

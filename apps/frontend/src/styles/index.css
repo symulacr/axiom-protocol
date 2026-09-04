@@ -61,13 +61,6 @@
    (merged per LOC plan B; dead rules dropped — see audit/LOC-SAVINGS-PLAN.md) */
 
 /* === from axiom-onboarding === */
-.wallet-gate-art { position:relative; min-height:620px; overflow:hidden; background:#0c1011; border-right:1px solid var(--line); }
-.wallet-gate-art>img { width:100%; height:100%; object-fit:cover; opacity:.76; mix-blend-mode:screen; }
-.wallet-gate-art:after { content:""; position:absolute; inset:0; background:linear-gradient(180deg,rgba(8,10,11,.04),rgba(8,10,11,.14) 45%,rgba(8,10,11,.88)); }
-.wallet-gate-art-copy { position:absolute; z-index:1; left:var(--space-6); right:var(--space-6); bottom:var(--space-6); display:grid; gap:var(--space-3); }
-.wallet-gate-art-copy strong { font:800 var(--fs-display)/.98 Syne,sans-serif; letter-spacing:-.04em; }
-.wallet-gate-art-copy i,.wallet-gate-panel h1 i,.wallet-state h2 i { color:var(--copper-bright); font-style:normal; }
-.wallet-gate-art-copy>span:last-child { max-width:320px; color:#c7c7c0; font-size:var(--fs-small); line-height:1.55; }
 .wallet-gate-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:58px; }
 .wallet-gate-panel>p { max-width:410px; color:var(--muted); font-size:var(--fs-body); line-height:1.65; }
 .guide-skip { align-self:flex-start; display:inline-flex; min-height:44px; gap:var(--space-1); align-items:center; padding:0 var(--space-2); border:0; background:transparent; color:var(--dim); font-size:var(--fs-small); }
@@ -101,9 +94,6 @@
 .is-resizing,.is-resizing * { cursor:ew-resize!important; user-select:none!important; }
 .settings-toggle-row,.range-control { display:flex; align-items:center; justify-content:space-between; gap:var(--space-5); padding:var(--space-4) 0; border-top:1px solid var(--line-soft); }
 .settings-toggle-row>div,.range-control>span { display:grid; gap:var(--space-1); }
-.wallet-gate-art { min-height:220px; max-height:260px; border-right:0; border-bottom:1px solid var(--line); }
-.wallet-gate-art-copy { left:22px; bottom:22px; }
-.wallet-gate-art-copy strong { font-size:var(--fs-display); }
 .wallet-gate-head { margin-bottom:var(--space-6); }
 .guide-card { grid-template-columns:1fr; max-height:calc(100dvh - 28px); overflow:auto; }
 .guide-media { min-height:210px; }
@@ -207,7 +197,7 @@
    Sits inside .landing-copy so it inherits the grid alignment. */
 .landing-copy>p { max-width:440px; color:var(--completion-muted); font-size:var(--fs-body); line-height:1.7; }.landing-visual { position:relative; min-height:580px; overflow:hidden; border:1px solid var(--completion-line); background:var(--surface-elevated); }.landing-visual>img { width:100%; height:100%; object-fit:cover; opacity:.65; mix-blend-mode:screen; }
 @media (max-width: 900px) { .context-strip { grid-template-columns:repeat(2,1fr); }.context-cell:nth-child(2) { border-right:0; }.context-cell:nth-child(-n+2) { border-bottom:1px solid var(--completion-line); }.dashboard-split,.storage-grid,.settings-grid,.flow-layout { grid-template-columns:1fr; }.landing-main { grid-template-columns:1fr; }.landing-visual { min-height:420px; }.page-head-asymmetric { grid-template-columns:1fr; }.action-lane { min-height:0; }.thread-list { display:none; }.ops-summary { grid-template-columns:repeat(2,1fr); }.ops-summary-note { grid-column:span 2; }.recovery-404 { grid-template-columns:1fr; }.recovery-404-art { min-height:340px; max-height:43vh; border-right:0; border-bottom:1px solid var(--completion-line); }.recovery-404-copy { padding:44px var(--space-5) 60px; } }
-@media (max-width:700px) { .app-shell { display:block; }.sidebar { display:none; }.topbar { min-height:60px; padding:0 var(--space-4); }.session-top span,.session-top .status { display:none; }.ops-page { padding:var(--space-6) var(--space-4) 60px; }.page-head { display:grid; gap:var(--space-5); margin-bottom:var(--space-5); }.page-head h1 { font-size:var(--fs-display); }.page-head-actions { justify-content:flex-start; }.context-strip,.stats-grid { grid-template-columns:1fr; }.context-cell { border-right:0!important; border-bottom:1px solid var(--completion-line); }.context-cell:last-child { border-bottom:0; }.stats-grid { gap:1px; }.stat { padding:var(--space-3); }.agent-detail-head { grid-template-columns:48px 1fr; }.agent-grid,.execute-grid,.receipt-grid,.settings-select-row { grid-template-columns:1fr; }.transaction-table-head { display:none; }.transaction-row { grid-template-columns:minmax(0,1fr) auto 15px; }.transaction-row>.mono { display:none; }.transaction-age { display:none; }.flow-form { grid-template-columns:1fr; gap:0; }.flow-action { flex-wrap:wrap; }.not-integrated { grid-template-columns:1fr; padding:var(--space-5); }.not-integrated h2 { font-size:28px; }.landing-nav { padding:20px var(--space-4); }.landing-main { padding:58px var(--space-4) 52px; }.landing-copy h1 { font-size:clamp(42px, 13vw, 62px); }.landing-visual { min-height:360px; }.guide-copy h2,.wallet-gate-panel h1 { overflow-wrap:normal; }.notice-toast { right:12px; bottom:12px; max-width:calc(100vw - 24px); }.recovery-404-copy h1 { font-size:clamp(42px, 13vw, 62px); } }
+@media (max-width:700px) { .app-shell { display:block; }.sidebar { display:none; }.topbar { min-height:60px; padding:0 var(--space-4); }.session-top span,.session-top .status { display:none; }.ops-page { padding:var(--space-6) var(--space-4) 60px; }.page-head { display:grid; gap:var(--space-5); margin-bottom:var(--space-5); }.page-head h1 { font-size:var(--fs-display); }.page-head-actions { justify-content:flex-start; }.context-strip,.stats-grid { grid-template-columns:1fr; }.context-cell { border-right:0!important; border-bottom:1px solid var(--completion-line); }.context-cell:last-child { border-bottom:0; }.stats-grid { gap:1px; }.stat { padding:var(--space-3); }.agent-detail-head { grid-template-columns:48px 1fr; }.agent-grid,.execute-grid,.receipt-grid,.settings-select-row { grid-template-columns:1fr; }.transaction-table-head { display:none; }.transaction-row { grid-template-columns:minmax(0,1fr) auto 15px; }.transaction-row>.mono { display:none; }.transaction-age { display:none; }.flow-form { grid-template-columns:1fr; gap:0; }.flow-action { flex-wrap:wrap; }.not-integrated { grid-template-columns:1fr; padding:var(--space-5); }.not-integrated h2 { font-size:28px; }.landing-nav { padding:20px var(--space-4); }.landing-main { padding:58px var(--space-4) 52px; }.landing-copy h1 { font-size:clamp(42px, 13vw, 62px); }.landing-visual { min-height:360px; }.guide-copy h2 { overflow-wrap:normal; }.notice-toast { right:12px; bottom:12px; max-width:calc(100vw - 24px); }.recovery-404-copy h1 { font-size:clamp(42px, 13vw, 62px); } }
 
 /* ---- inlined: axiom-review-pass.css ---- */
 /* Axiom Copper Command Deck review pass.
@@ -610,7 +600,6 @@ body:has(.flow-action) .notice-toast { bottom:96px; }
 
 /* Dark-locked art canvases (#0b0e0f/#0c1011 stay dark under light theme):
    multiply de-harshes the screen-blend wash instead of inverting the slot. */
-.app-shell.light .wallet-gate-art>img,
 .app-shell.light .guide-media img {
   mix-blend-mode: multiply;
   opacity: .45;
@@ -1580,21 +1569,16 @@ body .icon-button.landing-menu-trigger { display: grid; width: var(--icon-hit-lg
   overscroll-behavior: contain;
 }
 
-/* WalletGate layer (audit: browser-3 finding #1 — the gate sheet previously
-   rendered in document flow at y≈1164 with no backdrop because no rule ever
-   positioned .wallet-gate-layer; the dialog markup and a11y contract existed
-   but the layer never became a modal). Shares the single-scrim contract. */
+/* WalletGate layer — R19: no longer a centered modal. The connect action
+   fires directly in the click gesture; this layer is a transparent,
+   click-through positioning context for the compact status popover (chooser /
+   pairing code / error / wrong network). Outside-click dismissal is bound at
+   document level in the component. */
 .wallet-gate-layer {
   position: fixed;
   z-index: var(--layer-review, 110);
   inset: 0;
-  display: grid;
-  place-items: center;
-  padding: clamp(12px, 3vw, 32px);
-  overflow: auto;
-  background: var(--completion-overlay);
-  backdrop-filter: blur(4px);
-  animation: connect-modal-fade var(--motion-fade-220) both;
+  pointer-events: none;
 }
 .wallet-gate-layer > .wallet-gate {
   animation: connect-modal-rise 280ms var(--motion-rise) both;
@@ -1646,11 +1630,7 @@ body .icon-button.landing-menu-trigger { display: grid; width: var(--icon-hit-lg
 }
 
 /* R12: the nested ConnectModal is gone (WalletGate renders conflict options
-   inline). These keyframes stay — the wallet gate layer uses them. */
-@keyframes connect-modal-fade {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
+   inline). R19: the gate is a popover — only the rise keyframe remains. */
 @keyframes connect-modal-rise {
   from { opacity: 0; transform: scale(0.97) translateY(8px); }
   to   { opacity: 1; transform: scale(1) translateY(0); }
@@ -3059,8 +3039,6 @@ select.axiom-field option { background: var(--panel); color: var(--text); }
 
 /* Wallet gate: live error line under the action row. */
 .wallet-gate-error { margin: var(--space-2) 0 0; color: var(--danger); font-size: var(--fs-small); overflow-wrap: anywhere; }
-/* Secondary "Use mobile wallet" under the direct-connect primary CTA. */
-.wallet-gate-mobile-cta { margin-top: var(--space-2); }
 
 
 /* ---------------------------------------------------------------- *
