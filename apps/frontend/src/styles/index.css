@@ -3272,6 +3272,11 @@ select.axiom-field option { background: var(--panel); color: var(--text); }
   --line: #d9d0c4;
   --line-soft: #e8dfd4;
   --text: #202528;
+  /* --ink/--ink-bright are not completion aliases: 24 direct var(--ink)
+     usages (skip-link, brand, state pills) sit on the flipping paper
+     surfaces, so they must flip with the shell or render cream-on-paper. */
+  --ink: #202528;
+  --ink-bright: #1a1610;
   --muted: #5b5b55;
   --dim: #686760;
   --copper: #a96333;
@@ -4023,7 +4028,7 @@ strong {
 .journey-card:hover { background: color-mix(in srgb, var(--copper) 4%, var(--panel)); }
 .journey-card h3 { margin: 0; font: 500 var(--fs-title)/1.15 var(--font-serif-display); letter-spacing: -0.015em; font-feature-settings: "ss01"; color: var(--ink); }
 .journey-card p { margin: 0; color: color-mix(in srgb, var(--muted) 86%, white); font-size: var(--fs-body); line-height: 1.6; }
-.journey-card .j-meta { color: var(--dim); font: 500 var(--fs-mono)/1 "JetBrains Mono", monospace; font-size: var(--fs-small); }
+.journey-card .j-meta { color: color-mix(in srgb, var(--dim) 78%, white); font: 500 var(--fs-mono)/1 "JetBrains Mono", monospace; font-size: var(--fs-small); }
 .journey-card .j-cta { display: inline-flex; align-items: center; gap: var(--space-2); padding: 0; border: 0; background: transparent; color: var(--copper-bright); font: 500 var(--fs-mono)/1 "JetBrains Mono", monospace; cursor: pointer; transition: color var(--motion-fade-220), transform var(--motion-fade-220); }
 .journey-card .j-cta:hover { color: var(--ink); transform: translateX(2px); }
 .journey-card .j-cta svg { transition: transform var(--motion-fade-220); }

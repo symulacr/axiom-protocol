@@ -279,6 +279,32 @@ own pre-existing view-local focus contract), 0 console errors.
 Incident note: the dev server exited overnight on its own (second occurrence);
 recovered via preview_start before verification.
 
+## Round 10 — full-depth scroll audit: every section, both themes (2026-09-04)
+
+User-flagged gap: prior contrast sweeps sampled top-section selectors only. This
+round scrolled the full page height in steps (all reveal animations confirmed
+firing; 0 elements left invisible) and walked **every direct-text element** on
+each surface with a corrected evaluator (oklch decimal-form parse, alpha
+compositing for semi-transparent text AND background chains, gradient-clip
+text excluded as painted by the gated accent ramp). Two harness bugs were found
+and fixed mid-round; one earlier "fix" was reverted on the corrected evidence.
+
+| Severity | Location | Before → After (measured live) |
+|---|---|---|
+| HIGH | `.journey-card .j-meta` (index.css:4026) | `--dim` #858e8d on the journey grid surface = **3.54:1** at 13px (dim was certified 4.6:1 on console panel-2, not this lighter surface) → `color-mix(in srgb, var(--dim) 78%, white)` → full-page walk **0 fails** |
+| HIGH | `.app-shell.light` token block | `--ink`/`--ink-bright` never overridden — 24 direct `var(--ink)` usages rendered **cream on paper** in light theme (skip-link measured **1.2:1**) → added `--ink: #202528; --ink-bright: #1a1610` → skip-link now dark-on-white, all pages pass |
+| LOW | `--aw-text-soft` (axiom-awwwards.css:43) | Temporarily raised 72%→88% on a false reading; corrected evaluator shows 72% composited = **9.18:1** → **reverted to the design's 72%** |
+
+Pages walked to zero failures (light, default under headless
+`prefers-color-scheme: light`): `/`, `/agents`, `/payments`, `/proofs`,
+`/storage`, `/app`, `/chat`, `/transactions`, `/mint`, `/settings`; plus
+`/storage` dark-forced (ink override scoped to `.app-shell.light`, dark
+untouched).
+
+Artifacts documented (not defects): gradient-clipped display `<i>`/`<span>`
+(`color: transparent`, glyphs painted by the AA-gated accent ramp); skip-link
+measured unfocused (off-canvas until `:focus`).
+
 ## Round-2 verify log
 
 | Time (UTC) | Check | Result | Evidence |
