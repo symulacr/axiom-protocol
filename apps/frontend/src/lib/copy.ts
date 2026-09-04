@@ -241,18 +241,14 @@ export type Copy = {
     connectedChain: string;
     requiredChain: string;
     profileHint: string;
-    /** Gate headline (WalletGate connect panel). */
-    gateTitle: string;
-    /** Gate art emphasis line ("One session."). */
-    gateSessionLine: string;
     /** Conflict chooser (mounted only when >1 injected wallet is installed). */
     connectTitle: string;
+    /** Status line while the connect attempt runs in the click gesture. */
+    connectingStatus: string;
     browserWalletLabel: string;
     browserWalletHint: string;
     walletConnectLabel: string;
     walletConnectHint: string;
-    /** Secondary CTA under the direct-connect primary. */
-    useMobileWallet: string;
     pairingTitle: string;
     pairingHint: string;
     /** Shown when no injected provider announced via EIP-6963. */
@@ -1280,14 +1276,12 @@ const english: Copy = {
     connectedChain: "Connected: chain {chainId}",
     requiredChain: "Required: {chainName}, chain {chainId}",
     profileHint: "Stored on this device only.",
-    gateTitle: "Start here.",
-    gateSessionLine: "One session.",
     connectTitle: "Choose a wallet.",
+    connectingStatus: "Connecting…",
     browserWalletLabel: "Browser wallet",
     browserWalletHint: "MetaMask and other injected wallets",
     walletConnectLabel: "WalletConnect",
     walletConnectHint: "Scan the QR code or open your wallet app",
-    useMobileWallet: "Use mobile wallet",
     pairingTitle: "Pair your wallet",
     pairingHint: "Copy the code into your wallet app's WalletConnect screen.",
     noWalletDetected:
@@ -2415,14 +2409,12 @@ const french: Copy = {
     connectedChain: "Connecté : chaîne {chainId}",
     requiredChain: "Requis : {chainName}, chaîne {chainId}",
     profileHint: "Enregistré uniquement sur cet appareil.",
-    gateTitle: "Commencez ici.",
-    gateSessionLine: "Une session.",
     connectTitle: "Choisissez un wallet.",
+    connectingStatus: "Connexion…",
     browserWalletLabel: "Wallet du navigateur",
     browserWalletHint: "MetaMask et autres wallets injectés",
     walletConnectLabel: "WalletConnect",
     walletConnectHint: "Scannez le QR code ou ouvrez votre app wallet",
-    useMobileWallet: "Utiliser un wallet mobile",
     pairingTitle: "Appairez votre wallet",
     pairingHint: "Copiez le code dans l'écran WalletConnect de votre app wallet.",
     noWalletDetected:
@@ -3530,14 +3522,12 @@ const german: Copy = {
     connectedChain: "Verbunden: Chain {chainId}",
     requiredChain: "Erforderlich: {chainName}, Chain {chainId}",
     profileHint: "Nur als lokale Prototyp-Einstellung gespeichert.",
-    gateTitle: "Hier starten.",
-    gateSessionLine: "Eine Sitzung.",
     connectTitle: "Wähle ein Wallet.",
+    connectingStatus: "Verbindung…",
     browserWalletLabel: "Browser-Wallet",
     browserWalletHint: "MetaMask und andere injizierte Wallets",
     walletConnectLabel: "WalletConnect",
     walletConnectHint: "QR-Code scannen oder Wallet-App öffnen",
-    useMobileWallet: "Mobile Wallet verwenden",
     pairingTitle: "Wallet koppeln",
     pairingHint: "Kopiere den Code in den WalletConnect-Bildschirm deiner Wallet-App.",
     noWalletDetected:
