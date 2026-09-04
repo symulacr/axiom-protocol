@@ -5,8 +5,12 @@
   dot + responsive hamburger), hero meta strip + trust-line + proof corners/
   label/hairline + floating receipt card, ticker, principles + journey
   sections, footer.
+  AW round (2026-09-03): cinematic layer (fx kit + axiom-awwwards.css) —
+  scroll progress, grain, hero orbs, reveal stagger, parallax journey,
+  spotlight principle cards, marquee ticker, wordmark footer. All kicker /
+  eyebrow / numbered-label spans removed per the no-noise design law.
 */
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   CircleHelp,
   Globe2,
@@ -20,6 +24,7 @@ import {
 } from "../components/axiom/icons.js";
 import { Button } from "../components/axiom/Controls.js";
 import { Logo } from "../components/axiom/AppShell.js";
+import { ThemeToggle } from "../components/axiom/ThemeToggle.js";
 import {
   routePath,
   PUBLIC_HUB_PATHS,
@@ -31,11 +36,34 @@ import {
   useLandingTicker,
   TICKER_MAX_ITEMS,
 } from "../hooks/useLandingTicker.js";
+import {
+  CountUp,
+  GrainOverlay,
+  Parallax,
+  Reveal,
+  ScrollProgress,
+  SpotlightCard,
+} from "../components/fx/fx.js";
+import { ThreeBackground } from "../components/fx/ThreeBackground.js";
 
-/** L2-N2: format the live agents count as a comma-grouped number. */
-function formatCount(n: number | null): string {
-  if (n === null) return "—";
-  return n.toLocaleString();
+/** Splits a "{count}" template so the live number can animate via CountUp;
+ *  templates without the placeholder render unchanged. */
+function CountText({
+  template,
+  value,
+}: {
+  template: string;
+  value: number | null;
+}) {
+  const [lead, tail = ""] = template.split("{count}");
+  if (lead === template) return <>{template}</>;
+  return (
+    <>
+      {lead}
+      <CountUp value={value} />
+      {tail}
+    </>
+  );
 }
 
 /** L2-N6: principle-card icon dispatch. */
@@ -76,6 +104,7 @@ export function Landing({
 }) {
   const copy = getCopy(locale);
   const [menuOpen, setMenuOpen] = useState(false);
+  const plateRef = useRef<HTMLElement | null>(null);
   const stats = useLandingStats();
   // networkChain is the configured chain (APP_CHAIN_ID) — the landing no
   // longer claims a hardcoded mainnet id on a testnet build.
@@ -96,6 +125,22 @@ export function Landing({
       (item) => !seenAgents.has(item.agent),
     ),
   ].slice(0, TICKER_MAX_ITEMS);
+
+  // R13 (baseline-ui): looping animations MUST pause when off-screen — the
+  // marquee and live dots keep running past the fold otherwise.
+  const tickerRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const el = tickerRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver(
+      (entries) =>
+        el.toggleAttribute("data-offscreen", !entries[0]?.isIntersecting),
+      { threshold: 0 },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+
   const navigate = (path: string) => {
     setMenuOpen(false);
     go(path);
@@ -110,19 +155,32 @@ export function Landing({
 
   return (
     <div className="landing-page">
+      <ScrollProgress />
+      <GrainOverlay />
+      {/* R12: WebGL point field behind all landing content (direct child so
+          the z-index contract in index.css keeps it under every section). */}
+      <ThreeBackground />
+      {/* U27 parity with the console: keyboard bypass of the landing nav. */}
+      <a className="skip-link" href="#hero">
+        {copy.a11y.skipToContent}
+      </a>
       {/* L2-N1: expanded top nav. Logo gains the phosphor dot, 4 inline links
           visible at ≥980px, Connect pill, hamburger collapses to mobile. */}
-      <header className="landing-nav">
+      {/* R16: nav + live ticker form ONE sticky header band — the live strip
+          rode mid-page before; now it sits under the nav like a market tape. */}
+      <header className="landing-header">
+        <div className="landing-nav">
         <Logo glyph />
         <nav className="nav-inline" aria-label={copy.landing.nav.overview}>
           <a className="is-active" href="#hero">
             {copy.landing.nav.overview}
           </a>
           <a href="#principles">{copy.landing.nav.principles}</a>
-          <a href="#journey">{copy.landing.nav.howItWorks}</a>
+          <a href="#how">{copy.landing.nav.howItWorks}</a>
           <a href="#footer">{copy.landing.nav.start}</a>
         </nav>
         <div className="nav-right">
+          <ThemeToggle locale={locale} />
           <button type="button" className="nav-connect" onClick={onConnect}>
             <Wallet size={14} aria-hidden="true" />
             {copy.landing.nav.connect}
@@ -172,14 +230,57 @@ export function Landing({
             </nav>
           )}
         </div>
+        </div>
+        {/* L2-N5: live activity ticker. Renders the most recent events
+            pulled from /v1/events, padded with copy placeholders so the
+            rail always has TICKER_MAX_ITEMS rows. */}
+        <section
+          ref={tickerRef}
+          className="ticker"
+          aria-label={interpolate(copy.landing.ticker.label, { chainId })}
+        >
+          <span className="ticker-label">
+            <span className="live-pulse" />
+            {interpolate(copy.landing.ticker.label, { chainId })}
+          </span>
+          {/* Wave 5: the track is aria-hidden — the section label above already
+              names the rail, so screen readers hear the summary once instead of
+              the row contents twice. */}
+          {/* Marquee: the track renders one aria-hidden copy of the rail twice —
+              the -50% translate loop is seamless because both halves are
+              identical. Hover pauses it so a row can be read. */}
+          <div className="ticker-track" aria-hidden="true">
+            {tickerItems.map((item, i) => (
+              <span key={i} className="ticker-item">
+                <span
+                  className={`dot ${item.dot === "warning" ? "warning" : ""}`}
+                />
+                <strong>{item.agent}</strong>
+                <span>
+                  {" "}
+                  · {item.action} · {item.ago}
+                </span>
+              </span>
+            ))}
+            {tickerItems.map((item, i) => (
+              <span key={`d-${i}`} className="ticker-item">
+                <span
+                  className={`dot ${item.dot === "warning" ? "warning" : ""}`}
+                />
+                <strong>{item.agent}</strong>
+                <span>
+                  {" "}
+                  · {item.action} · {item.ago}
+                </span>
+              </span>
+            ))}
+          </div>
+        </section>
       </header>
 
-      <main className="landing-main" id="hero">
+      <main className="landing-main" id="hero" tabIndex={-1}>
+        <Reveal>
         <section className="landing-copy">
-          <span className="eyebrow">
-            <span className="num">01</span>
-            <span>{copy.landing.eyebrow}</span>
-          </span>
           <h1>
             <span>{copy.landing.titleLead}</span>
             <br />
@@ -197,9 +298,10 @@ export function Landing({
             </span>
             <span className="meta-item">
               <span className="dot copper" />
-              {interpolate(copy.landing.meta.agentsOnline, {
-                count: formatCount(agentsCount),
-              })}
+              <CountText
+                template={copy.landing.meta.agentsOnline}
+                value={agentsCount}
+              />
             </span>
           </div>
           <div className="button-row">
@@ -241,9 +343,30 @@ export function Landing({
             </span>
           </div>
         </section>
+        </Reveal>
         {/* L2-N4: proof plate chrome — corners, live label, hairline, floating
             receipt card. Existing hero-caption (R10) stays in place. */}
-        <section className="landing-visual hero-visual-modern">
+        <Reveal delay={160}>
+        <section
+          className="landing-visual hero-visual-modern aw-spotlight"
+          ref={plateRef}
+          onPointerMove={(event) => {
+            // Same contract as fx.tsx SpotlightCard: the ::before glow tracks
+            // the cursor through --aw-spot-x/-y.
+            const el = plateRef.current;
+            if (!el) return;
+            const rect = el.getBoundingClientRect();
+            el.style.setProperty("--aw-spot-x", `${event.clientX - rect.left}px`);
+            el.style.setProperty("--aw-spot-y", `${event.clientY - rect.top}px`);
+          }}
+        >
+          {/* R11: the whole plate is one click target to the proofs hub —
+              the receipt card is display content, not a separate control. */}
+          <a
+            className="proof-plate-link"
+            href="/proofs"
+            aria-label={copy.landing.proofPlateA11y}
+          />
           <img
             className="hero-visual-poster"
             src="/brand/hero-seal-512.jpg"
@@ -300,44 +423,12 @@ export function Landing({
             </div>
           </div>
         </section>
+        </Reveal>
       </main>
-
-      {/* L2-N5: live activity ticker. Renders the most recent events
-          pulled from /v1/events, padded with copy placeholders so the
-          rail always has TICKER_MAX_ITEMS rows. */}
-      <section
-        className="ticker"
-        aria-label={interpolate(copy.landing.ticker.label, { chainId })}
-      >
-        <span className="ticker-label">
-          <span className="live-pulse" />
-          {interpolate(copy.landing.ticker.label, { chainId })}
-        </span>
-        {/* Wave 5: the track is aria-hidden — the section label above already
-            names the rail, so screen readers hear the summary once instead of
-            the row contents twice. */}
-        <div className="ticker-track" aria-hidden="true">
-          {tickerItems.map((item, i) => (
-            <span key={i} className="ticker-item">
-              <span
-                className={`dot ${item.dot === "warning" ? "warning" : ""}`}
-              />
-              <strong>{item.agent}</strong>
-              <span>
-                {" "}
-                · {item.action} · {item.ago}
-              </span>
-            </span>
-          ))}
-        </div>
-      </section>
 
       {/* L2-N6: principles section — three numbered cards. */}
       <section className="scroll-section principles-section" id="principles">
         <header className="section-head">
-          <span className="section-eyebrow">
-            <span className="num">02</span>// {copy.landing.principles.eyebrow}
-          </span>
           <h2
             dangerouslySetInnerHTML={{
               __html: interpolate(copy.landing.principles.title, {
@@ -347,10 +438,10 @@ export function Landing({
             }}
           />
         </header>
+        <Reveal>
         <div className="principles-grid">
           {copy.landing.principles.items.map((p, i) => (
-            <article key={i} className="principle">
-              <span className="p-num">0{i + 1}</span>
+            <SpotlightCard key={i} className="principle">
               <span className="p-icon" aria-hidden="true">
                 <PrincipleIcon name={p.icon} />
               </span>
@@ -359,17 +450,40 @@ export function Landing({
               <a href={PRINCIPLE_HREFS[i]} className="p-link">
                 {p.link} <ArrowRight size={14} aria-hidden="true" />
               </a>
-            </article>
+            </SpotlightCard>
           ))}
         </div>
+        </Reveal>
+      </section>
+
+      {/* R12: how-it-works — the operating loop; the nav's "How it works"
+          anchor points here (it previously mis-landed on the journey). */}
+      <section className="scroll-section how-section" id="how">
+        <header className="section-head">
+          <h2
+            dangerouslySetInnerHTML={{
+              __html: interpolate(copy.landing.how.title, {
+                emphasis: "<em>",
+                endEmphasis: "</em>",
+              }),
+            }}
+          />
+        </header>
+        <Reveal>
+        <div className="principles-grid how-grid">
+          {copy.landing.how.steps.map((step, i) => (
+            <SpotlightCard key={i} className="principle how-step">
+              <h3 dangerouslySetInnerHTML={{ __html: step.title }} />
+              <p dangerouslySetInnerHTML={{ __html: step.body }} />
+            </SpotlightCard>
+          ))}
+        </div>
+        </Reveal>
       </section>
 
       {/* L2-N7: journey section (replaces the strip — same destinations). */}
       <section className="scroll-section journey-section" id="journey">
         <header className="section-head">
-          <span className="section-eyebrow">
-            <span className="num">03</span>// {copy.landing.journey.eyebrow}
-          </span>
           <h2
             dangerouslySetInnerHTML={{
               __html: interpolate(copy.landing.journey.title, {
@@ -379,20 +493,17 @@ export function Landing({
             }}
           />
         </header>
+        <Reveal>
         <div className="journey">
           {copy.landing.journey.items.map((item, i) => (
-            <article key={i} className="journey-card">
-              <span className="j-num">// {item.eyebrow}</span>
+            <Parallax key={i} strength={i === 0 ? -30 : 30}>
+            <article className="journey-card">
               <h3 dangerouslySetInnerHTML={{ __html: item.title }} />
               <p dangerouslySetInnerHTML={{ __html: item.body }} />
               <div className="j-meta">
-                <strong
-                  dangerouslySetInnerHTML={{
-                    __html: interpolate(item.meta, {
-                      count: formatCount(agentsCount),
-                    }),
-                  }}
-                />
+                <strong>
+                  <CountText template={item.meta} value={agentsCount} />
+                </strong>
               </div>
               <button
                 type="button"
@@ -402,11 +513,14 @@ export function Landing({
                 {item.cta} <ArrowRight size={14} aria-hidden="true" />
               </button>
             </article>
+            </Parallax>
           ))}
         </div>
+        </Reveal>
       </section>
 
       {/* L2-N8: footer. */}
+      <Reveal>
       <footer className="landing-footer" id="footer">
         <small>{copy.landing.footer.credit}</small>
         <div className="footer-meta">
@@ -417,6 +531,7 @@ export function Landing({
           ))}
         </div>
       </footer>
+      </Reveal>
     </div>
   );
 }

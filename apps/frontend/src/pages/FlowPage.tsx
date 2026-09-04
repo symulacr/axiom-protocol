@@ -477,6 +477,7 @@ export function FlowPage({
   const flow = copy.flows[kind];
   const f = copy.flowUi;
   const draft = state.operationDrafts[kind];
+  const formRef = useRef<HTMLDivElement>(null);
   const chainId = useChainId();
   const { address } = useAccount();
   const publicClient = usePublicClient();
@@ -706,6 +707,15 @@ export function FlowPage({
       // Sheet stays CLOSED for invalid drafts: inline field error first, notice toast as backup.
       setSubmitError(invalid);
       dispatch({ type: "notice", notice: invalid.message, severity: "error" });
+      // Forms contract: the focus move to the first invalid control IS the
+      // announcement (label + aria-describedby error read with the field).
+      requestAnimationFrame(() => {
+        formRef.current
+          ?.querySelector<HTMLElement>(
+            '[aria-invalid="true"], .field-error input, .field-error select, .field-error textarea',
+          )
+          ?.focus();
+      });
       return;
     }
     setSubmitError(null);
@@ -1277,7 +1287,7 @@ export function FlowPage({
             <img src={meta.media} alt={flow.title} />
           </div>
 
-          <div className="flow-form">
+          <div className="flow-form" ref={formRef}>
             {kind !== "mint" && agentsPending && (
               // T3a: skeleton select row — same footprint as the real field so
               // the form doesn't jump when agents arrive (aria-busy while the
@@ -1316,6 +1326,7 @@ export function FlowPage({
                   <select
                     className="axiom-field"
                     aria-label={f.agentA11y}
+                    aria-invalid={submitError?.field === "agent" ? "true" : undefined}
                     value={selectedTokenId}
                     disabled={isReviewOpen}
                     onChange={(event) => {
@@ -1730,7 +1741,14 @@ function OperationReviewSheet({
       <section
         ref={sheetRef}
         className="operation-review-sheet"
-        role="dialog"
+        /* R13 (baseline-ui): destructive/irreversible operations (funds out,
+           ownership handoff) MUST announce as an AlertDialog. Constructive
+           flows keep the plain dialog role. */
+        role={
+          kind === "withdraw" || kind === "transfer" || kind === "payment"
+            ? "alertdialog"
+            : "dialog"
+        }
         aria-modal="true"
         aria-labelledby="operation-review-title"
         aria-describedby={draft.error ? "operation-review-error" : undefined}

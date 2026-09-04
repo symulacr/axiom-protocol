@@ -13,10 +13,10 @@ import { useEffect, useRef, useState } from "react";
 import { useAccount, useConnect, useConnectors, useSwitchChain } from "wagmi";
 import { AlertTriangle, LockKeyhole, Network, X } from "./icons.js";
 import { Button, ErrorNote } from "./Controls.js";
-import { ConnectModal } from "./ConnectModal.js";
 import { Logo } from "./AppShell.js";
 
 import { getCopy, interpolate, type Locale } from "../../lib/copy.js";
+import { CopyButton } from "../ui.js";
 import type { ConsoleAction } from "../../lib/consoleStore.js";
 import type { Session } from "../../lib/models.js";
 import { humanizeError } from "../../utils/format.js";
@@ -51,7 +51,10 @@ export function WalletGate({
   // literal ("Switch to 0G Mainnet" told testnet users the wrong network).
   const chainVars = { chainName: APP_CHAIN.name, chainId: APP_CHAIN_ID };
   const { address, isConnected, chainId, connector } = useAccount();
-  const [chooserOpen, setChooserOpen] = useState(false);
+  // R12: the nested chooser modal is gone — conflicts render as an inline
+  // option list inside this single panel.
+  const [showOptions, setShowOptions] = useState(false);
+  const [pairingUri, setPairingUri] = useState<string | null>(null);
   const [connecting, setConnecting] = useState(false);
   const { connectAsync } = useConnect();
   const connectors = useConnectors();
@@ -65,7 +68,7 @@ export function WalletGate({
   // dismiss contract: Esc + Tab trap + initial focus + focus restore here; backdrop via
   // layer onMouseDown below; X already exists. Dismiss is safe in every view — the wagmi
   // connection persists and the gate re-opens from any locked CTA. The trap binds to the
-  // layer (not the gate section) so the nested ConnectModal chooser stays inside it too.
+  // layer (not the gate section) so inline conflict options stay inside it too.
   const layerRef = useRef<HTMLDivElement>(null);
   useModalDismiss(onClose, layerRef);
 
@@ -119,8 +122,9 @@ export function WalletGate({
   // One-click happy path: the CTA connects the first injected wallet
   // synchronously in the click gesture. No provider installed → mipd lists
   // nothing usable, so surface it instead of throwing ProviderNotFoundError.
-  const connectInjected = async () => {
-    const target = injected[0];
+  const connectWith = async (
+    target: (typeof connectors)[number] | undefined,
+  ) => {
     if (!target) {
       setError(copy.wallet.noWalletDetected);
       return;
@@ -142,21 +146,53 @@ export function WalletGate({
     }
   };
 
+  const connectInjected = () => connectWith(injected[0]);
+
+  // R12: mobile path goes straight to the WalletConnect SDK connector. The
+  // pairing URI is captured from the connector's message event and shown
+  // inline in this panel — one action, no second modal.
+  const connectMobile = async () => {
+    if (!mobileConnector) return;
+    setError(null);
+    setConnecting(true);
+    try {
+      const emitter = mobileConnector as unknown as {
+        on?: (
+          event: string,
+          cb: (payload: { type?: string; data?: unknown }) => void,
+        ) => void;
+      };
+      emitter.on?.("message", (payload) => {
+        const data = payload.data as { uri?: string } | undefined;
+        const uri = data?.uri;
+        if (typeof uri === "string" && uri.startsWith("wc:")) {
+          setPairingUri(uri);
+        }
+      });
+      await connectAsync({ connector: mobileConnector });
+    } catch (err) {
+      setError(humanizeError(err));
+    } finally {
+      setConnecting(false);
+    }
+  };
+
   const view: "connect" | "wrong-network" = wrongNetwork
     ? "wrong-network"
     : "connect";
 
   // Zero-interstitial open: mounting the gate continues the original click
   // gesture — exactly one injected wallet connects immediately (extension
-  // popup, no second click); several wallets auto-open the chooser; none
-  // surfaces the install hint at once. The panel stays for retries and
-  // manual paths.
+  // popup, no second click); several wallets list inline; none starts the
+  // WalletConnect pairing directly. The panel stays for retries and manual
+  // paths.
   const autoTried = useRef(false);
   useEffect(() => {
     if (view !== "connect" || autoTried.current) return;
     autoTried.current = true;
-    if (injected.length > 1) setChooserOpen(true);
+    if (injected.length > 1) setShowOptions(true);
     else if (injected.length === 1) void connectInjected();
+    else if (mobileConnector) void connectMobile();
     else setError(copy.wallet.noWalletDetected);
     // Run once per mount: connectors and copy are stable for the gate lifetime.
   }, []);
@@ -181,6 +217,8 @@ export function WalletGate({
           <img
             src="/brand/hero-seal-512.jpg"
             alt="Abstract Axiom wallet access nucleus"
+            loading="lazy"
+            decoding="async"
           />
           <div className="wallet-gate-art-copy">
             <strong>
@@ -201,27 +239,72 @@ export function WalletGate({
             <>
               <h1 id="wallet-title">{copy.wallet.gateTitle}</h1>
               <p>Connect a wallet to start a session. We never take custody.</p>
-              {/* Chooser only on conflict: >1 injected wallet means the CTA
-                  cannot guess which one to open. */}
+              {/* Conflict (>1 injected wallet) renders inline — no nested
+                  chooser modal. */}
               <Button
                 busy={connecting}
                 onClick={() =>
                   injected.length > 1
-                    ? setChooserOpen(true)
+                    ? setShowOptions(true)
                     : void connectInjected()
                 }
                 icon={<LockKeyhole size={16} />}
               >
                 {copy.nav.connectWallet}
               </Button>
-              {mobileConnector && (
+              {showOptions && (
+                <div
+                  className="connect-options-inline"
+                  aria-label={copy.wallet.connectTitle}
+                >
+                  {connectors.map((c) => {
+                    const isInjected = c.type === "injected";
+                    return (
+                      <Button
+                        key={c.uid}
+                        variant="secondary"
+                        busy={connecting}
+                        onClick={() => {
+                          setShowOptions(false);
+                          void connectWith(c);
+                        }}
+                      >
+                        <span className="connect-option">
+                          <strong>
+                            {isInjected
+                              ? copy.wallet.browserWalletLabel
+                              : copy.wallet.walletConnectLabel}
+                          </strong>
+                          {isInjected ? (
+                            <small>{copy.wallet.browserWalletHint}</small>
+                          ) : (
+                            <small>{copy.wallet.walletConnectHint}</small>
+                          )}
+                        </span>
+                      </Button>
+                    );
+                  })}
+                </div>
+              )}
+              {mobileConnector && !showOptions && (
                 <Button
                   variant="ghost"
                   className="wallet-gate-mobile-cta"
-                  onClick={() => setChooserOpen(true)}
+                  busy={connecting}
+                  onClick={() => void connectMobile()}
                 >
                   {copy.wallet.useMobileWallet}
                 </Button>
+              )}
+              {pairingUri && (
+                /* WalletConnect SDK pairing — code surfaced inline in this
+                   panel instead of a second modal. */
+                <div className="wallet-pairing">
+                  <strong>{copy.wallet.pairingTitle}</strong>
+                  <span>{copy.wallet.pairingHint}</span>
+                  <code>{pairingUri}</code>
+                  <CopyButton text={pairingUri} />
+                </div>
               )}
               <ErrorNote message={error} />
             </>
@@ -260,9 +343,6 @@ export function WalletGate({
           )}
         </div>
       </section>
-      {chooserOpen && (
-        <ConnectModal onClose={() => setChooserOpen(false)} locale={locale} />
-      )}
     </div>
   );
 }

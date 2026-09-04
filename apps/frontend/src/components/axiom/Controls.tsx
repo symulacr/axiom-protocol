@@ -132,7 +132,9 @@ export function Field({
         {suffix && <em aria-hidden="true">{suffix}</em>}
       </span>
       {error ? (
-        <span id={messageId} className="field-message" role="alert">
+        // Polite, not alert: tied to the field via aria-describedby and read
+        // with it on focus (assertive is reserved for untied form-level errors).
+        <span id={messageId} className="field-message" role="status">
           {error}
         </span>
       ) : hint ? (

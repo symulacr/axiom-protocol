@@ -112,6 +112,9 @@ export type Copy = {
     explorePublicPaths: string;
     walletAccess: string;
     closeWalletAccess: string;
+    /** R12: global theme icon button. */
+    switchToLight: string;
+    switchToDark: string;
     /** U27: skip-to-content link in AppShell. */
     skipToContent: string;
   };
@@ -129,10 +132,9 @@ export type Copy = {
     tryAssistant: string;
     stripVerifySmall: string;
     stripOperateSmall: string;
-    /** R4: phosphor-dot eyebrow pill above the h1. */
-    eyebrow: string;
     /** R10: proof-field caption — small mono caption + Fraunces italic body. */
     proofCaptionSmall: string;
+    proofPlateA11y: string;
     proofCaptionBody: string;
     /** T4: real product preview inside the hero plate (self-demonstrating). */
     previewAgentTitle: string;
@@ -194,7 +196,6 @@ export type Copy = {
     };
     /** L2-N6: principles section — 3 cards. */
     principles: {
-      eyebrow: string;
       /** Placeholders: `{emphasis}` opens <em>, `{endEmphasis}` closes it. */
       title: string;
       items: ReadonlyArray<{
@@ -204,13 +205,18 @@ export type Copy = {
         link: string;
       }>;
     };
+    /** R12: how-it-works — the three-step operating loop (no numbered chips:
+        the banned numbered-label pattern; titles carry the sequence). */
+    how: {
+      /** Placeholders: `{emphasis}` opens <em>, `{endEmphasis}` closes it. */
+      title: string;
+      steps: ReadonlyArray<{ title: string; body: string }>;
+    };
     /** L2-N7: journey section — 2 cards (replaces the strip). */
     journey: {
-      eyebrow: string;
       /** Placeholders: `{emphasis}` opens <em>, `{endEmphasis}` closes it. */
       title: string;
       items: ReadonlyArray<{
-        eyebrow: string;
         title: string;
         body: string;
         meta: string;
@@ -247,6 +253,8 @@ export type Copy = {
     walletConnectHint: string;
     /** Secondary CTA under the direct-connect primary. */
     useMobileWallet: string;
+    pairingTitle: string;
+    pairingHint: string;
     /** Shown when no injected provider announced via EIP-6963. */
     noWalletDetected: string;
   };
@@ -1080,6 +1088,8 @@ const english: Copy = {
     closeNotification: "Close notification",
     closeOnboarding: "Close onboarding",
     explorePublicPaths: "Explore public paths",
+    switchToLight: "Switch to light theme",
+    switchToDark: "Switch to dark theme",
     walletAccess: "Axiom wallet access",
     closeWalletAccess: "Close wallet access",
     skipToContent: "Skip to content",
@@ -1088,7 +1098,7 @@ const english: Copy = {
     titleLead: "Own an AI agent.",
     titleEmphasis: "Keep every action accountable.",
     description:
-      "Mint an intelligent NFT with a bounded vault. Your agent can work within rules you set, while every important action leaves a verifiable receipt.",
+      "Mint an agent with a bounded vault. It works inside rules you set.",
     nextSafeAction: "Next safe action",
     signatureBoundary: "How signing works",
     consoleAccess: "Console access",
@@ -1098,8 +1108,8 @@ const english: Copy = {
     tryAssistant: "Try the assistant",
     stripVerifySmall: "No gas, no custody",
     stripOperateSmall: "Receipts beside action",
-    eyebrow: "On-chain agent protocol",
     proofCaptionSmall: "Sealed transfer",
+    proofPlateA11y: "Open the proofs hub",
     proofCaptionBody: "Every payload is re-keyed to its new owner.",
     previewAgentTitle: "Agent #7",
     previewAgentDesc: "Oracle attestations, every 10 minutes",
@@ -1203,45 +1213,49 @@ const english: Copy = {
       },
     },
     principles: {
-      eyebrow: "Three principles",
       title: "What makes Axiom {emphasis}different.{endEmphasis}",
       items: [
         {
           icon: "shield",
           title: "Bounded by design.",
-          body: "Every agent ships with an explicit vault and a daily spending limit. The vault is enforced on-chain — no off-chain guardrails to drift.",
+          body: "An on-chain vault with a daily limit. No off-chain guardrails.",
           link: "Read the spec",
         },
         {
           icon: "receipt",
           title: "Receipts, not promises.",
-          body: "Each signature lands as an indexed receipt. The transaction center shows the proof — agent, block, outcome — beside the action that produced it.",
+          body: "Every signature indexes as a receipt: agent, block, outcome.",
           link: "How receipts work",
         },
         {
           icon: "wallet",
           title: "Your wallet, your keys.",
-          body: "Non-custodial. Connect with the wallet you already use. No accounts, no emails — the signature is the identity, the receipt is the history.",
+          body: "Connect the wallet you already use. No accounts, no emails.",
           link: "Wallet options",
         },
       ],
     },
+    how: {
+      title: "Three steps to {emphasis}a running agent.{endEmphasis}",
+      steps: [
+        { title: "Mint.", body: "One transaction creates the agent and its vault." },
+        { title: "Fund.", body: "Top up the vault. Set the daily limit." },
+        { title: "Run.", body: "Ticks execute inside your rules. Receipts index on-chain." },
+      ],
+    },
     journey: {
-      eyebrow: "Pick one",
       title: "Two paths {emphasis}to start.{endEmphasis}",
       items: [
         {
-          eyebrow: "Journey A",
           title: "Learn the boundary before you sign.",
-          body: "How Axiom splits signing from custody, what receipts look like, and which wallet choices keep your keys yours. No wallet required to read.",
+          body: "How signing splits from custody, and which wallets keep your keys yours. No wallet needed to read.",
           meta: "Read time · 3 min",
           cta: "How signing works",
           onClick: "onGuide",
         },
         {
-          eyebrow: "Journey B",
           title: "Open the console and operate receipts.",
-          body: "Connect once to mint, fund, and run. Every signature lands as an indexed receipt beside the action that produced it.",
+          body: "Connect once to mint, fund and run. The console tracks each step.",
           meta: "Live · {count} agents online",
           cta: "Console access",
           onClick: "goToApp",
@@ -1274,6 +1288,8 @@ const english: Copy = {
     walletConnectLabel: "WalletConnect",
     walletConnectHint: "Scan the QR code or open your wallet app",
     useMobileWallet: "Use mobile wallet",
+    pairingTitle: "Pair your wallet",
+    pairingHint: "Copy the code into your wallet app's WalletConnect screen.",
     noWalletDetected:
       "No browser wallet detected. Install one, or use a mobile wallet.",
   },
@@ -1295,7 +1311,7 @@ const english: Copy = {
   },
   staking: {
     lede: "Staking isn\u0027t part of Axiom.",
-    body: "Staking lives in the official 0G app — agents, vaults and receipts stay here.",
+    body: "Staking lives in the official 0G app : agents, vaults and receipts stay here.",
     openVault: "Go to my agents",
     backLabel: "Back to console",
     docsLink:
@@ -1322,7 +1338,7 @@ const english: Copy = {
   },
   errorBoundary: {
     networkTitle: "Connection problem",
-    genericTitle: "Something went wrong",
+    genericTitle: "Unable to load this view",
     networkBody:
       "Unable to load this section. Retry, or check your connection if it keeps failing.",
     retry: "Try again",
@@ -1378,7 +1394,7 @@ const english: Copy = {
     statusReady: "Ready",
     statusOnline: "online",
     shortcutTitle: "Keyboard map",
-    shortcutHint: "Shortcuts navigate; they never sign.",
+    shortcutHint: "Shortcuts navigate. They never sign.",
     shortcutPalette: "Find actions, agents, receipts and routes",
     shortcutSurfaces: "Open main areas",
     shortcutFlows: "Open execution flows",
@@ -1548,8 +1564,8 @@ const english: Copy = {
     routingSummaryCheapest: "Lowest cost",
     routingStatusPinned: (address) =>
       `Pinned to ${address}. Every turn is served by this provider.`,
-    routingStatusCheapest: "Cheapest first; may change between turns.",
-    routingStatusAuto: "Fastest provider; follow-ups stay on it.",
+    routingStatusCheapest: "Cheapest first. The pick can change between turns.",
+    routingStatusAuto: "Fastest provider. Follow-ups stay on it.",
     phaseRunning: (names, elapsed) => `Running ${names}… (${elapsed}s)`,
     phaseStreaming: (elapsed) => `Streaming response… (${elapsed}s)`,
     phaseThinking: "Thinking…",
@@ -1587,17 +1603,17 @@ const english: Copy = {
     refillAction: "Claim free gas grant",
     sponsoredBadge: "sponsored",
     tankLowBanner:
-      "Your gas tank is nearly empty — ops keep running until your free grants run out.",
+      "Your gas tank is nearly empty : ops keep running until your free grants run out.",
     faucetBalanceLabel: "Test tokens",
     faucetEligibleBadge: "faucet available",
     faucetIneligibleBadge: "faucet claimed",
     faucetClaimAction: "Claim free test tokens",
-    depositQueued: "Deposit queued — track it in the transaction center.",
+    depositQueued: "Deposit queued : track it in the transaction center.",
     refillDone: "Gas grant claimed. Tank balance refreshed.",
     refillFailed:
-      "Gas grant claim failed — check your connection and try again.",
+      "Gas grant claim failed : check your connection and try again.",
     faucetDone: "Test tokens minted.",
-    faucetFailed: "Faucet claim failed — you may already have claimed.",
+    faucetFailed: "Faucet claim failed : you may already have claimed.",
   },
   storage: {
     title: "Store the payload, then verify its proof.",
@@ -1630,7 +1646,7 @@ const english: Copy = {
     notIndexed: "not indexed",
     verifyTitle: "Verify on 0G",
     verifyHint:
-      "Paste a publication root hash to open the 0G storage indexer’s own record for it. Axiom never stores your files; verification happens on 0G infrastructure.",
+      "Paste a publication root hash to open the 0G storage indexer’s own record for it. Axiom never stores your files. Verification runs on 0G infrastructure.",
     verifyLabel: "Root hash to verify",
     verifyPlaceholder: "0x…",
     verifyAction: "Open 0G verification",
@@ -1692,7 +1708,7 @@ const english: Copy = {
       proofLine: "Records the provider route and execution evidence.",
       contextTitle: "Stream before result.",
       fieldLabel: "Instruction",
-      fieldHint: "Cancellable; streamed tokens appear below.",
+      fieldHint: "Cancellable. Streamed tokens appear below.",
       detail: "{action}, {reason}",
       notice: "Tick {outcome} for agent #{agent}. Stream receipt indexed.",
     },
@@ -1703,7 +1719,7 @@ const english: Copy = {
       receiptKind: "Deposit",
       consequence: "Move the reviewed amount into this agent's vault.",
       proofLine:
-        "Encodes via the vault relay; value equals the reviewed amount.",
+        "Encodes via the vault relay. Value equals the reviewed amount.",
       contextTitle: "Review before value moves.",
       fieldLabel: "Amount",
       fieldHint: "The resulting vault balance appears in review.",
@@ -1717,7 +1733,7 @@ const english: Copy = {
       receiptKind: "Withdraw",
       consequence: "Move the reviewed amount out of this agent's vault.",
       proofLine:
-        "Encodes via the vault relay; the remaining balance is shown above.",
+        "Encodes via the vault relay. The remaining balance is shown above.",
       contextTitle: "Balance before withdrawal.",
       fieldLabel: "Amount",
       fieldHint: "The resulting vault balance appears in review.",
@@ -1763,7 +1779,7 @@ const english: Copy = {
     errRecipientAddress: "Recipient must be a valid 0x address.",
     errRecipientKey: "Recipient public key must be 64 bytes of hex (0x…).",
     errRecipientKeyIsAddress:
-      "This looks like an Ethereum address (42 chars); a transfer needs the receiver's public key (132 chars). See “How to get it” below.",
+      "This looks like an Ethereum address (42 chars). A transfer needs the receiver's public key (132 chars). See “How to get it” below.",
     transferKeyWalkthroughTitle: "How to get it",
     transferKeyWalkthroughSteps: [
       "The receiver opens their wallet and picks the account that will hold the agent",
@@ -1793,10 +1809,10 @@ const english: Copy = {
     receiptBodyReverted:
       "Reverted on-chain. The transaction center row offers recovery.",
     receiptBodyStale:
-      "No confirmation after {seconds}s. Check the explorer; the row is marked Needs review.",
+      "No confirmation after {seconds}s. Check the explorer. The row is marked Needs review.",
     receiptBodyConfirming: "Submitted, awaiting on-chain confirmation.",
     receiptRemedy:
-      "Reverted or timed out? Retry the transaction — raise gas if the network is busy, or check your connection.",
+      "Reverted or timed out? Retry the transaction : raise gas if the network is busy, or check your connection.",
     copyReceiptAction: "Copy receipt",
     openReceiptAction: "Open receipt",
     startAnotherAction: "Start another",
@@ -1855,7 +1871,7 @@ const english: Copy = {
     transferAgentTitle: (id) => `Transfer agent #${id}`,
     handoffTitle: "Receiver on another device?",
     handoffBody:
-      "Send this link. They sign it; paste their result here, then you submit.",
+      "Send this link. They sign it and paste the result here. Then you submit.",
     handoffCopyLink: "Copy approval link",
     handoffLinkCopied: "Approval link copied. Send it to the receiver.",
     handoffPasteLabel: "Paste approval link",
@@ -1968,7 +1984,7 @@ const english: Copy = {
     // W3-C Permit2 pay panel — terms render exactly what the signature permits.
     permit2Title: "Pay with Permit2",
     permit2Hint:
-      "Sign once — no approval transaction. The signature allows the payment processor to pull exactly this amount for this agent.",
+      "Sign once : no approval transaction. The signature allows the payment processor to pull exactly this amount for this agent.",
     permit2Cta: "Sign & pay",
     payAmountLabel: "Amount to pay",
     permit2LaneNote: (lane) =>
@@ -1992,13 +2008,13 @@ const english: Copy = {
     delegationInstall: "Sign & install",
     delegationRevoke: "Revoke",
     delegationNotConfigured:
-      "Delegation registry not configured yet — available after the next deployment.",
+      "Delegation registry not configured yet : available after the next deployment.",
     delegationTargetsLabel:
       "Allowed operations (contract:selector, one per line)",
     delegationTargetsPlaceholder: "0x…:0x1a2b3c4d",
     delegationOwnerOnly: "Only the agent owner sees this card.",
     delegationToast: (hash) => `Delegation updated (${hash.slice(0, 10)}…)`,
-    errDelegationForm: "Check the delegation fields — {error}",
+    errDelegationForm: "Check the delegation fields : {error}",
     errDelegationWallet: "Connect your wallet to install a delegation.",
   },
   transactions: {
@@ -2066,7 +2082,7 @@ const english: Copy = {
     chat: {
       titleLead: "Chat that knows",
       titleEmphasis: "your setup.",
-      copy: "Ask about your agents; chat knows your session.",
+      copy: "Ask about your agents. Chat knows your session.",
     },
     mint: {
       titleLead: "Name your agent",
@@ -2076,12 +2092,12 @@ const english: Copy = {
     payment: {
       titleLead: "Pay exactly",
       titleEmphasis: "what you approve.",
-      copy: "Approve exactly what you pay; fees shown up front.",
+      copy: "Approve exactly what you pay. Fees are shown up front.",
     },
     transfer: {
       titleLead: "Transfers your receiver",
       titleEmphasis: "co-signs.",
-      copy: "Receiver co-signs; expiry is enforced.",
+      copy: "Receiver co-signs. Expiry is enforced.",
     },
     storage: {
       titleLead: "Storage you can",
@@ -2096,7 +2112,7 @@ const english: Copy = {
     agentsList: {
       titleLead: "Browse agents,",
       titleEmphasis: "before you commit.",
-      copy: "See the whole roster; connect to open yours.",
+      copy: "See the whole roster. Connect to open yours.",
     },
     tick: {
       titleLead: "Run one agent task,",
@@ -2117,11 +2133,11 @@ const english: Copy = {
   checklist: {
     title: "Get your first agent working",
     dismiss: "Dismiss",
-    done: "Fleet active — your agents are funded and running.",
+    done: "Fleet active : your agents are funded and running.",
     steps: {
       mint: {
         label: "Mint your agent",
-        hint: "Register an agent — no funds needed yet.",
+        hint: "Register an agent : no funds needed yet.",
       },
       deposit: {
         label: "Fund its vault",
@@ -2204,6 +2220,8 @@ const french: Copy = {
     closeNotification: "Fermer la notification",
     closeOnboarding: "Fermer le guide",
     explorePublicPaths: "Explorer les parcours publics",
+    switchToLight: "Passer en thème clair",
+    switchToDark: "Passer en thème sombre",
     walletAccess: "Accès wallet Axiom",
     closeWalletAccess: "Fermer l’accès wallet",
     skipToContent: "Aller au contenu",
@@ -2213,7 +2231,7 @@ const french: Copy = {
     titleLead: "Possédez des agents IA",
     titleEmphasis: "qui travaillent pour vous.",
     description:
-      "Mintez un agent sur 0G, mettez vos fonds au travail et gardez le contrôle. Chaque étape est signée par votre wallet et laisse un reçu.",
+      "Mintez un agent sur 0G, mettez vos fonds au travail et gardez le contrôle.",
     nextSafeAction: "Prochaine action sûre",
     signatureBoundary: "Comment fonctionne la signature",
     consoleAccess: "Accès console",
@@ -2223,8 +2241,8 @@ const french: Copy = {
     menuDevelopersHint: "APIs et outils pour développeurs",
     stripVerifySmall: "Sans gas, sans garde",
     stripOperateSmall: "Reçus à côté de l’action",
-    eyebrow: "Protocole d’agents on-chain",
     proofCaptionSmall: "Transfert scellé",
+    proofPlateA11y: "Ouvrir le hub des preuves",
     proofCaptionBody:
       "Chaque payload est recréé pour son nouveau propriétaire.",
     previewAgentTitle: "Agent nº 7",
@@ -2329,45 +2347,49 @@ const french: Copy = {
       },
     },
     principles: {
-      eyebrow: "Trois principes",
       title: "Ce qui rend Axiom {emphasis}différent.{endEmphasis}",
       items: [
         {
           icon: "shield",
           title: "Délimité par conception.",
-          body: "Chaque agent est livré avec un coffre explicite et une limite de dépenses quotidienne. Le coffre est appliqué on-chain — pas de garde-fous hors chaîne.",
+          body: "Un coffre on-chain avec une limite quotidienne. Rien hors chaîne.",
           link: "Lire la spec",
         },
         {
           icon: "receipt",
           title: "Reçus, pas promesses.",
-          body: "Chaque signature devient un reçu indexé. Le centre de transactions montre la preuve — agent, bloc, résultat — à côté de l'action qui l'a produite.",
+          body: "Chaque signature devient un reçu indexé : agent, bloc, résultat.",
           link: "Comment fonctionnent les reçus",
         },
         {
           icon: "wallet",
           title: "Votre wallet, vos clés.",
-          body: "Non-dépositaire. Connectez-vous avec le wallet que vous utilisez déjà. Pas de comptes, pas d'emails — la signature est l'identité, le reçu est l'historique.",
+          body: "Connectez le wallet que vous utilisez déjà. Pas de comptes, pas d'emails.",
           link: "Options de wallet",
         },
       ],
     },
+    how: {
+      title: "Trois étapes vers {emphasis}un agent actif.{endEmphasis}",
+      steps: [
+        { title: "Mintez.", body: "Une transaction crée l'agent et son coffre." },
+        { title: "Financez.", body: "Approvisionnez le coffre. Fixez la limite quotidienne." },
+        { title: "Opérez.", body: "Les ticks s'exécutent dans vos règles. Les reçus s'indexent on-chain." },
+      ],
+    },
     journey: {
-      eyebrow: "Choisissez",
       title: "Deux chemins {emphasis}pour commencer.{endEmphasis}",
       items: [
         {
-          eyebrow: "Parcours A",
           title: "Apprenez la limite avant de signer.",
-          body: "Comment Axiom sépare signature et garde, à quoi ressemblent les reçus, et quels wallets gardent vos clés. Pas besoin de wallet pour lire.",
+          body: "Comment la signature se sépare de la garde et quels wallets gardent vos clés. Pas de wallet pour lire.",
           meta: "Temps de lecture · 3 min",
           cta: "Comment fonctionne la signature",
           onClick: "onGuide",
         },
         {
-          eyebrow: "Parcours B",
           title: "Ouvrir la console et opérer les reçus.",
-          body: "Connectez-vous une fois pour minter, financer et opérer. Chaque signature devient un reçu indexé à côté de l'action qui l'a produite.",
+          body: "Connectez-vous une fois pour minter, financer et opérer. La console suit chaque étape.",
           meta: "En direct · {count} agents en ligne",
           cta: "Accès console",
           onClick: "goToApp",
@@ -2401,6 +2423,8 @@ const french: Copy = {
     walletConnectLabel: "WalletConnect",
     walletConnectHint: "Scannez le QR code ou ouvrez votre app wallet",
     useMobileWallet: "Utiliser un wallet mobile",
+    pairingTitle: "Appairez votre wallet",
+    pairingHint: "Copiez le code dans l'écran WalletConnect de votre app wallet.",
     noWalletDetected:
       "Aucun wallet de navigateur détecté. Installez-en un ou utilisez un wallet mobile.",
   },
@@ -2423,7 +2447,7 @@ const french: Copy = {
   },
   staking: {
     lede: "Le staking ne fait pas partie d’Axiom.",
-    body: "Le staking passe par l’app officielle 0G — agents, coffres et reçus restent ici.",
+    body: "Le staking passe par l’app officielle 0G : agents, coffres et reçus restent ici.",
     openVault: "Aller à mes agents",
     backLabel: "Retour à la console",
     docsLink:
@@ -2450,7 +2474,7 @@ const french: Copy = {
   },
   errorBoundary: {
     networkTitle: "Problème de connexion",
-    genericTitle: "Une erreur est survenue",
+    genericTitle: "Impossible de charger cette vue",
     networkBody:
       "Impossible de charger cette section. Réessayez, ou vérifiez votre connexion si l’erreur persiste.",
     retry: "Réessayer",
@@ -2716,19 +2740,19 @@ const french: Copy = {
     refillAction: "Réclamer une subvention de gaz",
     sponsoredBadge: "offert",
     tankLowBanner:
-      "Votre réservoir de gaz est presque vide — les opérations continuent jusqu'à épuisement de vos subventions gratuites.",
+      "Votre réservoir de gaz est presque vide : les opérations continuent jusqu'à épuisement de vos subventions gratuites.",
     faucetBalanceLabel: "Jetons de test",
     faucetEligibleBadge: "robinet disponible",
     faucetIneligibleBadge: "robinet réclamé",
     faucetClaimAction: "Réclamer les jetons de test",
     depositQueued:
-      "Dépôt en file — suivez-le dans le centre des transactions.",
+      "Dépôt en file : suivez-le dans le centre des transactions.",
     refillDone: "Subvention de gaz réclamée. Solde du réservoir actualisé.",
     refillFailed:
-      "Échec de la réclamation de gaz — vérifiez votre connexion et réessayez.",
+      "Échec de la réclamation de gaz : vérifiez votre connexion et réessayez.",
     faucetDone: "Jetons de test mintés.",
     faucetFailed:
-      "Échec de la réclamation du faucet — vous avez peut-être déjà réclamé.",
+      "Échec de la réclamation du faucet : vous avez peut-être déjà réclamé.",
   },
   storage: {
     ...english.storage,
@@ -2933,7 +2957,7 @@ const french: Copy = {
       "Aucune confirmation après {seconds} s. Vérifiez l’explorateur ; la ligne est marquée À examiner.",
     receiptBodyConfirming: "Soumis, en attente de confirmation on-chain.",
     receiptRemedy:
-      "Rejeté ou expiré ? Relancez la transaction — augmentez le gas si le réseau est chargé, ou vérifiez votre connexion.",
+      "Rejeté ou expiré ? Relancez la transaction : augmentez le gas si le réseau est chargé, ou vérifiez votre connexion.",
     copyReceiptAction: "Copier le reçu",
     openReceiptAction: "Ouvrir le reçu",
     startAnotherAction: "Recommencer",
@@ -3224,11 +3248,11 @@ const french: Copy = {
   checklist: {
     title: "Faites travailler votre premier agent",
     dismiss: "Fermer",
-    done: "Flotte active — vos agents sont financés et opérationnels.",
+    done: "Flotte active : vos agents sont financés et opérationnels.",
     steps: {
       mint: {
         label: "Créez votre agent",
-        hint: "Enregistrez un agent — aucun fonds requis pour l'instant.",
+        hint: "Enregistrez un agent : aucun fonds requis pour l'instant.",
       },
       deposit: {
         label: "Alimentez son vault",
@@ -3311,6 +3335,8 @@ const german: Copy = {
     closeNotification: "Benachrichtigung schließen",
     closeOnboarding: "Einführung schließen",
     explorePublicPaths: "Öffentliche Pfade erkunden",
+    switchToLight: "Zum hellen Thema wechseln",
+    switchToDark: "Zum dunklen Thema wechseln",
     walletAccess: "Axiom-Wallet-Zugang",
     closeWalletAccess: "Wallet-Zugang schließen",
     skipToContent: "Zum Inhalt springen",
@@ -3320,7 +3346,7 @@ const german: Copy = {
     titleLead: "Eigene KI-Agents,",
     titleEmphasis: "die für dich arbeiten.",
     description:
-      "Minte einen Agent auf 0G, lass deine Mittel arbeiten und behalte die Kontrolle. Jeder Schritt wird von deinem Wallet signiert und hinterlässt einen Beleg.",
+      "Minte einen Agent auf 0G, lass deine Mittel arbeiten und behalte die Kontrolle.",
     nextSafeAction: "Nächste sichere Aktion",
     signatureBoundary: "Wie die Signatur funktioniert",
     consoleAccess: "Konsolenzugriff",
@@ -3330,8 +3356,8 @@ const german: Copy = {
     menuDevelopersHint: "APIs und Entwickler-Tools",
     stripVerifySmall: "Kein Gas, keine Verwahrung",
     stripOperateSmall: "Belege neben der Aktion",
-    eyebrow: "On-Chain-Agenten-Protokoll",
     proofCaptionSmall: "Versiegelte Übertragung",
+    proofPlateA11y: "Proofs-Hub öffnen",
     proofCaptionBody:
       "Jede Nutzlast wird neu für ihren neuen Eigentümer verschlüsselt.",
     previewAgentTitle: "Agent Nr. 7",
@@ -3436,45 +3462,49 @@ const german: Copy = {
       },
     },
     principles: {
-      eyebrow: "Drei Prinzipien",
       title: "Was Axiom {emphasis}anders macht.{endEmphasis}",
       items: [
         {
           icon: "shield",
           title: "Grenzen durch Design.",
-          body: "Jeder Agent wird mit einem expliziten Tresor und einem täglichen Ausgabenlimit ausgeliefert. Der Tresor wird on-chain durchgesetzt — keine Off-Chain-Absicherungen.",
+          body: "Ein on-chain Tresor mit täglichem Limit. Keine Off-Chain-Absicherungen.",
           link: "Spec lesen",
         },
         {
           icon: "receipt",
           title: "Belege, keine Versprechen.",
-          body: "Jede Signatur landet als indexierter Beleg. Das Transaktions-Center zeigt den Beweis — Agent, Block, Ergebnis — neben der auslösenden Aktion.",
+          body: "Jede Signatur wird ein indexierter Beleg: Agent, Block, Ergebnis.",
           link: "Wie Belege funktionieren",
         },
         {
           icon: "wallet",
           title: "Dein Wallet, deine Schlüssel.",
-          body: "Nicht-verwahrend. Verbinde dich mit dem Wallet, das du bereits nutzt. Keine Accounts, keine E-Mails — die Signatur ist die Identität, der Beleg ist der Verlauf.",
+          body: "Verbinde das Wallet, das du bereits nutzt. Keine Accounts, keine E-Mails.",
           link: "Wallet-Optionen",
         },
       ],
     },
+    how: {
+      title: "Drei Schritte zu {emphasis}einem laufenden Agent.{endEmphasis}",
+      steps: [
+        { title: "Minten.", body: "Eine Transaktion erstellt Agent und Tresor." },
+        { title: "Finanzieren.", body: "Tresor aufladen. Tageslimit setzen." },
+        { title: "Ausführen.", body: "Ticks laufen in deinen Regeln. Belege indexieren on-chain." },
+      ],
+    },
     journey: {
-      eyebrow: "Wähle eines",
       title: "Zwei Wege {emphasis}zum Start.{endEmphasis}",
       items: [
         {
-          eyebrow: "Weg A",
           title: "Lerne die Grenze, bevor du unterschreibst.",
-          body: "Wie Axiom Signieren und Verwahrung trennt, wie Belege aussehen und welche Wallets deine Schlüssel behalten. Kein Wallet zum Lesen nötig.",
+          body: "Wie Signieren und Verwahrung getrennt werden und welche Wallets deine Schlüssel behalten. Kein Wallet zum Lesen nötig.",
           meta: "Lesezeit · 3 min",
           cta: "Wie die Signatur funktioniert",
           onClick: "onGuide",
         },
         {
-          eyebrow: "Weg B",
           title: "Öffne die Konsole und bediene Belege.",
-          body: "Verbinde dich einmal zum Minten, Finanzieren und Ausführen. Jede Signatur landet als indexierter Beleg neben der auslösenden Aktion.",
+          body: "Verbinde dich einmal zum Minten, Finanzieren und Ausführen. Die Konsole verfolgt jeden Schritt.",
           meta: "Live · {count} Agents online",
           cta: "Konsolenzugriff",
           onClick: "goToApp",
@@ -3508,6 +3538,8 @@ const german: Copy = {
     walletConnectLabel: "WalletConnect",
     walletConnectHint: "QR-Code scannen oder Wallet-App öffnen",
     useMobileWallet: "Mobile Wallet verwenden",
+    pairingTitle: "Wallet koppeln",
+    pairingHint: "Kopiere den Code in den WalletConnect-Bildschirm deiner Wallet-App.",
     noWalletDetected:
       "Keine Browser-Wallet erkannt. Installiere eine oder nutze eine mobile Wallet.",
   },
@@ -3529,7 +3561,7 @@ const german: Copy = {
   },
   staking: {
     lede: "Staking ist nicht Teil von Axiom.",
-    body: "Staking läuft über die offizielle 0G-App — Agents, Vaults und Receipts bleiben hier.",
+    body: "Staking läuft über die offizielle 0G-App : Agents, Vaults und Receipts bleiben hier.",
     openVault: "Zu meinen Agents",
     backLabel: "Zurück zur Konsole",
     docsLink:
@@ -3556,7 +3588,7 @@ const german: Copy = {
   },
   errorBoundary: {
     networkTitle: "Verbindungsproblem",
-    genericTitle: "Etwas ist schiefgelaufen",
+    genericTitle: "Ansicht konnte nicht geladen werden",
     networkBody:
       "Dieser Abschnitt ließ sich nicht laden. Versuchen Sie es erneut, oder prüfen Sie Ihre Verbindung, wenn der Fehler bestehen bleibt.",
     retry: "Erneut versuchen",
@@ -3819,20 +3851,20 @@ const german: Copy = {
     refillAction: "Gratis-Gas-Zuschuss anfordern",
     sponsoredBadge: "gratis",
     tankLowBanner:
-      "Dein Gas-Tank ist fast leer — Operationen laufen weiter, bis deine Gratis-Zuschüsse aufgebraucht sind.",
+      "Dein Gas-Tank ist fast leer : Operationen laufen weiter, bis deine Gratis-Zuschüsse aufgebraucht sind.",
     faucetBalanceLabel: "Test-Token",
     faucetEligibleBadge: "Hahn verfügbar",
     faucetIneligibleBadge: "Hahn abgerufen",
     faucetClaimAction: "Gratis Test-Token anfordern",
     depositQueued:
-      "Einzahlung eingereicht — im Transaktionscenter verfolgen.",
+      "Einzahlung eingereicht : im Transaktionscenter verfolgen.",
     refillDone:
       "Gas-Zuschuss angefordert. Tankkonto aktualisiert.",
     refillFailed:
-      "Gas-Zuschuss fehlgeschlagen — Verbindung prüfen und erneut versuchen.",
+      "Gas-Zuschuss fehlgeschlagen : Verbindung prüfen und erneut versuchen.",
     faucetDone: "Test-Token gemintet.",
     faucetFailed:
-      "Faucet-Anforderung fehlgeschlagen — möglicherweise bereits abgerufen.",
+      "Faucet-Anforderung fehlgeschlagen : möglicherweise bereits abgerufen.",
   },
   storage: {
     ...english.storage,
@@ -4039,7 +4071,7 @@ const german: Copy = {
       "Keine Bestätigung nach {seconds} s. Prüfen Sie den Explorer; die Zeile ist als Prüfbedarf markiert.",
     receiptBodyConfirming: "Eingereicht, wartet auf On-Chain-Bestätigung.",
     receiptRemedy:
-      "Zurückgesetzt oder abgelaufen? Wiederholen Sie die Transaktion — erhöhen Sie das Gas bei Netzüberlastung oder prüfen Sie Ihre Verbindung.",
+      "Zurückgesetzt oder abgelaufen? Wiederholen Sie die Transaktion : erhöhen Sie das Gas bei Netzüberlastung oder prüfen Sie Ihre Verbindung.",
     copyReceiptAction: "Beleg kopieren",
     openReceiptAction: "Beleg öffnen",
     startAnotherAction: "Neu beginnen",
@@ -4329,11 +4361,11 @@ const german: Copy = {
   checklist: {
     title: "Bringe deinen ersten Agenten ans Laufen",
     dismiss: "Ausblenden",
-    done: "Flotte aktiv — deine Agenten sind finanziert und laufen.",
+    done: "Flotte aktiv : deine Agenten sind finanziert und laufen.",
     steps: {
       mint: {
         label: "Minte deinen Agenten",
-        hint: "Registriere einen Agenten — noch keine Guthaben nötig.",
+        hint: "Registriere einen Agenten : noch keine Guthaben nötig.",
       },
       deposit: {
         label: "Fülle seinen Vault",

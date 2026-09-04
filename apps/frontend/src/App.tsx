@@ -170,20 +170,29 @@ function Notice({
   severity,
   onClose,
   locale,
+  onPause,
+  onResume,
 }: {
   text: string | null;
   severity: NoticeSeverity;
   onClose: () => void;
   locale: "en" | "fr" | "de";
+  /** Timed toasts pause while hovered or focused (motion-and-zoom). */
+  onPause?: () => void;
+  onResume?: () => void;
 }) {
   if (!text) return null;
-  // U24: errors persist (manual ✕ only, role=alert); successes keep the 4s toast.
+  // U24: errors persist (manual ✕ only, role=alert); successes keep the timed toast.
   const isError = severity === "error";
   return (
     <div
       className="notice-toast"
       role={isError ? "alert" : "status"}
       aria-live={isError ? "assertive" : "polite"}
+      onMouseEnter={onPause}
+      onMouseLeave={onResume}
+      onFocusCapture={onPause}
+      onBlurCapture={onResume}
     >
       <CircleCheck size={16} />
       <span>{text}</span>
@@ -245,7 +254,12 @@ function Guide({
         onMouseDown={(event) => event.stopPropagation()}
       >
         <div className="guide-media">
-          <img src={item.image} alt="Axiom onboarding illustration" />
+          <img
+            src={item.image}
+            alt="Axiom onboarding illustration"
+            loading="lazy"
+            decoding="async"
+          />
         </div>
         <div className="guide-copy">
           <button
@@ -379,6 +393,20 @@ export function App(): ReactElement {
     }
   }, [location.pathname, location.search, navigate]);
 
+  // SPA route focus: client-side navigation neither resets focus nor
+  // announces — move focus to the new view's <main> so keyboard and screen
+  // readers land with the new context (title already tracks the route).
+  const prevPathRef = useRef(location.pathname);
+  useEffect(() => {
+    if (prevPathRef.current === location.pathname) return;
+    prevPathRef.current = location.pathname;
+    const main = document.querySelector("main");
+    if (main) {
+      main.setAttribute("tabindex", "-1");
+      (main as HTMLElement).focus({ preventScroll: true });
+    }
+  }, [location.pathname]);
+
   // ---- Session bridge: wagmi ↔ uiStore session ------------------------------
   useEffect(() => {
     // C3-FE2: wagmi rehydrates async — mid-window "disconnected" would void a stored session; wait for settle.
@@ -465,14 +493,35 @@ export function App(): ReactElement {
     }
   }, [state.settings.theme]);
 
-  // Notice auto-dismiss (4s) — U24: error notices persist until manually closed.
+  // Notice auto-dismiss (5s floor) — U24: error notices persist until manually closed.
+  // Hovering or focusing the toast pauses the timer (motion-and-zoom timed-UI rule).
+  const noticeTimerRef = useRef<number | undefined>(undefined);
   useEffect(() => {
     if (!state.notice || state.noticeSeverity === "error") return;
-    const timer = window.setTimeout(
+    noticeTimerRef.current = window.setTimeout(
       () => dispatch({ type: "notice", notice: null }),
-      4000,
+      5000,
     );
-    return () => window.clearTimeout(timer);
+    return () => {
+      if (noticeTimerRef.current !== undefined) {
+        window.clearTimeout(noticeTimerRef.current);
+        noticeTimerRef.current = undefined;
+      }
+    };
+  }, [state.notice, state.noticeSeverity, dispatch]);
+  const pauseNoticeTimer = useCallback(() => {
+    if (noticeTimerRef.current !== undefined) {
+      window.clearTimeout(noticeTimerRef.current);
+      noticeTimerRef.current = undefined;
+    }
+  }, []);
+  const resumeNoticeTimer = useCallback(() => {
+    if (noticeTimerRef.current !== undefined) return;
+    if (!state.notice || state.noticeSeverity === "error") return;
+    noticeTimerRef.current = window.setTimeout(
+      () => dispatch({ type: "notice", notice: null }),
+      5000,
+    );
   }, [state.notice, state.noticeSeverity, dispatch]);
 
   // Settle persisted receipts mid-confirmation at reload (mined → confirmed/reverted; timeout → stale).
@@ -557,7 +606,7 @@ export function App(): ReactElement {
     const copy = getCopy(locale);
     const clean = location.pathname;
     if (clean === "/") {
-      document.title = "Axiom — Own an AI Agent On-Chain";
+      document.title = "Axiom: Own an AI Agent On-Chain";
       return;
     }
     const agentMatch = clean.match(/^\/agents\/(\d+)/);
@@ -605,6 +654,8 @@ export function App(): ReactElement {
       severity={state.noticeSeverity ?? "success"}
       onClose={() => dispatch({ type: "notice", notice: null })}
       locale={locale}
+      onPause={pauseNoticeTimer}
+      onResume={resumeNoticeTimer}
     />
   );
 
@@ -839,7 +890,12 @@ function LockedRoute({
       </section>
       <aside className="locked-evidence">
         <div className="locked-preview">
-          <img src={gate.media} alt={`${gate.label} preview`} />
+          <img
+            src={gate.media}
+            alt={`${gate.label} preview`}
+            loading="lazy"
+            decoding="async"
+          />
           <div>
             <small>Preview — connect a wallet for live data.</small>
           </div>

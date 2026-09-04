@@ -120,12 +120,12 @@ import { useGasTank } from "../hooks/useGasTank.js";
 import {
   Textarea,
   ErrorRef,
-  Spinner,
   CopyButton,
   SectionTitle,
   MonoLabel,
 } from "../components/ui.js";
 import { Button } from "../components/axiom/Controls.js";
+import { ThinkingOrbs } from "../components/fx/fx.js";
 import {
   CornerDownLeft,
   Menu,
@@ -1232,7 +1232,7 @@ function ChatPageInner(): ReactElement {
             // loop after surfacing the same error card.
             const failMsg =
               streamErrorRef.current ??
-              (assistantContent ? null : "No response — try again.");
+              (assistantContent ? null : "No response: try again.");
             if (failMsg !== null) {
               if (!isStale()) {
                 lastStreamErrorRef.current = failMsg;
@@ -1393,7 +1393,7 @@ function ChatPageInner(): ReactElement {
           };
           if (msg.includes("429") || msg.toLowerCase().includes("rate limit")) {
             toast.error(
-              "Rate limited — wait a moment and try again.",
+              "Rate limited: wait a moment and try again.",
               toastOpts,
             );
           } else {
@@ -1519,6 +1519,9 @@ function ChatPageInner(): ReactElement {
       // Recoverable: deleting a chat is not irreversible, so offer undo.
       if (removed) {
         toast(chatCopy.deletedToast, {
+          // The action (undo) is the only recovery path — it must not ride an
+          // auto-dismissing toast (motion-and-zoom: action toasts persist).
+          duration: Infinity,
           action: {
             label: chatCopy.undo,
             onClick: () => {
@@ -2016,7 +2019,7 @@ function ChatPageInner(): ReactElement {
                       gap: 8,
                     }}
                   >
-                    <Spinner size={14} variant="churn" />
+                    <ThinkingOrbs label={chatCopy.assistantResponding} />
                     <span style={{ color: "var(--copper-bright)" }}>
                       {phaseLabel(elapsed, toolRuns, streamText, chatCopy)}
                     </span>
@@ -2063,7 +2066,8 @@ function ChatPageInner(): ReactElement {
                     setQueue(next);
                   }}
                 >
-                  ✕
+                  {/* SVG icon, not a text glyph (pro-max: no glyph icons). */}
+                  <X size={12} aria-hidden="true" />
                 </button>
               </span>
             ))}
@@ -2218,7 +2222,7 @@ function ChatPageInner(): ReactElement {
                 setTransferTokenId(null);
                 transferResolveRef.current?.reject(
                   new Error(
-                    "Transfer cancelled — no transaction was submitted.",
+                    "Transfer cancelled: no transaction was submitted.",
                   ),
                 );
                 transferResolveRef.current = null;

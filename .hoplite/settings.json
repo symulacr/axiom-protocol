@@ -1,0 +1,26 @@
+{
+	"version": 1,
+	"ports": {
+		"preview": 3000,
+		"additional": {}
+	},
+	"scripts": {
+		"setup": {
+			"enabled": true,
+			"command": "mise install bun@1.4.0 && bun install && bun run --filter '@axiom/config' build && bun run --filter '@axiom/chat-runtime' build"
+		},
+		"run": {
+			"enabled": true,
+			"command": "cd apps/frontend && PORT=3000 mise x bun@1.4.0 -- bun dev.mjs"
+		},
+		"archive": {
+			"enabled": true,
+			"command": null
+		},
+		"check": {
+			"enabled": true,
+			"command": null
+		}
+	},
+	"mcpServers": []
+}
