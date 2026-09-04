@@ -10,7 +10,7 @@
   spotlight principle cards, marquee ticker, wordmark footer. All kicker /
   eyebrow / numbered-label spans removed per the no-noise design law.
 */
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   CircleHelp,
   Globe2,
@@ -125,6 +125,22 @@ export function Landing({
       (item) => !seenAgents.has(item.agent),
     ),
   ].slice(0, TICKER_MAX_ITEMS);
+
+  // R13 (baseline-ui): looping animations MUST pause when off-screen — the
+  // marquee and live dots keep running past the fold otherwise.
+  const tickerRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const el = tickerRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver(
+      (entries) =>
+        el.toggleAttribute("data-offscreen", !entries[0]?.isIntersecting),
+      { threshold: 0 },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+
   const navigate = (path: string) => {
     setMenuOpen(false);
     go(path);
@@ -365,6 +381,7 @@ export function Landing({
           pulled from /v1/events, padded with copy placeholders so the
           rail always has TICKER_MAX_ITEMS rows. */}
       <section
+        ref={tickerRef}
         className="ticker"
         aria-label={interpolate(copy.landing.ticker.label, { chainId })}
       >

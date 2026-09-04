@@ -361,6 +361,43 @@ handshake (no wallet; URI capture is source-verified, requires a real
 `VITE_WALLETCONNECT_PROJECT_ID`), and pixel-level appearance (DOM/computed-
 style/JS-eval evidence only).
 
+## Round 13 — baseline-ui skill execution (ibelick/ui-skills) (2026-09-04)
+
+`npx skills add` completes its UI without a TTY but persists nothing (known
+from Round 3) — skill fetched from the GitHub tarball into `skills/baseline-ui`
+per the CLI's own fallback path. Scope: every rule audited against all pages
+(landing, 5 hubs, console routes, gate/modal states). Stack rules map to this
+repo's own primitives (no Tailwind/motion/Base UI — the no-deps law + the
+skill's "use the project's existing primitives first" both hold); gradient +
+custom-easing rules are covered by the user's explicit Awwwards design mandate
+("unless explicitly requested").
+
+| Rule | Verdict | Evidence / fix |
+|---|---|---|
+| Icon-only buttons need `aria-label` | **PASS** | 19/19 icon-button blocks have accessible names (string or JSX-expression labels; two initial flags were filter window artifacts) |
+| `AlertDialog` for destructive/irreversible actions | **FIXED** | FlowPage review sheet: `withdraw`/`transfer`/`payment` → `role="alertdialog"` (funds-out + irreversible handoff); TransferModal → `alertdialog`. Constructive flows (mint/deposit/tick) stay `dialog`. Source-verified — live flows need a wallet (sandbox-disclosed) |
+| Structural skeletons for loading | **PASS** | Skeleton primitive in ui.tsx, used on Dashboard/Flow/Transactions; verified rendering on /transactions |
+| `100vh` → `100dvh` | **FIXED** | 12 sites swept (shell, main, public-locked, 404, gate band, mobile sidebar, guide-card). Computed `min-height` on `.app-shell` resolves to the live viewport (900px in audit browser) |
+| `safe-area-inset` for fixed elements | **PASS (n/a)** | Fixed chrome is desktop-shell (fixed sidebar hidden ≤700px; drawers/modals inset 0 full-bleed); no notch-locked fixed UI |
+| Errors next to the action | **PASS** | field-message/field-error per control; ErrorNote + operation-review-error id on the confirm sheet |
+| Never block paste | **PASS** | zero onPaste/preventDefault paste handlers in app code |
+| Animate compositor props only | **FIXED + 2 disclosed exceptions** | skip-link `top` transition → `transform: translateY` (verified: hidden -49px / focused 0). Kept with reasoning: `.sidebar` width (content must reflow labels→icons; no compositor technique animates content reflow) and chat search width (input growth) — both ≤240ms, contained subtrees |
+| ≤200ms interaction feedback | **PASS + 1 disclosed** | `--dur-fast` 150ms for all hovers/presses; rail 240ms is a deliberate oversized move (documented in-rule comment), not feedback |
+| Pause looping animations off-screen | **FIXED** | IntersectionObserver on the ticker section toggles `data-offscreen`; verified live: track + live-pulse `running` → `paused` off-screen → `running` on return |
+| `prefers-reduced-motion` | **PASS** | dual channel (OS + app setting) predates; all new R13 code inherits it |
+| `will-change` only during active animation | **FIXED** | removed standing `will-change` from `.aw-reveal` (one-shot 500ms entrance; lingers forever otherwise); `.aw-parallax` keeps its (continuously active while scrolling) |
+| `text-wrap: balance`/`pretty` | **PASS + extended** | headings balanced (R9); pretty existed on landing/hub copy — extended to console body copy (`.ops-page p`, guide, gate) |
+| `tabular-nums` for data | **PASS** | 6 sites (incl. `--tabular` token) on data cells |
+| Fixed z-index scale | **FIXED** | `.sidebar`/`.topbar` raw literals → `var(--layer-rail)`/`var(--layer-topbar)` (topbar was 20 vs token 40 — drift removed; no visual change, no overlap at 40) |
+| Empty states: one clear next action | **PASS** | co-sign empty state explains the exact next action (open the shared approval link / request a fresh one); link is external by design |
+| Accent discipline / no purple / no glow-affordances | **PASS** | copper + phosphor (semantic state); spotlights are decorative, not affordances |
+| No large blur/backdrop ANIMATION | **PASS** | topbar/nav/drawer blurs are static surfaces |
+
+Verification: gates green (typecheck 0, 156/156, lint 0 errors); live checks on
+`/` and `/transactions`: ticker pause cycle, skip-link focus reveal, dvh
+resolution, skeleton render, 0 console errors. Not verifiable here: live
+alertdialog on a real withdrawal (needs a connected wallet).
+
 ## Round-2 verify log
 
 | Time (UTC) | Check | Result | Evidence |

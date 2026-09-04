@@ -1741,7 +1741,14 @@ function OperationReviewSheet({
       <section
         ref={sheetRef}
         className="operation-review-sheet"
-        role="dialog"
+        /* R13 (baseline-ui): destructive/irreversible operations (funds out,
+           ownership handoff) MUST announce as an AlertDialog. Constructive
+           flows keep the plain dialog role. */
+        role={
+          kind === "withdraw" || kind === "transfer" || kind === "payment"
+            ? "alertdialog"
+            : "dialog"
+        }
         aria-modal="true"
         aria-labelledby="operation-review-title"
         aria-describedby={draft.error ? "operation-review-error" : undefined}

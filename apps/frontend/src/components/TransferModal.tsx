@@ -90,7 +90,9 @@ function ModalSheet({
       <section
         ref={sheetRef}
         className="operation-review-sheet transfer-modal-sheet"
-        role="dialog"
+        /* R13 (baseline-ui): the ownership handoff is irreversible —
+           AlertDialog semantics. */
+        role="alertdialog"
         aria-modal="true"
         aria-labelledby={titleId}
         onMouseDown={(event) => event.stopPropagation()}
