@@ -32,6 +32,7 @@ import {
 } from "./icons.js";
 import { AxiomBrandMark } from "./BrandMark.js";
 import { Status } from "./Controls.js";
+import { ThemeToggle } from "./ThemeToggle.js";
 import type { AppState, Route, Session, UiSettings } from "../../lib/models.js";
 import type { ConsoleAction } from "../../lib/consoleStore.js";
 import {
@@ -772,6 +773,7 @@ function Topbar({
       </div>
       <div className="topbar-actions">
         <CommandCenter state={state} go={go} fundTarget={fundTarget} />
+        <ThemeToggle locale={state.settings.locale} />
         <button className="session-top" onClick={() => go("/settings")}>
           <Wallet size={14} />
           {/* W5-B (browser-2 Fix 2): one connection indicator per chip. The

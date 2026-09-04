@@ -24,6 +24,7 @@ import {
 } from "../components/axiom/icons.js";
 import { Button } from "../components/axiom/Controls.js";
 import { Logo } from "../components/axiom/AppShell.js";
+import { ThemeToggle } from "../components/axiom/ThemeToggle.js";
 import {
   routePath,
   PUBLIC_HUB_PATHS,
@@ -38,12 +39,12 @@ import {
 import {
   CountUp,
   GrainOverlay,
-  OrbsField,
   Parallax,
   Reveal,
   ScrollProgress,
   SpotlightCard,
 } from "../components/fx/fx.js";
+import { ThreeBackground } from "../components/fx/ThreeBackground.js";
 
 /** Splits a "{count}" template so the live number can animate via CountUp;
  *  templates without the placeholder render unchanged. */
@@ -140,6 +141,9 @@ export function Landing({
     <div className="landing-page">
       <ScrollProgress />
       <GrainOverlay />
+      {/* R12: WebGL point field behind all landing content (direct child so
+          the z-index contract in index.css keeps it under every section). */}
+      <ThreeBackground />
       {/* U27 parity with the console: keyboard bypass of the landing nav. */}
       <a className="skip-link" href="#hero">
         {copy.a11y.skipToContent}
@@ -153,10 +157,11 @@ export function Landing({
             {copy.landing.nav.overview}
           </a>
           <a href="#principles">{copy.landing.nav.principles}</a>
-          <a href="#journey">{copy.landing.nav.howItWorks}</a>
+          <a href="#how">{copy.landing.nav.howItWorks}</a>
           <a href="#footer">{copy.landing.nav.start}</a>
         </nav>
         <div className="nav-right">
+          <ThemeToggle locale={locale} />
           <button type="button" className="nav-connect" onClick={onConnect}>
             <Wallet size={14} aria-hidden="true" />
             {copy.landing.nav.connect}
@@ -209,7 +214,6 @@ export function Landing({
       </header>
 
       <main className="landing-main" id="hero" tabIndex={-1}>
-        <OrbsField />
         <Reveal>
         <section className="landing-copy">
           <h1>
@@ -426,6 +430,31 @@ export function Landing({
               <a href={PRINCIPLE_HREFS[i]} className="p-link">
                 {p.link} <ArrowRight size={14} aria-hidden="true" />
               </a>
+            </SpotlightCard>
+          ))}
+        </div>
+        </Reveal>
+      </section>
+
+      {/* R12: how-it-works — the operating loop; the nav's "How it works"
+          anchor points here (it previously mis-landed on the journey). */}
+      <section className="scroll-section how-section" id="how">
+        <header className="section-head">
+          <h2
+            dangerouslySetInnerHTML={{
+              __html: interpolate(copy.landing.how.title, {
+                emphasis: "<em>",
+                endEmphasis: "</em>",
+              }),
+            }}
+          />
+        </header>
+        <Reveal>
+        <div className="principles-grid how-grid">
+          {copy.landing.how.steps.map((step, i) => (
+            <SpotlightCard key={i} className="principle how-step">
+              <h3 dangerouslySetInnerHTML={{ __html: step.title }} />
+              <p dangerouslySetInnerHTML={{ __html: step.body }} />
             </SpotlightCard>
           ))}
         </div>

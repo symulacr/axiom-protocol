@@ -112,6 +112,9 @@ export type Copy = {
     explorePublicPaths: string;
     walletAccess: string;
     closeWalletAccess: string;
+    /** R12: global theme icon button. */
+    switchToLight: string;
+    switchToDark: string;
     /** U27: skip-to-content link in AppShell. */
     skipToContent: string;
   };
@@ -202,6 +205,13 @@ export type Copy = {
         link: string;
       }>;
     };
+    /** R12: how-it-works — the three-step operating loop (no numbered chips:
+        the banned numbered-label pattern; titles carry the sequence). */
+    how: {
+      /** Placeholders: `{emphasis}` opens <em>, `{endEmphasis}` closes it. */
+      title: string;
+      steps: ReadonlyArray<{ title: string; body: string }>;
+    };
     /** L2-N7: journey section — 2 cards (replaces the strip). */
     journey: {
       /** Placeholders: `{emphasis}` opens <em>, `{endEmphasis}` closes it. */
@@ -243,6 +253,8 @@ export type Copy = {
     walletConnectHint: string;
     /** Secondary CTA under the direct-connect primary. */
     useMobileWallet: string;
+    pairingTitle: string;
+    pairingHint: string;
     /** Shown when no injected provider announced via EIP-6963. */
     noWalletDetected: string;
   };
@@ -1076,6 +1088,8 @@ const english: Copy = {
     closeNotification: "Close notification",
     closeOnboarding: "Close onboarding",
     explorePublicPaths: "Explore public paths",
+    switchToLight: "Switch to light theme",
+    switchToDark: "Switch to dark theme",
     walletAccess: "Axiom wallet access",
     closeWalletAccess: "Close wallet access",
     skipToContent: "Skip to content",
@@ -1204,13 +1218,13 @@ const english: Copy = {
         {
           icon: "shield",
           title: "Bounded by design.",
-          body: "Every agent carries an on-chain vault with a daily limit. No off-chain guardrails to drift.",
+          body: "An on-chain vault with a daily limit. No off-chain guardrails.",
           link: "Read the spec",
         },
         {
           icon: "receipt",
           title: "Receipts, not promises.",
-          body: "Every signature lands as an indexed receipt — agent, block, outcome — beside the action.",
+          body: "Every signature indexes as a receipt: agent, block, outcome.",
           link: "How receipts work",
         },
         {
@@ -1219,6 +1233,14 @@ const english: Copy = {
           body: "Connect the wallet you already use. No accounts, no emails.",
           link: "Wallet options",
         },
+      ],
+    },
+    how: {
+      title: "Three steps to {emphasis}a running agent.{endEmphasis}",
+      steps: [
+        { title: "Mint.", body: "One transaction creates the agent and its vault." },
+        { title: "Fund.", body: "Top up the vault. Set the daily limit." },
+        { title: "Run.", body: "Ticks execute inside your rules. Receipts index on-chain." },
       ],
     },
     journey: {
@@ -1266,6 +1288,8 @@ const english: Copy = {
     walletConnectLabel: "WalletConnect",
     walletConnectHint: "Scan the QR code or open your wallet app",
     useMobileWallet: "Use mobile wallet",
+    pairingTitle: "Pair your wallet",
+    pairingHint: "Copy the code into your wallet app's WalletConnect screen.",
     noWalletDetected:
       "No browser wallet detected. Install one, or use a mobile wallet.",
   },
@@ -2196,6 +2220,8 @@ const french: Copy = {
     closeNotification: "Fermer la notification",
     closeOnboarding: "Fermer le guide",
     explorePublicPaths: "Explorer les parcours publics",
+    switchToLight: "Passer en thème clair",
+    switchToDark: "Passer en thème sombre",
     walletAccess: "Accès wallet Axiom",
     closeWalletAccess: "Fermer l’accès wallet",
     skipToContent: "Aller au contenu",
@@ -2326,13 +2352,13 @@ const french: Copy = {
         {
           icon: "shield",
           title: "Délimité par conception.",
-          body: "Chaque agent porte un coffre on-chain avec une limite quotidienne. Pas de garde-fous hors chaîne.",
+          body: "Un coffre on-chain avec une limite quotidienne. Rien hors chaîne.",
           link: "Lire la spec",
         },
         {
           icon: "receipt",
           title: "Reçus, pas promesses.",
-          body: "Chaque signature devient un reçu indexé — agent, bloc, résultat — à côté de l'action.",
+          body: "Chaque signature devient un reçu indexé : agent, bloc, résultat.",
           link: "Comment fonctionnent les reçus",
         },
         {
@@ -2341,6 +2367,14 @@ const french: Copy = {
           body: "Connectez le wallet que vous utilisez déjà. Pas de comptes, pas d'emails.",
           link: "Options de wallet",
         },
+      ],
+    },
+    how: {
+      title: "Trois étapes vers {emphasis}un agent actif.{endEmphasis}",
+      steps: [
+        { title: "Mintez.", body: "Une transaction crée l'agent et son coffre." },
+        { title: "Financez.", body: "Approvisionnez le coffre. Fixez la limite quotidienne." },
+        { title: "Opérez.", body: "Les ticks s'exécutent dans vos règles. Les reçus s'indexent on-chain." },
       ],
     },
     journey: {
@@ -2389,6 +2423,8 @@ const french: Copy = {
     walletConnectLabel: "WalletConnect",
     walletConnectHint: "Scannez le QR code ou ouvrez votre app wallet",
     useMobileWallet: "Utiliser un wallet mobile",
+    pairingTitle: "Appairez votre wallet",
+    pairingHint: "Copiez le code dans l'écran WalletConnect de votre app wallet.",
     noWalletDetected:
       "Aucun wallet de navigateur détecté. Installez-en un ou utilisez un wallet mobile.",
   },
@@ -3299,6 +3335,8 @@ const german: Copy = {
     closeNotification: "Benachrichtigung schließen",
     closeOnboarding: "Einführung schließen",
     explorePublicPaths: "Öffentliche Pfade erkunden",
+    switchToLight: "Zum hellen Thema wechseln",
+    switchToDark: "Zum dunklen Thema wechseln",
     walletAccess: "Axiom-Wallet-Zugang",
     closeWalletAccess: "Wallet-Zugang schließen",
     skipToContent: "Zum Inhalt springen",
@@ -3429,13 +3467,13 @@ const german: Copy = {
         {
           icon: "shield",
           title: "Grenzen durch Design.",
-          body: "Jeder Agent trägt einen on-chain Tresor mit täglichem Limit. Keine Off-Chain-Absicherungen.",
+          body: "Ein on-chain Tresor mit täglichem Limit. Keine Off-Chain-Absicherungen.",
           link: "Spec lesen",
         },
         {
           icon: "receipt",
           title: "Belege, keine Versprechen.",
-          body: "Jede Signatur landet als indexierter Beleg — Agent, Block, Ergebnis — neben der Aktion.",
+          body: "Jede Signatur wird ein indexierter Beleg: Agent, Block, Ergebnis.",
           link: "Wie Belege funktionieren",
         },
         {
@@ -3444,6 +3482,14 @@ const german: Copy = {
           body: "Verbinde das Wallet, das du bereits nutzt. Keine Accounts, keine E-Mails.",
           link: "Wallet-Optionen",
         },
+      ],
+    },
+    how: {
+      title: "Drei Schritte zu {emphasis}einem laufenden Agent.{endEmphasis}",
+      steps: [
+        { title: "Minten.", body: "Eine Transaktion erstellt Agent und Tresor." },
+        { title: "Finanzieren.", body: "Tresor aufladen. Tageslimit setzen." },
+        { title: "Ausführen.", body: "Ticks laufen in deinen Regeln. Belege indexieren on-chain." },
       ],
     },
     journey: {
@@ -3492,6 +3538,8 @@ const german: Copy = {
     walletConnectLabel: "WalletConnect",
     walletConnectHint: "QR-Code scannen oder Wallet-App öffnen",
     useMobileWallet: "Mobile Wallet verwenden",
+    pairingTitle: "Wallet koppeln",
+    pairingHint: "Kopiere den Code in den WalletConnect-Bildschirm deiner Wallet-App.",
     noWalletDetected:
       "Keine Browser-Wallet erkannt. Installiere eine oder nutze eine mobile Wallet.",
   },

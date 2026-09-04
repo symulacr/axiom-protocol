@@ -326,6 +326,41 @@ verified; 0 console errors; 156/156 tests; typecheck 0; lint 0 errors.
 Not verifiable in this sandbox: the WalletConnect QR handshake itself (no
 wallet) — source-verified only.
 
+## Round 12 — full-viewport overhaul, Three.js, one-action wallet, global theme (2026-09-04)
+
+User order: eliminate side margins/dead zones, hide horizontal scrollbars,
+ticket consistency, direct WalletConnect (no extra modals, delete dead modal
+code), Three.js background, micro-interactions, missing scroll sections,
+global light/dark toggle, ~50% shorter sentences, live/static separation.
+Hard-rule exception: rule 6 (no new npm deps) — Three.js was explicitly
+ordered; installed `three@0.185.1` + `@types/three` (dev).
+
+| Area | Before (measured) | After (measured) |
+|---|---|---|
+| Dead side space | 1560 cap: **18.8%** @1920 (38.5% pre-R11) | **0%** on every section at 390/768/1024/1440/1920 (`.design-audit/landing-space-audit.mjs`) — containers fully fluid, clamp padding is the only reserved edge |
+| Horizontal scrollbar | none detected | none at any width + `overflow-x: clip` guard on `.landing-page` (fixed elements can never grow scrollWidth) |
+| Ticker (tickets) | 1 item beside label @390 | compacted ≤480 (11px mono, tighter gaps): label on + 1 full item cycling @390 (marquee rotates all 6), 2 @768, 3 @1024, 4 @1440, 6 @1920; item hover lift |
+| Missing scroll section | "How it works" nav anchor mis-landed on `#journey` | new `#how` section — 3 steps (Mint/Fund/Run), reuses principles card system (no numbered chips — rule 1); anchor points correctly; EN/FR/DE copy |
+| Wallet flow | gate modal → nested `ConnectModal` chooser → WalletConnect | ONE panel total: 1 injected → auto-connect in the click gesture; >1 → inline option list inside the gate; 0 → WalletConnect starts directly, pairing URI captured from the connector `message` event and shown inline with a copy button. `ConnectModal.tsx` + `.connect-modal*` CSS + layer-list entry deleted |
+| Three.js background | OrbsField (2D canvas) | `ThreeBackground` — 1400-point copper/phosphor field, additive blending, DPR ≤1.75, single draw call, rAF paused on hidden tab, reduced-motion = static frame, full disposal; replaced OrbsField on landing only (hubs keep it); **no-WebGL guard** (headless browsers must never lose the landing — found live when the error boundary swallowed the page) |
+| Global theme toggle | landing dark-locked (ledger L3-B9); light tokens existed only inside `.app-shell` | `ThemeToggle` icon button on landing nav + console topbar; uiStore-persisted; new `body.light` token block covers everything outside `.app-shell` (landing + body-ported chrome). Key discovery: the landing's completion aliases are **`:root`-scoped var() chains** — remapping base tokens at `body.light` never reaches them; the aliases must be overridden explicitly. Tokenized the 3 remaining hardcoded dark glass cards (proof-label, hero-caption, floating-receipt → `color-mix(var(--panel))`) |
+| Theme contrast (light) | landing light = 16 failing pairs (1.25:1 mass failures — dark canvas behind flipped ink) | alpha-aware, oklch-decimal-aware full-page walk: **0 real fails** (one conservative artifact: `.j-cta` measured against the grid hairline 4.28:1; its real gradient bg composites to 4.74:1). R10's `color-mix(..., white)` lifts were wrong-direction in light → `var(--ink)` lifts (theme-aware) |
+| Dark regression | — | full-page walk: **0 fails** |
+| Copy length | principles bodies 2 clauses | trimmed further (×6 strings EN/FR/DE); "An on-chain vault with a daily limit. No off-chain guardrails." etc. |
+| Micro-interactions | static cards | journey-card brightness lift (no translate — the 1px hairline grid would gap), ticker item color lift, pointer parallax on the three.js camera (reduced-motion off) |
+
+Verification: live at 390/768/1024/1440/1920 (space audit: 0% dead, 0
+overflow, 0 overlaps); light + dark full-page contrast walks clean; theme
+toggle verified end-to-end live (click → flip → persist → survive reload);
+wallet gate verified single-dialog (1 `role=dialog`, 0 `.connect-modal-layer`,
+no nested modal); 156/156 tests (10,603 expects), typecheck 0, lint 0
+errors. Not verifiable in this sandbox: the three.js canvas pixels (managed
+browser has WebGL disabled entirely — the no-WebGL fallback path is what
+verified; real browsers with GPU get the field), the WalletConnect pairing
+handshake (no wallet; URI capture is source-verified, requires a real
+`VITE_WALLETCONNECT_PROJECT_ID`), and pixel-level appearance (DOM/computed-
+style/JS-eval evidence only).
+
 ## Round-2 verify log
 
 | Time (UTC) | Check | Result | Evidence |
