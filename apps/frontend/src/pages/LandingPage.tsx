@@ -129,6 +129,28 @@ export function Landing({
   // R13 (baseline-ui): looping animations MUST pause when off-screen — the
   // marquee and live dots keep running past the fold otherwise.
   const tickerRef = useRef<HTMLElement>(null);
+  // R20: the marquee strip needs enough duplicated sets that one half always
+  // covers the viewport — a fixed 2-set strip left a right-side gap on wide
+  // screens. Measured after mount (and on resize) from one set's width.
+  const [tickerCopies, setTickerCopies] = useState(2);
+  const copiesRef = useRef(2);
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const trackRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const viewport = viewportRef.current;
+    const track = trackRef.current;
+    if (!viewport || !track) return;
+    const compute = () => {
+      const setWidth = track.scrollWidth / copiesRef.current;
+      if (setWidth <= 0) return;
+      const next = Math.max(2, 2 * Math.ceil(viewport.clientWidth / setWidth));
+      copiesRef.current = next;
+      setTickerCopies((prev) => (prev === next ? prev : next));
+    };
+    compute();
+    window.addEventListener("resize", compute);
+    return () => window.removeEventListener("resize", compute);
+  }, []);
   useEffect(() => {
     const el = tickerRef.current;
     if (!el) return;
@@ -246,34 +268,29 @@ export function Landing({
           {/* Wave 5: the track is aria-hidden — the section label above already
               names the rail, so screen readers hear the summary once instead of
               the row contents twice. */}
-          {/* Marquee: the track renders one aria-hidden copy of the rail twice —
-              the -50% translate loop is seamless because both halves are
-              identical. Hover pauses it so a row can be read. */}
-          <div className="ticker-track" aria-hidden="true">
-            {tickerItems.map((item, i) => (
-              <span key={i} className="ticker-item">
-                <span
-                  className={`dot ${item.dot === "warning" ? "warning" : ""}`}
-                />
-                <strong>{item.agent}</strong>
-                <span>
-                  {" "}
-                  · {item.action} · {item.ago}
+          {/* R20: the strip runs inside a clipping viewport — translated
+              max-content previously slid UNDER the static label and left a
+              right-side gap. The viewport clips both; the set count is
+              measured so one loop half always covers the band. */}
+          <div className="ticker-viewport" ref={viewportRef}>
+            <div className="ticker-track" aria-hidden="true" ref={trackRef}>
+              {Array.from({ length: tickerCopies }).map((_, copy) => (
+                <span key={copy} className="ticker-set">
+                  {tickerItems.map((item, i) => (
+                    <span key={i} className="ticker-item">
+                      <span
+                        className={`dot ${item.dot === "warning" ? "warning" : ""}`}
+                      />
+                      <strong>{item.agent}</strong>
+                      <span>
+                        {" "}
+                        · {item.action} · {item.ago}
+                      </span>
+                    </span>
+                  ))}
                 </span>
-              </span>
-            ))}
-            {tickerItems.map((item, i) => (
-              <span key={`d-${i}`} className="ticker-item">
-                <span
-                  className={`dot ${item.dot === "warning" ? "warning" : ""}`}
-                />
-                <strong>{item.agent}</strong>
-                <span>
-                  {" "}
-                  · {item.action} · {item.ago}
-                </span>
-              </span>
-            ))}
+              ))}
+            </div>
           </div>
         </section>
       </header>

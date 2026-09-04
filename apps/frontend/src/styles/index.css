@@ -78,6 +78,14 @@
 .guide-media img { width:100%; height:100%; object-fit:cover; opacity:.78; mix-blend-mode:screen; }
 .guide-media:after { content:""; position:absolute; inset:0; background:linear-gradient(180deg,transparent 40%,rgba(8,10,11,.72)); }
 .guide-copy p { max-width:390px; color:var(--muted); font-size:var(--fs-body); line-height:1.65; }
+/* R20 audit: the guide layer was never positioned — "How Axiom works" opened
+   the card in document flow at the page bottom, unreadable below the fold.
+   Same layer contract as the review modal: fixed scrim, centered card; Esc +
+   outside-click come from useModalDismiss in the component. */
+.guide-layer { position:fixed; z-index:var(--layer-review, 110); inset:0; display:grid; place-items:center; padding:clamp(12px, 3vw, 32px); overflow:auto; background:var(--completion-overlay, rgba(7, 9, 10, 0.72)); backdrop-filter:blur(4px); }
+.guide-card { position:relative; display:grid; grid-template-columns:1fr; width:min(560px,100%); max-height:calc(100dvh - clamp(24px, 6vw, 64px)); overflow:auto; background:var(--bg-2); border:1px solid var(--line); box-shadow:var(--shadow-modal); }
+.guide-copy { padding:var(--space-6); display:grid; gap:var(--space-3); justify-items:start; }
+.guide-close { position:absolute; top:var(--space-4); right:var(--space-4); z-index:1; }
 .guide-actions { display:flex; align-items:center; gap:var(--space-3); }
 .guide-skip { margin-top:var(--space-4); }
 .hero-visual-modern>img { opacity:.72!important; }
@@ -600,7 +608,8 @@ body:has(.flow-action) .notice-toast { bottom:96px; }
 
 /* Dark-locked art canvases (#0b0e0f/#0c1011 stay dark under light theme):
    multiply de-harshes the screen-blend wash instead of inverting the slot. */
-.app-shell.light .guide-media img {
+.app-shell.light .guide-media img,
+body.light .guide-media img {
   mix-blend-mode: multiply;
   opacity: .45;
 }
@@ -4066,11 +4075,18 @@ strong {
    row above, no bottom border (the header wrapper owns the outer edge). */
 .ticker { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) clamp(20px, 5vw, 76px); border-top: 1px solid var(--line); overflow: hidden; }
 .ticker-label { display: inline-flex; align-items: center; gap: var(--space-2); flex: 0 0 auto; padding-inline-end: var(--space-3); border-inline-end: 1px solid var(--line); font: 500 var(--fs-mono)/1 "JetBrains Mono", monospace; color: var(--ink); font-size: var(--fs-small); }
-.ticker-track { display: flex; gap: var(--space-6); flex: 1 1 auto; overflow: hidden; mask-image: linear-gradient(to right, transparent, black 6%, black 94%, transparent); -webkit-mask-image: linear-gradient(to right, transparent, black 6%, black 94%, transparent); }
+/* R20: clipping viewport between the static label and the translated strip —
+   the strip previously slid under the label (overlap) and its content width
+   fell short of the band (right-side dead space). */
+.ticker-viewport { position: relative; flex: 1 1 auto; min-width: 0; overflow: hidden; mask-image: linear-gradient(to right, transparent, black 6%, black 94%, transparent); -webkit-mask-image: linear-gradient(to right, transparent, black 6%, black 94%, transparent); }
+.ticker-track { display: flex; gap: var(--space-6); width: max-content; }
+/* display:contents keeps each duplicated set boxless so items stay direct
+   flex children of the strip (gap + scrollWidth measurement intact). */
+.ticker-set { display: contents; }
 /* R16: desktop barely fades the tape edges — the old 6% mask read as a
    hidden/void side segment. */
 @media (min-width: 1024px) {
-  .ticker-track { mask-image: linear-gradient(to right, transparent, black 1.5%, black 98.5%, transparent); -webkit-mask-image: linear-gradient(to right, transparent, black 1.5%, black 98.5%, transparent); }
+  .ticker-viewport { mask-image: linear-gradient(to right, transparent, black 1.5%, black 98.5%, transparent); -webkit-mask-image: linear-gradient(to right, transparent, black 1.5%, black 98.5%, transparent); }
 }
 .ticker-item { display: inline-flex; align-items: center; gap: var(--space-2); flex: 0 0 auto; font: 500 var(--fs-mono)/1 "JetBrains Mono", monospace; color: var(--muted); font-size: var(--fs-small); white-space: nowrap; transition: color var(--dur-fast) var(--ease); }
 /* R13 (baseline-ui): looping animations MUST pause off-screen — the
@@ -4089,7 +4105,7 @@ strong {
 .ticker-item .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--phosphor); box-shadow: 0 0 6px var(--phosphor); }
 .ticker-item .dot.warning { background: var(--warning); box-shadow: 0 0 6px var(--warning); }
 @media (prefers-reduced-motion: reduce) {
-  .ticker-track { overflow-x: auto; mask-image: none; -webkit-mask-image: none; }
+  .ticker-viewport { overflow-x: auto; mask-image: none; -webkit-mask-image: none; }
 }
 
 /* ---- L2-N6 + N7: principles + journey sections (shared section chrome) ---- */
