@@ -99,6 +99,17 @@ export function WalletGate({
   // layer (not the gate section) so inline conflict options stay inside it too.
   const layerRef = useRef<HTMLDivElement>(null);
   useModalDismiss(onClose, layerRef);
+  // Non-modal popover: the layer paints no page-blocking scrim, so
+  // outside-click dismissal listens at document level instead of on a
+  // backdrop element.
+  useEffect(() => {
+    const onDocMouseDown = (event: MouseEvent) => {
+      if (layerRef.current?.contains(event.target as Node)) return;
+      onClose();
+    };
+    document.addEventListener("mousedown", onDocMouseDown);
+    return () => document.removeEventListener("mousedown", onDocMouseDown);
+  }, [onClose]);
 
   const wrongNetwork =
     isConnected && chainId !== undefined && chainId !== APP_CHAIN_ID;
@@ -209,32 +220,28 @@ export function WalletGate({
     ? "wrong-network"
     : "connect";
 
-  // Zero-interstitial open: mounting the gate continues the original click
-  // gesture — an installed (EIP-6963-announced) wallet connects immediately
-  // (extension popup, no second click); several wallets list inline. With NO
-  // installed wallet the panel opens CLEAN: no auto-firing (the old code
-  // auto-attempted the always-declared injected connector, failed instantly
-  // and painted a "no browser wallet detected" error beside two stacked
-  // CTAs). The primary CTA IS the one clean WalletConnect action, and the
-  // "no wallet detected" error only renders when no connector exists at all.
+  // One click, zero interstitial: mounting continues the landing click
+  // gesture — the best path fires immediately (installed wallet → extension
+  // popup; none → WalletConnect). The popover only surfaces what needs
+  // attention: a conflict chooser, the pairing code, or an error.
   const autoTried = useRef(false);
   useEffect(() => {
     if (view !== "connect" || autoTried.current) return;
     autoTried.current = true;
     if (injected.length > 1) setShowOptions(true);
     else if (hasInstalledWallet) void connectInjected();
-    else if (!mobileConnector) setError(copy.wallet.noWalletDetected);
+    else if (mobileConnector) void connectMobile();
+    else setError(copy.wallet.noWalletDetected);
     // Run once per mount: connectors and copy are stable for the gate lifetime.
   }, []);
 
   return (
-    <div ref={layerRef} className="wallet-gate-layer" onMouseDown={onClose}>
+    <div ref={layerRef} className="wallet-gate-layer">
       <section
         className="wallet-gate"
         role="dialog"
         aria-modal="true"
         aria-label={copy.a11y.walletAccess}
-        onMouseDown={(event) => event.stopPropagation()}
       >
         <button
           className="icon-button icon-button--lg wallet-gate-close"
@@ -243,23 +250,6 @@ export function WalletGate({
         >
           <X size={16} />
         </button>
-        <div className="wallet-gate-art">
-          <img
-            src="/brand/hero-seal-512.jpg"
-            alt="Abstract Axiom wallet access nucleus"
-            loading="lazy"
-            decoding="async"
-          />
-          <div className="wallet-gate-art-copy">
-            <strong>
-              One wallet.
-              <br />
-              <i>{copy.wallet.gateSessionLine}</i>
-            </strong>
-            {/* custody is already stated once in the connect panel ("We never
-                take custody") — the art overlay must not repeat it */}
-          </div>
-        </div>
         <div className="wallet-gate-panel">
           <div className="wallet-gate-head">
             <Logo compact />
@@ -267,21 +257,11 @@ export function WalletGate({
 
           {view === "connect" && (
             <>
-              <h1 id="wallet-title">{copy.wallet.gateTitle}</h1>
-              <p>Connect a wallet to start a session. We never take custody.</p>
-              {/* Conflict (>1 injected wallet) renders inline — no nested
-                  chooser modal. */}
-              <Button
-                busy={connecting}
-                onClick={() => {
-                  if (injected.length > 1) setShowOptions(true);
-                  else if (hasInstalledWallet) void connectInjected();
-                  else if (mobileConnector) void connectMobile();
-                }}
-                icon={<LockKeyhole size={16} />}
-              >
-                {copy.nav.connectWallet}
-              </Button>
+              {!showOptions && !pairingUri && !error && (
+                <p className="wallet-gate-status" role="status">
+                  {copy.wallet.connectingStatus}
+                </p>
+              )}
               {showOptions && (
                 <div
                   className="connect-options-inline"
@@ -316,19 +296,6 @@ export function WalletGate({
                   })}
                 </div>
               )}
-              {/* Second choice only when the primary is the extension path —
-                  with no installed wallet the primary IS WalletConnect, so a
-                  duplicate "use mobile" button would be dead-weight UI. */}
-              {mobileConnector && hasInstalledWallet && !showOptions && (
-                <Button
-                  variant="ghost"
-                  className="wallet-gate-mobile-cta"
-                  busy={connecting}
-                  onClick={() => void connectMobile()}
-                >
-                  {copy.wallet.useMobileWallet}
-                </Button>
-              )}
               {pairingUri && (
                 /* WalletConnect SDK pairing — code surfaced inline in this
                    panel instead of a second modal. */
@@ -339,7 +306,22 @@ export function WalletGate({
                   <CopyButton text={pairingUri} />
                 </div>
               )}
-              <ErrorNote message={error} />
+              {error && (
+                <>
+                  <ErrorNote message={error} />
+                  <Button
+                    className="wallet-gate-retry"
+                    onClick={() => {
+                      setError(null);
+                      if (hasInstalledWallet) void connectInjected();
+                      else if (mobileConnector) void connectMobile();
+                    }}
+                    icon={<LockKeyhole size={16} />}
+                  >
+                    {copy.nav.connectWallet}
+                  </Button>
+                </>
+              )}
             </>
           )}
 
