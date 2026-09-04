@@ -1,0 +1,830 @@
+/*
+  axiom-awwwards.css — cinematic design layer for the Awwwards rebuild.
+  Scope: landing, public hubs, console chrome. Unlayered and imported AFTER
+  index.css so it wins cascade ties without !important. All new tokens live in
+  the --aw-* namespace (contrast.test.ts owns index.css's token scopes).
+  The palette is expressed in OKLCH (ramps → semantic roles → legacy
+  aliases) and contrast-locked by aw-contrast.test.ts. Repeated surfaces,
+  shadows and motion values are deduplicated into the shared tokens — no
+  re-pinned hexes or ad-hoc durations in this layer.
+  Motion is translateY-only where layout-relative (RTL-safe) and gated on BOTH
+  reduced-motion channels: the OS media query and [data-reduce-motion="true"].
+  Effect language is original (CSS/canvas), inspired by beam/metal/orbs/
+  libraries.dev primitives — no copied code, no new dependencies.
+*/
+@property --aw-beam-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+:root {
+  /* ── OKLCH palette ───────────────────────────────────────────────
+     Lossless conversion of the shipped hexes (roundtrips to the same
+     sRGB). Ramps first, semantic roles second, legacy aliases last so
+     every existing rule keeps resolving. State roles are contrast-locked
+     by aw-contrast.test.ts (AA ≥ 4.5:1 on the ink ramp). */
+  --aw-copper-300: oklch(60% 0.11 55);
+  --aw-copper-400: oklch(69.7% 0.114 58.2);
+  --aw-copper-500: oklch(79.8% 0.113 65.8);
+  --aw-ink-900: oklch(16.1% 0.005 219.8);
+  --aw-ink-800: oklch(19.6% 0.012 237.4);
+  --aw-ink-700: oklch(21.7% 0.014 239.4);
+  --aw-paper-100: oklch(91.6% 0.014 74.4);
+  --aw-paper-300: oklch(77.9% 0.015 74.4);
+  --aw-mist: oklch(96.2% 0.007 164.9);
+
+  /* ── Semantic roles ───────────────────────────────────────────── */
+  --aw-accent: var(--aw-copper-400);
+  --aw-accent-strong: var(--aw-copper-500);
+  --aw-accent-pressed: var(--aw-copper-300);
+  --aw-text: var(--aw-paper-100);
+  --aw-text-dim: var(--aw-paper-300);
+  --aw-text-soft: color-mix(in srgb, var(--aw-mist) 72%, transparent);
+  --aw-ok: oklch(84.4% 0.137 164.1);
+  --aw-info: oklch(73.1% 0.113 182.5);
+  --aw-warn: oklch(82% 0.12 78);
+  --aw-danger: oklch(66% 0.2 25);
+
+  /* ── Surfaces & lines (derived, not re-pinned) ────────────────── */
+  --aw-line: color-mix(in srgb, var(--aw-copper-500) 16%, transparent);
+  --aw-line-soft: color-mix(in srgb, white 7%, transparent);
+  --aw-glass: color-mix(in srgb, var(--aw-ink-900) 72%, transparent);
+  --aw-blur-nav: blur(16px) saturate(1.3);
+  --aw-blur-card: blur(14px);
+  --aw-card-grad: linear-gradient(
+    170deg,
+    color-mix(in srgb, var(--aw-ink-700) 88%, transparent),
+    color-mix(in srgb, var(--aw-ink-900) 92%, transparent)
+  );
+  --aw-hairline: inset 0 1px 0 var(--aw-line-soft);
+  --aw-shadow-plate: 0 40px 90px -50px rgb(0 0 0 / 0.9);
+  --aw-shadow-float: 0 24px 60px -30px rgb(0 0 0 / 0.85);
+  --aw-shadow-lift: 0 28px 64px -38px rgb(0 0 0 / 0.88);
+
+  /* ── Motion ladder (transitions.dev-style semantic scale) ─────── */
+  --aw-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --aw-ease-io: cubic-bezier(0.65, 0, 0.35, 1);
+  --aw-dur-fast: 220ms;
+  --aw-dur-med: 420ms;
+  --aw-dur: 640ms;
+  --aw-stagger: 120ms;
+
+  --aw-grain-op: 0.05;
+
+  /* ── Legacy aliases (zero call-site churn) ────────────────────── */
+  --aw-copper: var(--aw-copper-400);
+  --aw-copper-bright: var(--aw-copper-500);
+  --aw-phosphor: var(--aw-ok);
+  --aw-teal: var(--aw-info);
+  --aw-ink: var(--aw-ink-900);
+  --aw-ink-2: var(--aw-ink-800);
+}
+
+/* ─── FX primitives ─────────────────────────────────────────────── */
+
+.aw-scroll-progress {
+  position: fixed;
+  inset: 0 0 auto 0;
+  height: 2px;
+  width: 100%;
+  z-index: 90;
+  background: linear-gradient(
+    90deg,
+    var(--aw-accent),
+    var(--aw-accent-strong),
+    var(--aw-phosphor)
+  );
+  transform-origin: 0 50%;
+  transform: scaleX(0);
+  pointer-events: none;
+}
+
+.aw-grain {
+  position: fixed;
+  inset: -50%;
+  z-index: 80;
+  pointer-events: none;
+  opacity: var(--aw-grain-op);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  animation: aw-grain-drift 9s steps(6) infinite;
+}
+
+@keyframes aw-grain-drift {
+  0% { transform: translate3d(0, 0, 0); }
+  20% { transform: translate3d(-6%, 4%, 0); }
+  40% { transform: translate3d(4%, -6%, 0); }
+  60% { transform: translate3d(-4%, -4%, 0); }
+  80% { transform: translate3d(6%, 6%, 0); }
+  100% { transform: translate3d(0, 0, 0); }
+}
+
+.aw-orbs {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  /* -1 inside the isolated hero keeps orbs above the page canvas but under
+     all in-flow content; the aurora/grid pseudos share the same lane. */
+  z-index: -1;
+  pointer-events: none;
+}
+
+.aw-reveal {
+  opacity: 0;
+  transform: translate3d(0, 26px, 0);
+  transition:
+    opacity var(--aw-dur) var(--aw-ease-out),
+    transform var(--aw-dur) var(--aw-ease-out);
+  /* R13 (baseline-ui): no standing will-change — this is a one-shot entrance;
+     Chrome auto-promotes composited opacity/transform animations. The hint
+     would linger forever after the 500ms reveal. .aw-parallax keeps its
+     (continuously active while scrolling). */
+}
+.aw-reveal.is-in {
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+}
+.aw-reveal.is-static {
+  opacity: 1;
+  transform: none;
+  transition: none;
+}
+
+.aw-parallax {
+  will-change: transform;
+}
+
+/* Orphan control on short-to-medium copy (headings already use balance). */
+.landing-copy > p,
+.principle p,
+.journey-card p,
+.seo-hero-copy > p,
+.seo-proof-card li,
+.seo-proof-card p {
+  text-wrap: pretty;
+}
+
+/* R13 (baseline-ui): body copy wraps pretty in the console too. */
+.ops-page p,
+.guide-copy p,
+.wallet-gate-panel p {
+  text-wrap: pretty;
+}
+
+/* Thinking dots for agent working states (see ThinkingOrbs in fx.tsx). */
+.aw-thinking-orbs {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+}
+.aw-thinking-orb {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--aw-accent-strong);
+  opacity: 0.35;
+  animation: aw-orb-pulse 1.1s var(--aw-ease-io) infinite;
+}
+.aw-thinking-orb:nth-child(2) {
+  animation-delay: calc(var(--aw-stagger) * 1.5);
+}
+.aw-thinking-orb:nth-child(3) {
+  animation-delay: calc(var(--aw-stagger) * 3);
+}
+.aw-thinking-orbs.is-static .aw-thinking-orb {
+  animation: none;
+  opacity: 0.6;
+}
+
+@keyframes aw-orb-pulse {
+  0%, 100% { opacity: 0.35; transform: translate3d(0, 0, 0); }
+  45% { opacity: 1; transform: translate3d(0, -2px, 0); }
+}
+
+/* Mouse-tracked spotlight surface (SpotlightCard sets --aw-spot-x/-y). */
+.aw-spotlight {
+  position: relative;
+}
+.aw-spotlight::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--aw-dur-med) var(--aw-ease-out);
+  background: radial-gradient(
+    340px circle at var(--aw-spot-x, 50%) var(--aw-spot-y, 50%),
+    color-mix(in srgb, var(--aw-accent-strong) 13%, transparent),
+    transparent 70%
+  );
+}
+.aw-spotlight:hover::before {
+  opacity: 1;
+}
+
+/* ─── Landing ───────────────────────────────────────────────────── */
+
+.landing-page {
+  position: relative;
+  overflow-x: clip;
+  background: var(--aw-ink);
+}
+
+/* R16: nav + live ticker form ONE sticky header band — the wrapper owns the
+   stickiness + glass; .landing-nav is the row inside it. Scoped to
+   .landing-page so it outranks the R12 stacking rule that pins direct
+   children position:relative (this file loads after index.css). */
+.landing-page .landing-header {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: var(--aw-glass);
+  backdrop-filter: var(--aw-blur-nav);
+  -webkit-backdrop-filter: var(--aw-blur-nav);
+  border-bottom: 1px solid var(--aw-line-soft);
+}
+.landing-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.landing-nav .nav-connect {
+  transition:
+    border-color var(--aw-dur) var(--aw-ease-out),
+    background-color var(--aw-dur) var(--aw-ease-out),
+    box-shadow var(--aw-dur) var(--aw-ease-out);
+}
+.landing-nav .nav-connect:hover {
+  border-color: color-mix(in srgb, var(--aw-accent) 55%, transparent);
+  background: color-mix(in srgb, var(--aw-accent) 14%, transparent);
+  box-shadow: 0 0 24px -8px color-mix(in srgb, var(--aw-accent) 45%, transparent);
+}
+
+.landing-main {
+  position: relative;
+  isolation: isolate;
+}
+
+/* Aurora wash + grid plate behind the hero. Both sit under content (z-index
+   -1) so the existing poster/receipt plate keeps its own layering. */
+.landing-main::before {
+  content: "";
+  position: absolute;
+  inset: -20% -10% auto -10%;
+  height: 130%;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      42% 34% at 18% 22%,
+      color-mix(in srgb, var(--aw-accent) 17%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      38% 30% at 82% 16%,
+      color-mix(in srgb, var(--aw-teal) 13%, transparent),
+      transparent 72%
+    ),
+    radial-gradient(
+      50% 42% at 55% 88%,
+      color-mix(in srgb, var(--aw-phosphor) 8%, transparent),
+      transparent 75%
+    );
+  animation: aw-aurora-breathe 14s var(--aw-ease-io) infinite alternate;
+}
+
+@keyframes aw-aurora-breathe {
+  from { opacity: 0.75; transform: translate3d(0, 0, 0) scale(1); }
+  to { opacity: 1; transform: translate3d(0, -2.5%, 0) scale(1.06); }
+}
+
+.landing-main::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    linear-gradient(var(--aw-line-soft) 1px, transparent 1px),
+    linear-gradient(90deg, var(--aw-line-soft) 1px, transparent 1px);
+  background-size: 72px 72px;
+  mask-image: linear-gradient(to bottom, black 0%, transparent 78%);
+  -webkit-mask-image: linear-gradient(to bottom, black 0%, transparent 78%);
+  opacity: 0.5;
+}
+
+.landing-copy h1 {
+  font-family: Syne, sans-serif;
+  font-weight: 800;
+  font-size: clamp(2.9rem, 7vw, 5.6rem);
+  line-height: 0.98;
+  letter-spacing: -0.03em;
+}
+
+.landing-copy h1 i {
+  font-family: "Fraunces", serif;
+  font-style: italic;
+  font-weight: 480;
+  background: linear-gradient(
+    100deg,
+    var(--aw-accent-strong),
+    var(--aw-accent) 55%,
+    var(--aw-phosphor)
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  padding-inline-end: 0.06em;
+}
+
+/* Hero meta + trust line stay quiet so the type leads. */
+.landing-copy .hero-meta {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  color: var(--aw-text-soft);
+}
+
+.landing-copy .hero-meta .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--aw-ok);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--aw-ok) 70%, transparent);
+}
+.landing-copy .hero-meta .dot.copper {
+  background: var(--aw-accent-strong);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--aw-accent) 70%, transparent);
+}
+
+.landing-copy .trust-line .trust-item {
+  color: var(--aw-text-soft);
+  transition: color var(--aw-dur) var(--aw-ease-out);
+}
+.landing-copy .trust-line .trust-item:hover {
+  color: var(--aw-mist);
+}
+
+/* Cinematic proof plate: deepen the poster grade and float the receipt. */
+.landing-visual.hero-visual-modern {
+  position: relative;
+  isolation: isolate;
+  border: 1px solid var(--aw-line);
+  background:
+    linear-gradient(
+      160deg,
+      color-mix(in srgb, var(--aw-ink-2) 55%, transparent),
+      color-mix(in srgb, var(--aw-ink) 74%, transparent)
+    );
+  box-shadow:
+    var(--aw-shadow-plate),
+    var(--aw-hairline);
+}
+.landing-visual.hero-visual-modern .hero-visual-poster {
+  opacity: 0.5;
+  filter: saturate(0.9) contrast(1.06);
+}
+
+.floating-receipt {
+  background: color-mix(in srgb, var(--aw-ink-2) 78%, transparent);
+  backdrop-filter: var(--aw-blur-card);
+  -webkit-backdrop-filter: var(--aw-blur-card);
+  border: 1px solid var(--aw-line);
+  box-shadow:
+    var(--aw-shadow-float),
+    var(--aw-hairline);
+}
+
+/* Marquee ticker: the JSX renders one aria-hidden track duplicated for the
+   seamless loop; animation pauses on hover so a row can be read. R16: the
+   strip lives inside the sticky header — a market tape under the nav. */
+.ticker {
+  position: relative;
+}
+.ticker .ticker-track {
+  width: max-content;
+  animation: aw-marquee 46s linear infinite;
+}
+.ticker:hover .ticker-track {
+  animation-play-state: paused;
+}
+
+@keyframes aw-marquee {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(-50%, 0, 0); }
+}
+
+[dir="rtl"] .ticker .ticker-track {
+  animation-name: aw-marquee-rtl;
+}
+@keyframes aw-marquee-rtl {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(50%, 0, 0); }
+}
+
+/* Principles: spotlight surfaces with a rotating border beam on hover. */
+.principles-grid {
+  gap: clamp(18px, 2.4vw, 30px);
+}
+.principles-grid .aw-spotlight.principle {
+  border: 1px solid var(--aw-line-soft);
+  background: var(--aw-card-grad);
+  transition:
+    transform var(--aw-dur) var(--aw-ease-out),
+    border-color var(--aw-dur) var(--aw-ease-out),
+    box-shadow var(--aw-dur) var(--aw-ease-out);
+}
+.principles-grid .aw-spotlight.principle:hover {
+  transform: translate3d(0, -6px, 0);
+  border-color: transparent;
+  box-shadow:
+    var(--aw-shadow-lift),
+    0 0 0 1px var(--aw-line-soft);
+}
+
+/* Border beam (beam.jakubantalik-inspired, original implementation): a
+   conic copper/phosphor sweep masked to a 1px ring. */
+.aw-spotlight.principle::after,
+.seo-link-grid > a::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  pointer-events: none;
+  background: conic-gradient(
+    from var(--aw-beam-angle),
+    transparent 0%,
+    color-mix(in srgb, var(--aw-accent-strong) 85%, transparent) 12%,
+    color-mix(in srgb, var(--aw-phosphor) 70%, transparent) 22%,
+    transparent 34%,
+    transparent 100%
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity var(--aw-dur-med) var(--aw-ease-out);
+}
+.aw-spotlight.principle:hover::after,
+.seo-link-grid > a:hover::after {
+  opacity: 1;
+  animation: aw-beam-spin 3.2s linear infinite;
+}
+
+@keyframes aw-beam-spin {
+  to { --aw-beam-angle: 360deg; }
+}
+
+.principle .p-icon {
+  color: var(--aw-accent-strong);
+}
+
+/* Journey: parallax-wrapped depth cards. */
+.journey-section .journey {
+  gap: clamp(18px, 2.4vw, 30px);
+}
+.journey-card {
+  position: relative;
+  /* no border here — the .journey grid's 1px-gap hairline system owns the
+     cell edges; a second border would read as a double line */
+  background:
+    linear-gradient(
+      200deg,
+      color-mix(in srgb, var(--aw-ink-700) 90%, transparent),
+      color-mix(in srgb, var(--aw-ink) 94%, transparent)
+    );
+  box-shadow: var(--aw-hairline);
+  transition: box-shadow var(--aw-dur) var(--aw-ease-out);
+}
+.journey-card:hover {
+  box-shadow:
+    var(--aw-hairline),
+    var(--aw-shadow-lift);
+}
+.journey-card .j-cta {
+  transition:
+    color var(--aw-dur) var(--aw-ease-out),
+    border-color var(--aw-dur) var(--aw-ease-out),
+    background-color var(--aw-dur) var(--aw-ease-out);
+}
+.journey-card .j-cta:hover {
+  color: var(--aw-accent-strong);
+  border-color: color-mix(in srgb, var(--aw-accent) 45%, transparent);
+  background: color-mix(in srgb, var(--aw-accent) 9%, transparent);
+}
+
+/* Oversized wordmark footer. */
+.landing-footer {
+  position: relative;
+  overflow: hidden;
+  padding-block-start: clamp(56px, 9vw, 120px);
+  border-top: 1px solid var(--aw-line-soft);
+}
+.landing-footer::before {
+  content: "AXIOM";
+  position: absolute;
+  inset-inline: 0;
+  bottom: -0.24em;
+  font-family: Syne, sans-serif;
+  font-weight: 800;
+  font-size: clamp(7rem, 22vw, 20rem);
+  line-height: 1;
+  letter-spacing: 0.02em;
+  text-align: center;
+  color: transparent;
+  -webkit-text-stroke: 1px color-mix(in srgb, var(--aw-accent) 26%, transparent);
+  opacity: 0.5;
+  pointer-events: none;
+  user-select: none;
+}
+.landing-footer .footer-meta a {
+  transition: color var(--aw-dur) var(--aw-ease-out);
+}
+.landing-footer .footer-meta a:hover {
+  color: var(--aw-accent-strong);
+}
+
+/* ─── Public hubs ───────────────────────────────────────────────── */
+
+.seo-public {
+  position: relative;
+  overflow-x: clip;
+  background: var(--aw-ink);
+}
+
+.seo-public-nav {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: var(--aw-glass);
+  backdrop-filter: var(--aw-blur-nav);
+  -webkit-backdrop-filter: var(--aw-blur-nav);
+  border-bottom: 1px solid var(--aw-line-soft);
+}
+
+.seo-hero {
+  position: relative;
+  isolation: isolate;
+}
+.seo-hero::before {
+  content: "";
+  position: absolute;
+  inset: -12% -8% auto -8%;
+  height: 120%;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      40% 32% at 16% 20%,
+      color-mix(in srgb, var(--aw-accent) 15%, transparent),
+      transparent 72%
+    ),
+    radial-gradient(
+      36% 28% at 84% 14%,
+      color-mix(in srgb, var(--aw-teal) 12%, transparent),
+      transparent 74%
+    ),
+    radial-gradient(
+      44% 36% at 60% 86%,
+      color-mix(in srgb, var(--aw-phosphor) 7%, transparent),
+      transparent 76%
+    );
+  animation: aw-aurora-breathe 16s var(--aw-ease-io) infinite alternate;
+}
+.seo-hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    linear-gradient(var(--aw-line-soft) 1px, transparent 1px),
+    linear-gradient(90deg, var(--aw-line-soft) 1px, transparent 1px);
+  background-size: 72px 72px;
+  mask-image: linear-gradient(to bottom, black 0%, transparent 74%);
+  -webkit-mask-image: linear-gradient(to bottom, black 0%, transparent 74%);
+  opacity: 0.45;
+}
+
+.seo-hero-copy h1 {
+  font-family: Syne, sans-serif;
+  font-weight: 800;
+  font-size: clamp(2.5rem, 5.6vw, 4.4rem);
+  line-height: 1.02;
+  letter-spacing: -0.028em;
+}
+
+.seo-hero-copy > p {
+  color: var(--aw-text-soft);
+}
+
+.seo-proof-card {
+  background: color-mix(in srgb, var(--aw-ink-2) 82%, transparent);
+  backdrop-filter: var(--aw-blur-card);
+  -webkit-backdrop-filter: var(--aw-blur-card);
+  border: 1px solid var(--aw-line);
+  box-shadow:
+    var(--aw-shadow-lift),
+    var(--aw-hairline);
+}
+
+.seo-link-grid {
+  gap: clamp(16px, 2vw, 26px);
+}
+.seo-link-grid > a {
+  position: relative;
+  border: 1px solid var(--aw-line-soft);
+  background: var(--aw-card-grad);
+  transition:
+    transform var(--aw-dur) var(--aw-ease-out),
+    border-color var(--aw-dur) var(--aw-ease-out),
+    box-shadow var(--aw-dur) var(--aw-ease-out);
+}
+.seo-link-grid > a:hover {
+  transform: translate3d(0, -5px, 0);
+  border-color: transparent;
+  box-shadow:
+    var(--aw-shadow-lift),
+    0 0 0 1px var(--aw-line-soft);
+}
+
+/* ─── Console chrome (app shell) ────────────────────────────────── */
+/* Subtle by design: the console is a data surface, not a marketing one.
+   --copper resolves from the app-shell palette when present and falls back
+   to the AW ramp otherwise (no hex re-pins). */
+
+.topbar {
+  box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--copper, var(--aw-accent)) 14%, transparent);
+}
+
+.sidebar .nav-item.active {
+  background: color-mix(in srgb, var(--copper, var(--aw-accent)) 10%, transparent);
+  box-shadow:
+    inset 2px 0 0 var(--copper, var(--aw-accent)),
+    0 0 26px -12px color-mix(in srgb, var(--copper, var(--aw-accent)) 55%, transparent);
+}
+
+/* Liquid-metal button sweep (metal.jakubantalik-inspired, original). */
+.button-primary {
+  position: relative;
+  overflow: hidden;
+}
+.button-primary::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 -40%;
+  width: 36%;
+  transform: skewX(-18deg);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, #ffffff 26%, transparent),
+    transparent
+  );
+  opacity: 0;
+  pointer-events: none;
+}
+.button-primary:hover::after {
+  opacity: 1;
+  animation: aw-metal-sweep 900ms var(--aw-ease-out);
+}
+
+@keyframes aw-metal-sweep {
+  from { inset-inline-start: -40%; }
+  to { inset-inline-start: 110%; }
+}
+
+.page-head h1,
+.page-head .page-title {
+  font-family: Syne, sans-serif;
+  letter-spacing: -0.02em;
+}
+
+/* One-frame transition freeze while the theme attribute flips, so the
+   palette change snaps instead of smearing across every transitioning
+   element (class is added/removed by AppShell's theme effect). */
+.theme-switching *,
+.theme-switching *::before,
+.theme-switching *::after {
+  transition: none !important;
+}
+
+/* Entrance stagger: children of a revealed container rise in sequence.
+   Parallax wrappers own the scroll transform, so the entrance transform
+   lives on the inner card — no conflict between the two systems. */
+.aw-reveal .principle,
+.aw-reveal .journey-card,
+.aw-reveal .seo-link-grid a {
+  opacity: 0;
+  transform: translate3d(0, 24px, 0);
+  transition:
+    opacity var(--aw-dur) var(--aw-ease-out),
+    transform var(--aw-dur) var(--aw-ease-out);
+}
+.aw-reveal.is-in .principle,
+.aw-reveal.is-in .journey-card,
+.aw-reveal.is-in .seo-link-grid a {
+  opacity: 1;
+  transform: none;
+}
+.aw-reveal.is-in .principle:nth-child(2),
+.aw-reveal.is-in .aw-parallax:nth-child(2) .journey-card,
+.aw-reveal.is-in .seo-link-grid a:nth-child(2) {
+  transition-delay: var(--aw-stagger);
+}
+.aw-reveal.is-in .principle:nth-child(3),
+.aw-reveal.is-in .seo-link-grid a:nth-child(3) {
+  transition-delay: calc(2 * var(--aw-stagger));
+}
+
+/* ─── Shared polish ─────────────────────────────────────────────── */
+
+::selection {
+  background: color-mix(in srgb, var(--aw-accent) 34%, transparent);
+  color: var(--aw-mist);
+}
+
+:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--aw-accent-strong) 80%, transparent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aw-grain,
+  .landing-main::before,
+  .seo-hero::before,
+  .ticker .ticker-track,
+  .aw-spotlight.principle:hover::after,
+  .seo-link-grid > a:hover::after,
+  .button-primary:hover::after,
+  .aw-thinking-orb {
+    animation: none !important;
+  }
+  .aw-reveal,
+  .aw-reveal.is-in,
+  .principles-grid .aw-spotlight.principle,
+  .principles-grid .aw-spotlight.principle:hover,
+  .seo-link-grid > a,
+  .seo-link-grid > a:hover,
+  .journey-card,
+  .journey-card:hover {
+    transition: none !important;
+    transform: none !important;
+    opacity: 1 !important;
+  }
+  .ticker:hover .ticker-track {
+    animation-play-state: running;
+  }
+}
+
+[data-reduce-motion="true"] .aw-grain,
+[data-reduce-motion="true"] .landing-main::before,
+[data-reduce-motion="true"] .seo-hero::before,
+[data-reduce-motion="true"] .ticker .ticker-track,
+[data-reduce-motion="true"] .aw-spotlight.principle:hover::after,
+[data-reduce-motion="true"] .seo-link-grid > a:hover::after,
+[data-reduce-motion="true"] .button-primary:hover::after,
+[data-reduce-motion="true"] .aw-thinking-orb {
+  animation: none !important;
+}
+[data-reduce-motion="true"] .aw-reveal,
+[data-reduce-motion="true"] .aw-reveal.is-in,
+[data-reduce-motion="true"] .principles-grid .aw-spotlight.principle,
+[data-reduce-motion="true"] .principles-grid .aw-spotlight.principle:hover,
+[data-reduce-motion="true"] .seo-link-grid > a,
+[data-reduce-motion="true"] .seo-link-grid > a:hover,
+[data-reduce-motion="true"] .journey-card,
+[data-reduce-motion="true"] .journey-card:hover {
+  transition: none !important;
+  transform: none !important;
+  opacity: 1 !important;
+}
+
+/* Mobile: tighten the cinematic scale, keep everything reachable. */
+@media (max-width: 720px) {
+  .landing-copy h1 {
+    font-size: clamp(2.5rem, 11.5vw, 3.4rem);
+  }
+  .seo-hero-copy h1 {
+    font-size: clamp(2.1rem, 9.5vw, 3rem);
+  }
+  .landing-main::after,
+  .seo-hero::after {
+    background-size: 48px 48px;
+  }
+  .landing-footer::before {
+    font-size: clamp(4.6rem, 26vw, 7rem);
+  }
+  .aw-spotlight::before {
+    display: none;
+  }
+}
