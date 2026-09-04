@@ -261,6 +261,7 @@ conformant after rounds 3–8; four real findings, all fixed:
 | MEDIUM | typography | `index.html` font links | JetBrains Mono **700 used** (`.state-pill`, storage-step dash) but only 400/500/600 loaded → synthesized bold → 700 added to both link URLs; `document.fonts.check('700 16px JetBrains Mono')` → true |
 | LOW | writing | `copy.ts` errorBoundary ×3 locales | "Something went wrong" / "Une erreur est survenue" / "Etwas ist schiefgelaufen" (vague, the skill's anti-pattern) → "Unable to load this view" / "Impossible de charger cette vue" / "Ansicht konnte nicht geladen werden" |
 | LOW | typography | `.scroll-section h2` | No `text-wrap: balance` on section headings → balance added (computed `balance` verified) |
+| LOW | layout | `.sidebar.is-collapsed .brand span` (Round-7 leftover) | Selector hid the brand mark itself, and the mark+toggle pair cannot fit side-by-side in the collapsed rail's ~36px content → mark excluded from the hide rule + `side-head` becomes a centered grid stack in collapsed mode (mark above toggle). Verified: mark 30px at rail center, toggle directly below, no overlap, expanded state unchanged |
 
 Passed on inspection (notable): all other landing pairs 5.2–18.1:1 (proper
 oklch→sRGB live measurement — an earlier naive pass produced invalid numbers

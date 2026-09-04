@@ -91,11 +91,12 @@
 .rail-controls { display:flex; gap:var(--space-3); }
 .rail-toggle svg { transition:transform .2s var(--ease); }
 .sidebar.is-collapsed .rail-toggle svg { transform:rotate(180deg); }
-/* Collapsed rail (72px): one centered control only — the hide toggle would
-   both overflow the rail and overlap the toggle's 40px hit halo. */
-.sidebar.is-collapsed .side-head { justify-content:center; padding-inline:var(--space-1); }
+/* Collapsed rail (72px, ~36px content after the rail's 18px inline padding):
+   stack mark above toggle — side-by-side cannot fit, and the hide toggle
+   would overflow the rail and overlap the toggle's 40px hit halo. */
+.sidebar.is-collapsed .side-head { display: grid; justify-items: center; padding-inline: var(--space-1); }
 .sidebar.is-collapsed .rail-hide { display:none; }
-.sidebar.is-collapsed .brand span,.sidebar.is-collapsed .nav-item span,.sidebar.is-collapsed .nav-item kbd,.sidebar.is-collapsed .nav-group-label,.sidebar.is-collapsed .network-card div,.sidebar.is-collapsed .account div:not(.avatar),.sidebar.is-collapsed .account>svg { display:none; }
+.sidebar.is-collapsed .brand span:not(.axiom-brand-mark),.sidebar.is-collapsed .nav-item span,.sidebar.is-collapsed .nav-item kbd,.sidebar.is-collapsed .nav-group-label,.sidebar.is-collapsed .network-card div,.sidebar.is-collapsed .account div:not(.avatar),.sidebar.is-collapsed .account>svg { display:none; }
 .rail-resize:hover { background:color-mix(in srgb,var(--copper) 18%,transparent); }
 .is-resizing,.is-resizing * { cursor:ew-resize!important; user-select:none!important; }
 .settings-toggle-row,.range-control { display:flex; align-items:center; justify-content:space-between; gap:var(--space-5); padding:var(--space-4) 0; border-top:1px solid var(--line-soft); }
