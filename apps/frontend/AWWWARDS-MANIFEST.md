@@ -194,6 +194,28 @@ mirror-verified in round 4).
 Not verified: German rendering of wallet-gated console surfaces (the locale
 switch lives behind the wallet gate in this sandbox); 200% browser zoom.
 
+## Round 7 — better-interface consolidated review (2026-09-04, read-only)
+
+Full six-domain orchestrated review in the consolidated format (accessibility →
+layout → writing → typography → colors → UI) against the current build
+(`fd807c5`). One LOW finding; no HIGH/MEDIUM. No source changes (review-only
+per the skill's rule 10).
+
+| Severity | Domain | Location | Before → After (proposed) |
+|---|---|---|---|
+| LOW | UI | `index.css:98` `.sidebar.is-collapsed .brand span` | Hides ALL spans in `.brand` including `.axiom-brand-mark` itself → the logo vanishes entirely from the collapsed rail (brandW 0, measured round 6). Proposed: `span:not(.axiom-brand-mark)` so the copper mark stays as the rail's identity anchor |
+
+Verification evidence: unnamed-interactive scan 0 across /, /transactions,
+/chat, /agents, /settings, /transfer, /proofs; chat-thread delete carries an
+undo toast (ChatPage.tsx:1513); reduced-motion probe clean (revealStuck 0,
+1440px); 320px reflow no overflow; reveal-pending vs stuck disambiguated by
+full-scroll (all 5 activate); contrast pairs test-locked (156/156); no vague
+disclosure labels; error paths carry recovery CTAs; tabular-nums tokens in
+place. Not verified: gated-console German rendering, 200% zoom, screen-reader
+audio, pixel inspection (route limitation).
+
+
+
 ## Round-2 verify log
 
 | Time (UTC) | Check | Result | Evidence |
