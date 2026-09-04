@@ -168,6 +168,32 @@ Verified: 156/156 tests, lint 0 errors; fresh build serves
 errors. Not verified: 10%-speed visual motion replay (no pixel inspection
 on this route).
 
+## Round 6 — better-layout execution (2026-09-04)
+
+Direct execution of the pasted `better-layout` skill (with its
+grouping-and-alignment and spacing-and-adaptivity references) against the
+project. Group-gap ratios, fold-peek cues, fixed-width audit, order-by-
+importance and breakpoints were already conformant from rounds 1–5.
+
+| Severity | Location | Before → After |
+|---|---|---|
+| MEDIUM | `index.css` `.rail-controls` | 4px gap between the 32px rail toggle/hide buttons — their 40px hit halos overlapped by 4px (mis-tap zone) → 12px gap, 4px halo clearance |
+| MEDIUM | `index.css` `.sidebar.is-collapsed` | Collapsed 72px rail: brand collapses to 0 and the 68px two-button cluster overflowed the rail by 18px → hide-toggle removed in collapsed state, remaining toggle centered (x20–52), halo inside the rail |
+| MEDIUM | `index.css` `.landing-menu-trigger` | Wave-5 intent was a 40px hamburger but `body .icon-button` (0,1,1) overrode the (0,1,0) min-width → rendered 32px with its halo spilling 5px into scrollWidth → `body .icon-button.landing-menu-trigger` (0,2,1) with width/height 40px |
+| LOW | `index.css` `.topbar-actions` | 8px gap → 12px (halo-touching clusters are the same root cause as the rail gap) |
+| LOW | `index.css` `.connect-modal-close`, `.landing-mobile-menu`, `.sidebar.is-collapsed .side-head` | Physical `right` / `padding-left`/`padding-right` leftovers from the round-4 logical-properties pass → `inset-inline-end` / `padding-inline` |
+
+New tooling: `.design-audit/locale-growth.ts` — headless-Chrome harness that
+injects the REAL German copy (from `lib/copy.ts`) into the live DOM and
+measures clipping. Result at 390px and 1440px: 55 text nodes swapped, no
+document overflow, no text clipping outside the intentional marquee ticker
+bleed — the translated-growth stress test passes with real locale strings
+(fr is structurally identical; `direction: rtl` is console-gated and was
+mirror-verified in round 4).
+
+Not verified: German rendering of wallet-gated console surfaces (the locale
+switch lives behind the wallet gate in this sandbox); 200% browser zoom.
+
 ## Round-2 verify log
 
 | Time (UTC) | Check | Result | Evidence |
