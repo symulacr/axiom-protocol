@@ -442,6 +442,36 @@ final build: em-dash-free rendered copy, colon boundary string live, 0 console
 errors, kicker sweep clean ×6. Dev server SIGTERM'd twice mid-round (external
 supervisor); recovered via preview_start and re-verified after each.
 
+## Round 15 — all-pages full-viewport treatment + before/after evidence (2026-09-04)
+
+User re-issued the R12 brief with the scope widened to EVERY page (landing →
+chat → settings → all), demanding measured before/after. New tool:
+`.design-audit/site-space-audit.mjs` — generic per-route measurement (family
+detection, right/left dead-space % inside the content frame, container-cap %,
+horizontal overflow, text-on-text overlap scan with cached rects + band
+filtering, hydration wait loop) across 18 routes at 1440/1920 + mobile
+spot-runs. One Chrome per width (the per-load spawn version timed out; the
+O(n²) rect scan was the hidden cost on leaf-dense pages).
+
+| Surface | Before (measured) | After (measured) | Cause / fix |
+|---|---|---|---|
+| Landing `/` | R0/L0 @1440+1920 | unchanged R0/L0 | already fluid (R12) |
+| Console pages (`.app-shell`) | `/transactions` **C9.1%** cap-dead @1920 (1520px cap in a 1672px column), R6.4 | **C0, R3.3** (pure edge padding) | `.app-shell .ops-page` `max-width:1520px` removed (the winning rule — the base `.ops-page` 1400 and `.flow-page` 1180 caps were also removed; cascade had three stacked caps) |
+| Flow pages | same cap chain (R3.6-6.4, skeleton-tainted before numbers) | R3.6 = padding only, C0 | same fix |
+| Hubs ×5 | R5.7/5.3 | unchanged | measured "dead" = the locked-topbar clamp edge padding (5vw ≈ 70px/side) — the same reserved-edge contract as the landing, not a cap |
+| `/transfer/co-sign` | R32.7/37.1 | unchanged (disclosed) | deliberate centered 560px single-action empty state; the void is symmetric breathing room around one card (the L metric anchors at the topbar, so it reads asymmetric) |
+| 404 | R6.3/13.6 | unchanged (disclosed) | intentional art slab + 390px measure-capped copy (ledger L3-B9) |
+| Mobile 390/768 (spot: /app /mint /transfer/co-sign) | — | 0 overflow, 0 overlaps, R4.8-5.1 padding (co-sign 12-17 = centered card) | cap removal only affects columns > 1520px; media queries untouched |
+
+Kicker/subtitle/numbered-chip sweep extended to the remaining families
+(/settings, /mint, /transfer/co-sign live-checked; 9 routes DOM-audited across
+R14+R15): **0 findings everywhere**.
+
+Verification: 18-route × 2-width audit before + after, mobile spot-run, 9-route
+kicker sweep, typecheck 0, 156/156 tests, lint 0 errors. Dev server SIGTERM'd
+by the external supervisor 3× during measurement runs; recovered via
+preview_start and re-measured after each.
+
 ## Round-2 verify log
 
 | Time (UTC) | Check | Result | Evidence |
