@@ -247,6 +247,37 @@ flow and undo-toast persistence in the running app (gate unreachable in this
 sandbox — code-verified); screen-reader audio; 200% zoom (320px reflow is the
 stricter equivalent and passes).
 
+## Round 9 — full-sweep audit: writing, typography, colors (2026-09-04)
+
+Fresh cross-domain audit at `a45809d` (the pasted accessibility set was already
+executed in Round 8; this pass ran the three domains never exercised
+standalone — better-writing, better-typography, better-colors — plus
+re-verification of the Round-8 fixes on a fresh build). The codebase is deeply
+conformant after rounds 3–8; four real findings, all fixed:
+
+| Severity | Domain | Location | Before → After |
+|---|---|---|---|
+| MEDIUM | colors | `index.css:4024` `.journey-card p` | `--muted` on the card gradient measured **4.46:1** (AA needs 4.5) → `color-mix(in srgb, var(--muted) 86%, white)` → measured **5.22:1** |
+| MEDIUM | typography | `index.html` font links | JetBrains Mono **700 used** (`.state-pill`, storage-step dash) but only 400/500/600 loaded → synthesized bold → 700 added to both link URLs; `document.fonts.check('700 16px JetBrains Mono')` → true |
+| LOW | writing | `copy.ts` errorBoundary ×3 locales | "Something went wrong" / "Une erreur est survenue" / "Etwas ist schiefgelaufen" (vague, the skill's anti-pattern) → "Unable to load this view" / "Impossible de charger cette vue" / "Ansicht konnte nicht geladen werden" |
+| LOW | typography | `.scroll-section h2` | No `text-wrap: balance` on section headings → balance added (computed `balance` verified) |
+
+Passed on inspection (notable): all other landing pairs 5.2–18.1:1 (proper
+oklch→sRGB live measurement — an earlier naive pass produced invalid numbers
+by parsing oklch strings as sRGB, caught and redone); console light theme
+4.9–15.2:1; inputs at 16px; root font smoothing; smart punctuation (curly
+quotes, en dashes, no literal "..."); no bare "Learn more"; errors carry
+remedies; empty states point forward; verb-first buttons; text-wrap pretty on
+descriptions + balance on display h1s; tabular-nums via mono faces; Fraunces
+self-hosted woff2.
+
+Re-verified Round-8 fixes intact on fresh build: skip link first tab stop,
+main tabindex −1, route focus (chat lands on its sidebar-toggle — ChatPage's
+own pre-existing view-local focus contract), 0 console errors.
+
+Incident note: the dev server exited overnight on its own (second occurrence);
+recovered via preview_start before verification.
+
 ## Round-2 verify log
 
 | Time (UTC) | Check | Result | Evidence |

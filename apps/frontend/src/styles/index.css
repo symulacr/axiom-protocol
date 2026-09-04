@@ -4004,7 +4004,7 @@ strong {
 .principles-section { margin-top: 96px; }
 .journey-section { margin-top: 128px; margin-bottom: 128px; }
 .scroll-section .section-head { display: flex; flex-direction: column; gap: var(--space-2); margin-bottom: var(--space-6); }
-.scroll-section h2 { margin: 0; font: 500 clamp(28px, 4vw, 48px)/1.1 var(--font-serif-display); letter-spacing: -0.025em; font-feature-settings: "ss01", "cv11"; color: var(--ink); }
+.scroll-section h2 { margin: 0; font: 500 clamp(28px, 4vw, 48px)/1.1 var(--font-serif-display); letter-spacing: -0.025em; font-feature-settings: "ss01", "cv11"; color: var(--ink); text-wrap: balance; }
 .scroll-section h2 em { font-style: italic; color: var(--copper-bright); font-weight: 400; }
 .principles-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-4); }
 .principle { display: grid; gap: var(--space-3); padding: var(--space-5); border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--panel); transition: background-color var(--motion-fade-220); }
@@ -4021,7 +4021,7 @@ strong {
 .journey-card { display: grid; gap: var(--space-3); padding: var(--space-5); background: var(--panel); transition: background-color var(--motion-fade-220); }
 .journey-card:hover { background: color-mix(in srgb, var(--copper) 4%, var(--panel)); }
 .journey-card h3 { margin: 0; font: 500 var(--fs-title)/1.15 var(--font-serif-display); letter-spacing: -0.015em; font-feature-settings: "ss01"; color: var(--ink); }
-.journey-card p { margin: 0; color: var(--muted); font-size: var(--fs-body); line-height: 1.6; }
+.journey-card p { margin: 0; color: color-mix(in srgb, var(--muted) 86%, white); font-size: var(--fs-body); line-height: 1.6; }
 .journey-card .j-meta { color: var(--dim); font: 500 var(--fs-mono)/1 "JetBrains Mono", monospace; font-size: var(--fs-small); }
 .journey-card .j-cta { display: inline-flex; align-items: center; gap: var(--space-2); padding: 0; border: 0; background: transparent; color: var(--copper-bright); font: 500 var(--fs-mono)/1 "JetBrains Mono", monospace; cursor: pointer; transition: color var(--motion-fade-220), transform var(--motion-fade-220); }
 .journey-card .j-cta:hover { color: var(--ink); transform: translateX(2px); }

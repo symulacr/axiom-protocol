@@ -1312,7 +1312,7 @@ const english: Copy = {
   },
   errorBoundary: {
     networkTitle: "Connection problem",
-    genericTitle: "Something went wrong",
+    genericTitle: "Unable to load this view",
     networkBody:
       "Unable to load this section. Retry, or check your connection if it keeps failing.",
     retry: "Try again",
@@ -2435,7 +2435,7 @@ const french: Copy = {
   },
   errorBoundary: {
     networkTitle: "Problème de connexion",
-    genericTitle: "Une erreur est survenue",
+    genericTitle: "Impossible de charger cette vue",
     networkBody:
       "Impossible de charger cette section. Réessayez, ou vérifiez votre connexion si l’erreur persiste.",
     retry: "Réessayer",
@@ -3536,7 +3536,7 @@ const german: Copy = {
   },
   errorBoundary: {
     networkTitle: "Verbindungsproblem",
-    genericTitle: "Etwas ist schiefgelaufen",
+    genericTitle: "Ansicht konnte nicht geladen werden",
     networkBody:
       "Dieser Abschnitt ließ sich nicht laden. Versuchen Sie es erneut, oder prüfen Sie Ihre Verbindung, wenn der Fehler bestehen bleibt.",
     retry: "Erneut versuchen",
