@@ -2092,11 +2092,16 @@ body.light .filters-popover {
    the drawer the position is reset to relative but the z-index survived and
    painted the sidebar over .mobile-nav-close (z-4) — the X was unclickable. */
 .mobile-nav-drawer .sidebar { position: relative; z-index: auto; display: flex; width: 100%; min-height: 100dvh; transform: none; pointer-events: auto; }
-.mobile-nav-drawer .rail-resize,
-.mobile-nav-drawer .rail-hide { display: none; }
+.mobile-nav-drawer .rail-resize { display: none; }
+/* R16: the drawer has its own close control — the rail's hide button is
+   meaningless inside it. */
+.mobile-nav-drawer .rail-toggle { display: none; }
 
 @media (min-width: 701px) {
   .topbar .mobile-nav-trigger { display: none !important; }
+  /* R16: with the rail hidden the trigger IS the restore control — one
+     button, expand/hide (the old .rail-reopen chip was removed). */
+  .rail-hidden .topbar .mobile-nav-trigger { display: inline-grid !important; }
 }
 
 /* Persisted surface preferences own a single shell contract. */
@@ -2143,7 +2148,7 @@ body.light .filters-popover {
    the old template/column swaps + left anchor cancelled back into LTR. */
 [dir="rtl"] .app-shell .sidebar { border-right: 0; border-left: 1px solid var(--completion-line); inset: 0 0 0 auto; }
 @media (min-width: 701px) {
-  [dir="rtl"] .app-shell .rail-reopen { left: auto; right: 0; border-left: 1px solid var(--copper); border-right: 0; }
+  /* R16: rail-reopen chip removed — the topbar trigger restores the rail. */
   [dir="rtl"] .app-shell .rail-resize { right: auto; left: -4px; }
 }
 
@@ -2213,9 +2218,7 @@ body.light .filters-popover {
 .ops-summary-recovery { transition: background var(--dur-fast) var(--ease); }
 .ops-summary-recovery:hover { background: var(--copper-08); }
 
-/* 12. Rail re-open edge button. */
-.rail-reopen { transition: background var(--dur-fast) var(--ease); }
-.rail-reopen:hover { background: color-mix(in srgb, var(--copper) 16%, transparent); }
+/* 12. R16: rail-reopen edge button removed — the topbar trigger owns restore. */
 
 /* 13. Skip-to-content (U27): hidden until keyboard-focused; jumps past the command rail. */
 .skip-link { position: fixed; top: 0; inset-inline-start: var(--space-4); z-index: calc(var(--layer-topbar) + 1); padding: var(--space-2) var(--space-4); background: var(--completion-panel); color: var(--ink); border: 1px solid var(--completion-copper); font: 500 var(--fs-small) 'JetBrains Mono', monospace; transform: translateY(-140%); transition: transform var(--dur-fast) var(--ease); }
@@ -2572,7 +2575,7 @@ select.axiom-field option { background: var(--panel); color: var(--text); }
    (always ≥701px); the topbar ghost duplicate stays mobile-only, where the
    rail is a closed drawer. */
 @media (min-width: 701px) {
-  .chat-topbar__new { display: none; }
+  /* R16: rail-reopen chip removed — the topbar trigger restores the rail. */
 }
 
 .chat-md { line-height: var(--lh-normal); overflow-wrap: anywhere; }
@@ -4064,9 +4067,16 @@ strong {
    rail's left edge matches the hero, sections and footer. */
 /* R11: full-bleed band — the old 1180px cap left the rail's hairlines
    floating inside dead side margins on wide screens. */
-.ticker { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) clamp(20px, 5vw, 76px); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); overflow: hidden; }
+/* R16: ticker is the header's tape band — hairline separator from the nav
+   row above, no bottom border (the header wrapper owns the outer edge). */
+.ticker { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) clamp(20px, 5vw, 76px); border-top: 1px solid var(--line); overflow: hidden; }
 .ticker-label { display: inline-flex; align-items: center; gap: var(--space-2); flex: 0 0 auto; padding-inline-end: var(--space-3); border-inline-end: 1px solid var(--line); font: 500 var(--fs-mono)/1 "JetBrains Mono", monospace; color: var(--ink); font-size: var(--fs-small); }
 .ticker-track { display: flex; gap: var(--space-6); flex: 1 1 auto; overflow: hidden; mask-image: linear-gradient(to right, transparent, black 6%, black 94%, transparent); -webkit-mask-image: linear-gradient(to right, transparent, black 6%, black 94%, transparent); }
+/* R16: desktop barely fades the tape edges — the old 6% mask read as a
+   hidden/void side segment. */
+@media (min-width: 1024px) {
+  .ticker-track { mask-image: linear-gradient(to right, transparent, black 1.5%, black 98.5%, transparent); -webkit-mask-image: linear-gradient(to right, transparent, black 1.5%, black 98.5%, transparent); }
+}
 .ticker-item { display: inline-flex; align-items: center; gap: var(--space-2); flex: 0 0 auto; font: 500 var(--fs-mono)/1 "JetBrains Mono", monospace; color: var(--muted); font-size: var(--fs-small); white-space: nowrap; transition: color var(--dur-fast) var(--ease); }
 /* R13 (baseline-ui): looping animations MUST pause off-screen — the
    IntersectionObserver in LandingPage toggles data-offscreen on the section. */

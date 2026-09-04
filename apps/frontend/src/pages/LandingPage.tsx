@@ -166,7 +166,10 @@ export function Landing({
       </a>
       {/* L2-N1: expanded top nav. Logo gains the phosphor dot, 4 inline links
           visible at ≥980px, Connect pill, hamburger collapses to mobile. */}
-      <header className="landing-nav">
+      {/* R16: nav + live ticker form ONE sticky header band — the live strip
+          rode mid-page before; now it sits under the nav like a market tape. */}
+      <header className="landing-header">
+        <div className="landing-nav">
         <Logo glyph />
         <nav className="nav-inline" aria-label={copy.landing.nav.overview}>
           <a className="is-active" href="#hero">
@@ -227,6 +230,52 @@ export function Landing({
             </nav>
           )}
         </div>
+        </div>
+        {/* L2-N5: live activity ticker. Renders the most recent events
+            pulled from /v1/events, padded with copy placeholders so the
+            rail always has TICKER_MAX_ITEMS rows. */}
+        <section
+          ref={tickerRef}
+          className="ticker"
+          aria-label={interpolate(copy.landing.ticker.label, { chainId })}
+        >
+          <span className="ticker-label">
+            <span className="live-pulse" />
+            {interpolate(copy.landing.ticker.label, { chainId })}
+          </span>
+          {/* Wave 5: the track is aria-hidden — the section label above already
+              names the rail, so screen readers hear the summary once instead of
+              the row contents twice. */}
+          {/* Marquee: the track renders one aria-hidden copy of the rail twice —
+              the -50% translate loop is seamless because both halves are
+              identical. Hover pauses it so a row can be read. */}
+          <div className="ticker-track" aria-hidden="true">
+            {tickerItems.map((item, i) => (
+              <span key={i} className="ticker-item">
+                <span
+                  className={`dot ${item.dot === "warning" ? "warning" : ""}`}
+                />
+                <strong>{item.agent}</strong>
+                <span>
+                  {" "}
+                  · {item.action} · {item.ago}
+                </span>
+              </span>
+            ))}
+            {tickerItems.map((item, i) => (
+              <span key={`d-${i}`} className="ticker-item">
+                <span
+                  className={`dot ${item.dot === "warning" ? "warning" : ""}`}
+                />
+                <strong>{item.agent}</strong>
+                <span>
+                  {" "}
+                  · {item.action} · {item.ago}
+                </span>
+              </span>
+            ))}
+          </div>
+        </section>
       </header>
 
       <main className="landing-main" id="hero" tabIndex={-1}>
@@ -376,52 +425,6 @@ export function Landing({
         </section>
         </Reveal>
       </main>
-
-      {/* L2-N5: live activity ticker. Renders the most recent events
-          pulled from /v1/events, padded with copy placeholders so the
-          rail always has TICKER_MAX_ITEMS rows. */}
-      <section
-        ref={tickerRef}
-        className="ticker"
-        aria-label={interpolate(copy.landing.ticker.label, { chainId })}
-      >
-        <span className="ticker-label">
-          <span className="live-pulse" />
-          {interpolate(copy.landing.ticker.label, { chainId })}
-        </span>
-        {/* Wave 5: the track is aria-hidden — the section label above already
-            names the rail, so screen readers hear the summary once instead of
-            the row contents twice. */}
-        {/* Marquee: the track renders one aria-hidden copy of the rail twice —
-            the -50% translate loop is seamless because both halves are
-            identical. Hover pauses it so a row can be read. */}
-        <div className="ticker-track" aria-hidden="true">
-          {tickerItems.map((item, i) => (
-            <span key={i} className="ticker-item">
-              <span
-                className={`dot ${item.dot === "warning" ? "warning" : ""}`}
-              />
-              <strong>{item.agent}</strong>
-              <span>
-                {" "}
-                · {item.action} · {item.ago}
-              </span>
-            </span>
-          ))}
-          {tickerItems.map((item, i) => (
-            <span key={`d-${i}`} className="ticker-item">
-              <span
-                className={`dot ${item.dot === "warning" ? "warning" : ""}`}
-              />
-              <strong>{item.agent}</strong>
-              <span>
-                {" "}
-                · {item.action} · {item.ago}
-              </span>
-            </span>
-          ))}
-        </div>
-      </section>
 
       {/* L2-N6: principles section — three numbered cards. */}
       <section className="scroll-section principles-section" id="principles">

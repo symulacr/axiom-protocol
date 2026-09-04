@@ -74,12 +74,15 @@ function Sidebar({
   settings,
   dispatch,
   session,
+  onHideRail,
 }: {
   route: Route;
   go: (path: string) => void;
   settings: UiSettings;
   dispatch: React.Dispatch<ConsoleAction>;
   session: Session;
+  /** R16: single rail control — the old second (hide) button was redundant. */
+  onHideRail: () => void;
 }) {
   const resizeFrame = useRef<number | null>(null);
   const pendingWidth = useRef(settings.railWidth);
@@ -239,21 +242,15 @@ function Sidebar({
       <div className="side-head">
         <Logo />
         <div className="rail-controls">
+          {/* R16: ONE rail control (expand/hide cycle). The separate
+              rail-hide button was removed — two buttons for one job. */}
           <button
             className="icon-button rail-toggle"
-            onClick={() =>
-              setSettings({ railCollapsed: !settings.railCollapsed })
-            }
-            aria-label={copy.a11y.collapseSidebar}
+            onClick={onHideRail}
+            aria-label={copy.a11y.hideSidebar}
+            title={copy.a11y.hideSidebar}
           >
             <ChevronLeft size={16} />
-          </button>
-          <button
-            className="icon-button rail-hide"
-            onClick={() => setSettings({ railHidden: true })}
-            aria-label={copy.a11y.hideSidebar}
-          >
-            <Menu size={16} />
           </button>
         </div>
       </div>
@@ -415,6 +412,9 @@ function MobileNavigationDrawer({
           }}
           settings={settings}
           dispatch={dispatch}
+          /* The drawer owns dismissal (X + backdrop); its copy of the rail
+             hides the toggle via CSS, so this is a typed no-op. */
+          onHideRail={() => undefined}
           session={session}
         />
       </div>
@@ -747,6 +747,8 @@ function Topbar({
   go,
   onLock,
   onOpenMobileNav,
+  onRestoreRail,
+  railHidden,
   fundTarget,
 }: {
   state: AppState;
@@ -754,6 +756,9 @@ function Topbar({
   go: (path: string) => void;
   onLock: () => void;
   onOpenMobileNav: () => void;
+  /** R16: desktop rail-restore (the topbar trigger when the rail is hidden). */
+  onRestoreRail: () => void;
+  railHidden: boolean;
   fundTarget?: FundTarget;
 }) {
   const copy = getCopy(state.settings.locale);
@@ -764,8 +769,20 @@ function Topbar({
       <div className="topbar-route">
         <button
           className="icon-button mobile-nav-trigger"
-          onClick={onOpenMobileNav}
-          aria-label={copy.a11y.openNav}
+          /* R16: one trigger, two contexts — desktop with a hidden rail
+             restores it inline; narrow viewports open the drawer. */
+          onClick={() => {
+            if (railHidden && window.matchMedia("(min-width: 701px)").matches) {
+              onRestoreRail();
+            } else {
+              onOpenMobileNav();
+            }
+          }}
+          aria-label={
+            railHidden && window.matchMedia("(min-width: 701px)").matches
+              ? copy.topbar.openRail
+              : copy.a11y.openNav
+          }
           aria-haspopup="dialog"
         >
           <Menu size={16} />
@@ -946,8 +963,23 @@ export function AppShell({
     );
     return () => cancelAnimationFrame(raf);
   }, [state.settings.theme]);
+  // R16: /chat defaults the rail hidden (focused surface — the always-on rail
+  // read as dead side space); one explicit toggle overrides for the session.
+  // The old .rail-reopen chip is gone — the topbar trigger restores the rail.
+  const railUserSet = useRef(false);
+  const railHidden = railUserSet.current
+    ? state.settings.railHidden
+    : route === "chat";
+  const hideRail = () => {
+    railUserSet.current = true;
+    setSettings({ railHidden: true, railCollapsed: false });
+  };
+  const restoreRail = () => {
+    railUserSet.current = true;
+    setSettings({ railHidden: false });
+  };
   const className =
-    `operator-preferences ${state.settings.reducedMotion ? "reduce-motion" : ""} ${state.settings.railHidden ? "rail-hidden" : ""}`.trim();
+    `operator-preferences ${state.settings.reducedMotion ? "reduce-motion" : ""} ${railHidden ? "rail-hidden" : ""}`.trim();
   return (
     <div className={className} dir={state.settings.direction}>
       <div
@@ -964,22 +996,15 @@ export function AppShell({
           {copy.a11y.skipToContent}
         </a>
         <div className="sidebar-wrap">
-          {!state.settings.railHidden && (
+          {!railHidden && (
             <Sidebar
               route={route}
               go={go}
               settings={state.settings}
               dispatch={dispatch}
               session={state.session}
+              onHideRail={hideRail}
             />
-          )}
-          {state.settings.railHidden && (
-            <button
-              className="rail-reopen"
-              onClick={() => setSettings({ railHidden: false })}
-            >
-              <Menu size={14} /> {copy.topbar.openRail}
-            </button>
           )}
         </div>
         <main id="main-content" className="main" tabIndex={-1}>
@@ -989,6 +1014,8 @@ export function AppShell({
             go={go}
             onLock={onLock}
             onOpenMobileNav={() => setMobileNavOpen(true)}
+            onRestoreRail={restoreRail}
+            railHidden={railHidden}
             fundTarget={fundTarget}
           />
           <PriorityActionStrip

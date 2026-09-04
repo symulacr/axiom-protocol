@@ -232,7 +232,11 @@
   background: var(--aw-ink);
 }
 
-.landing-nav {
+/* R16: nav + live ticker form ONE sticky header band — the wrapper owns the
+   stickiness + glass; .landing-nav is the row inside it. Scoped to
+   .landing-page so it outranks the R12 stacking rule that pins direct
+   children position:relative (this file loads after index.css). */
+.landing-page .landing-header {
   position: sticky;
   top: 0;
   z-index: 40;
@@ -240,6 +244,11 @@
   backdrop-filter: var(--aw-blur-nav);
   -webkit-backdrop-filter: var(--aw-blur-nav);
   border-bottom: 1px solid var(--aw-line-soft);
+}
+.landing-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .landing-nav .nav-connect {
@@ -390,7 +399,8 @@
 }
 
 /* Marquee ticker: the JSX renders one aria-hidden track duplicated for the
-   seamless loop; animation pauses on hover so a row can be read. */
+   seamless loop; animation pauses on hover so a row can be read. R16: the
+   strip lives inside the sticky header — a market tape under the nav. */
 .ticker {
   position: relative;
 }

@@ -472,6 +472,34 @@ kicker sweep, typecheck 0, 156/156 tests, lint 0 errors. Dev server SIGTERM'd
 by the external supervisor 3× during measurement runs; recovered via
 preview_start and re-measured after each.
 
+## Round 16 — mainnet switch, header ticker tape, one rail control, chat focus mode (2026-09-04)
+
+User order: fully mainnet (no testnet), ticker into the header + modern +
+live-filled, chat sidebar behind ONE show icon (no permanent side dead space),
+rail button dedupe (one expand/hide control), scroll-inclusive layout checks,
+desktop focus, before/after shown.
+
+| Area | Before | After (verified live) |
+|---|---|---|
+| Chain | 16602 Galileo testnet, testnet deploys | **16661 Aristotle mainnet** — hero meta reads "0G Mainnet · chain 16661". Addresses = the verified proxy record in `docs/deployments/aristotle-2026-07-22.json` (AgentNFT 0x4938…545, Vault 0xe32f…e6f, TEE 0x7490…E9c, Processor 0xe8B3…722, token 0x354C…d19). `.env.example` (committed template) is mainnet-first; GasTank/DelegationRegistry unset → their UI gates off. Faucet row now renders only on 16602 (test-token feature must not offer claims that cannot succeed) |
+| Live band placement | ticker strip mid-page, below the hero | ticker rides INSIDE the sticky header — nav + tape form one glass band (`position: sticky`, stays at top:0 through scroll, verified); edge mask softened 6% → 1.5% at ≥1024 (the "hidden side part") |
+| Chat side space | rail (with thread history) always visible beside chat | **/chat defaults the rail hidden** — chat is a focused surface; the topbar icon ("Show sidebar") restores it (verified: hidden → icon appears → click → rail back); one explicit toggle overrides for the session |
+| Rail controls | TWO buttons (rail-toggle collapse + rail-hide) | **ONE button** (hide) + the topbar icon (restore) — rail-hide deleted, the old `.rail-reopen` edge chip deleted (3 dead CSS rules removed), the drawer's rail-toggle hidden (drawer owns dismissal). Full cycle verified on /chat: label "Hide sidebar" → hidden → restore icon → restored |
+| Scroll-inclusive layout | — | both audit tools scroll every page before measuring (R15); nothing new found |
+| Live fill | — | the ticker polls `/v1/events` every 8s and maps real events; NO backend runs in this sandbox (the endpoint returns the SPA shell) → rows are copy-padded here. Live fill is real code, not verifiable in-sandbox |
+
+Before/after shots: `.design-audit/awwwards-shots/r16-before-{landing,chat,app}.png`
+→ `r16-after-{landing,chat}.png`. No pixel inspection performed in this route
+(DOM/computed-style evidence); images are for the user's own eyes.
+
+Verification: typecheck 0, 156/156 tests, lint 0 errors; live checks: header
+sticky + tape in band, chat rail default-hidden + restore cycle, single rail
+control, mainnet label, 0 console errors (known WebGL-disabled noise only).
+Dev server SIGTERM'd by the external supervisor repeatedly; recovered via
+preview_start and re-verified after each. `/app` unauthenticated renders the
+public preview shell by pre-existing route-gate design (not a regression) —
+rail tests ran on the shell route /chat.
+
 ## Round-2 verify log
 
 | Time (UTC) | Check | Result | Evidence |
