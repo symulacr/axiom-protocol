@@ -868,3 +868,21 @@
     width: auto;
   }
 }
+
+/* R23: SignalArcField — canvas2D copper/phosphor data arc behind the #how
+   steps (ThreeUI Predictive Arc adaptation, transparent canvas). Fades at
+   both section edges so the band reads as atmosphere, not a banner. */
+.how-section { position: relative; }
+.signal-arc-field {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.55;
+  mask-image: linear-gradient(to bottom, transparent, black 18%, black 82%, transparent);
+  -webkit-mask-image: linear-gradient(to bottom, transparent, black 18%, black 82%, transparent);
+}
+.how-section .principles-grid,
+.how-section .section-head {
+  position: relative;
+  z-index: 1;
+}
