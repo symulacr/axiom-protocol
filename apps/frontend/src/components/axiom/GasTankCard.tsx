@@ -12,6 +12,9 @@ import { APP_CHAIN } from "../../config/wagmi.js";
 import { getCopy } from "../../lib/copy.js";
 import { toast } from "sonner";
 import type { Locale } from "../../lib/copy.js";
+const FAUCET_RETIRED = false;
+/** Testnet-only faucet retired with the Galileo chain (2026-09-05). */
+
 
 const nativeSymbol = APP_CHAIN.nativeCurrency.symbol;
 
@@ -213,7 +216,7 @@ export function GasTankCard({
           ) : null}
           {/* Testnet retired: the faucet was a Galileo-only feature; mainnet
               builds never render a claim that cannot succeed. */}
-          {false && (
+          {FAUCET_RETIRED && (
           <div
             className="gas-tank-card__faucet"
             data-testid="gas-tank-faucet-row"
