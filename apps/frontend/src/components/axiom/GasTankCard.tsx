@@ -6,7 +6,6 @@ import { getAxiomGasTankAddress } from "../../abi/addresses.js";
 import { toViemAbi } from "../../abi/addresses.js";
 import { GAS_TANK_ABI } from "@axiom/config/abis";
 import { useGasTank } from "../../hooks/useGasTank.js";
-import { APP_CHAIN_ID } from "../../config/wagmi.js";
 import { useFaucet } from "../../hooks/useFaucet.js";
 import { formatTokenAmount, humanizeError } from "../../utils/format.js";
 import { APP_CHAIN } from "../../config/wagmi.js";
@@ -212,9 +211,9 @@ export function GasTankCard({
               {actionError}
             </p>
           ) : null}
-          {/* R16: the faucet is a Galileo-testnet feature (test tokens) —
-              mainnet must not render a claim that cannot succeed. */}
-          {APP_CHAIN_ID === 16602 && (
+          {/* Testnet retired: the faucet was a Galileo-only feature; mainnet
+              builds never render a claim that cannot succeed. */}
+          {false && (
           <div
             className="gas-tank-card__faucet"
             data-testid="gas-tank-faucet-row"

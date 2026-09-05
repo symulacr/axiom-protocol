@@ -53,12 +53,12 @@ test("fallback URLs present → FallbackProvider with quorum 1 over primary+fall
   ]);
 });
 
-test("registry fallbacks (16602 Galileo) apply when env is unset; cache is per-URL", () => {
+test("retired testnet chain (16602) has no registry fallbacks — primary-only provider, cache is per-URL", () => {
   process.env.AXIOM_EVM_RPC = "https://rpc-c.example";
   delete process.env.AXIOM_EVM_RPC_FALLBACKS;
   const provider = getSharedProvider(16602);
-  assert.ok(provider instanceof FallbackProvider);
-  assert.equal((provider as FallbackProvider).quorum, 1);
+  // Mainnet-only registry: no galileo fallback list remains, so no FallbackProvider is built.
+  assert.ok(!(provider instanceof FallbackProvider));
   // Same URL must reuse the cached instance (no second construction).
   assert.equal(getSharedProvider(16602), provider);
 });
