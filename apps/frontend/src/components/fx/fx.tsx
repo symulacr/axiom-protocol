@@ -9,7 +9,6 @@ import {
   useEffect,
   useRef,
   useState,
-  type CSSProperties,
   type ReactNode,
 } from "react";
 
@@ -54,13 +53,11 @@ export function Reveal({
   children,
   delay = 0,
   className = "",
-  style,
 }: {
   children: ReactNode;
   /** Stagger delay in ms — keep under ~400 so sections feel immediate. */
   delay?: number;
   className?: string;
-  style?: CSSProperties;
 }) {
   const ref = useRef<HTMLDivElement | null>(null);
   const reduced = useReducedMotion();
@@ -91,7 +88,7 @@ export function Reveal({
     <div
       ref={ref}
       className={`aw-reveal ${shown ? "is-in" : ""} ${reduced ? "is-static" : ""} ${className}`.trim()}
-      style={delay && !reduced ? { transitionDelay: `${delay}ms`, ...style } : style}
+      style={delay && !reduced ? { transitionDelay: `${delay}ms` } : undefined}
     >
       {children}
     </div>
@@ -103,14 +100,10 @@ export function Reveal({
 export function Parallax({
   children,
   strength = 40,
-  className = "",
-  style,
 }: {
   children: ReactNode;
   /** Max px of travel; negative value inverts direction. */
   strength?: number;
-  className?: string;
-  style?: CSSProperties;
 }) {
   const ref = useRef<HTMLDivElement | null>(null);
   const reduced = useReducedMotion();
@@ -144,11 +137,7 @@ export function Parallax({
   }, [reduced, strength]);
 
   return (
-    <div
-      ref={ref}
-      className={`aw-parallax ${className}`.trim()}
-      style={style}
-    >
+    <div ref={ref} className="aw-parallax">
       {children}
     </div>
   );
@@ -192,14 +181,8 @@ export function ScrollProgress() {
  *  reduced motion or while the value is loading (null renders the fallback). */
 export function CountUp({
   value,
-  fallback = "—",
-  durationMs = 1400,
-  className = "",
 }: {
   value: number | null;
-  fallback?: string;
-  durationMs?: number;
-  className?: string;
 }) {
   const ref = useRef<HTMLSpanElement | null>(null);
   const reduced = useReducedMotion();
@@ -219,6 +202,7 @@ export function CountUp({
     }
     let raf = 0;
     let start = 0;
+    const durationMs = 1400;
     const run = (now: number) => {
       if (!start) start = now;
       const t = Math.min(1, (now - start) / durationMs);
@@ -239,11 +223,11 @@ export function CountUp({
       io.disconnect();
       if (raf) cancelAnimationFrame(raf);
     };
-  }, [value, reduced, durationMs]);
+  }, [value, reduced]);
 
   return (
-    <span ref={ref} className={className}>
-      {value === null ? fallback : (display ?? "0")}
+    <span ref={ref}>
+      {value === null ? "—" : (display ?? "0")}
     </span>
   );
 }
@@ -253,11 +237,9 @@ export function CountUp({
 export function SpotlightCard({
   children,
   className = "",
-  style,
 }: {
   children: ReactNode;
   className?: string;
-  style?: CSSProperties;
 }) {
   const ref = useRef<HTMLDivElement | null>(null);
 
@@ -265,7 +247,6 @@ export function SpotlightCard({
     <div
       ref={ref}
       className={`aw-spotlight ${className}`.trim()}
-      style={style}
       onPointerMove={(event) => {
         const el = ref.current;
         if (!el) return;
@@ -292,13 +273,7 @@ const ORB_PALETTE = ["#d28b52", "#efae6b", "#67e8b4", "#3fbfae", "#8a5a3a"];
  * inspiration, original implementation). Pauses when offscreen or hidden;
  * renders nothing under reduced motion so the page stays calm.
  */
-export function OrbsField({
-  count = 7,
-  className = "",
-}: {
-  count?: number;
-  className?: string;
-}) {
+export function OrbsField() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const reduced = useReducedMotion();
 
@@ -327,7 +302,7 @@ export function OrbsField({
     let orbs: Orb[] = [];
 
     const seed = () => {
-      orbs = Array.from({ length: count }, (_, i) => ({
+      orbs = Array.from({ length: 7 }, (_, i) => ({
         x: Math.random() * width,
         y: Math.random() * height,
         r: 60 + Math.random() * 160,
@@ -418,13 +393,13 @@ export function OrbsField({
       window.removeEventListener("resize", onResize);
       document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, [count, reduced]);
+  }, [reduced]);
 
   if (reduced) return null;
   return (
     <canvas
       ref={canvasRef}
-      className={`aw-orbs ${className}`.trim()}
+      className="aw-orbs"
       aria-hidden="true"
     />
   );

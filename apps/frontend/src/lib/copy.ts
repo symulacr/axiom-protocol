@@ -35,7 +35,6 @@ export type GateHero = {
 };
 
 export type Copy = {
-  localeName: string;
   nav: {
     howItWorks: string;
     connectWallet: string;
@@ -70,11 +69,7 @@ export type Copy = {
     reviewTitle: (kind: string) => string;
     reviewSummary: string;
     reviewImpact: string;
-    fundTitle: (tokenId?: string) => string;
-    fundSummary: string;
-    fundImpact: string;
     proofReceipt: string;
-    proofAgent: string;
     openReview: string;
     whyNow: string;
     seeAllQueue: string;
@@ -99,7 +94,6 @@ export type Copy = {
     primaryNav: string;
     openNav: string;
     closeNav: string;
-    collapseSidebar: string;
     hideSidebar: string;
     resizeSidebar: string;
     openCommand: string;
@@ -123,26 +117,20 @@ export type Copy = {
     titleEmphasis: string;
     description: string;
     nextSafeAction: string;
-    signatureBoundary: string;
     consoleAccess: string;
     menuGuideHint: string;
     menuDevelopers: string;
     menuDevelopersHint: string;
     /** U21: signed-out escape hatch straight into the public /chat surface. */
     tryAssistant: string;
-    stripVerifySmall: string;
     stripOperateSmall: string;
     /** R10: proof-field caption — small mono caption + Fraunces italic body. */
     proofCaptionSmall: string;
     proofPlateA11y: string;
     proofCaptionBody: string;
     /** T4: real product preview inside the hero plate (self-demonstrating). */
-    previewAgentTitle: string;
     previewAgentDesc: string;
-    previewVaultLabel: string;
     previewReceiptTitle: string;
-    previewReceiptMeta: string;
-    /** L2-N1: top-nav inline links + Connect button (≥980px viewport). */
     nav: {
       overview: string;
       principles: string;
@@ -339,7 +327,6 @@ export type Copy = {
     signingContext: string;
     /** Connection summary suffix rendered next to signingContext in the
      * collapsed disclosure heading ("Signing — Working ✓"). */
-    connectionOk: string;
     connectionFail: string;
     /** Operator profile name editor (03 — Settings owns renames;
      * the WalletGate step only ever creates the first value). */
@@ -422,12 +409,10 @@ export type Copy = {
     needReview: (count: number) => string;
     fleetNominal: string;
     /** Per-row fleet status pills (plain words, not internal states). */
-    readyLabel: string;
     needsSetupLabel: string;
     /** Live-queue stat subline while the oracle is healthy — describes the
      * queue, not the plumbing; an outage overrides it. */
     queueAwaiting: string;
-    oracleUnreachable: string;
     telemetryTitle: string;
     noEvidence: string;
     noEvidenceHint: string;
@@ -586,7 +571,6 @@ export type Copy = {
     depositPlaceholder: string;
     depositAction: string;
     refillAction: string;
-    sponsoredBadge: string;
     tankLowBanner: string;
     /** V3 W6-B faucet row: balance + eligibility badge + claim button. */
     faucetBalanceLabel: string;
@@ -695,14 +679,11 @@ export type Copy = {
      * headings/bodies, notices, boundary fact rows). */
     stageTitle: string;
     reviewOpenLabel: string;
-    detailsEditable: string;
-    /** Placeholder: {chainId}. */
     chainLive: string;
     reviewAction: string;
     agentLabel: string;
     agentA11y: string;
     agentSelectPlaceholder: string;
-    noAgentsOption: string;
     agentOption: (id: string) => string;
     agentHint: string;
     errAmountPositive: string;
@@ -710,11 +691,8 @@ export type Copy = {
     errInvalidAmount: string;
     errNameLength: string;
     errRecipientAddress: string;
-    errRecipientKey: string;
-    /** U10: shape-aware variant fired when the paste is a 42-char address. */
     errRecipientKeyIsAddress: string;
     /** U11: expanding 3-step walkthrough under the recipient-key field. */
-    transferKeyWalkthroughTitle: string;
     transferKeyWalkthroughSteps: string[];
     errInstruction: string;
     errSelectAgent: string;
@@ -798,7 +776,6 @@ export type Copy = {
     confirmOneAllowance: string;
     confirmChecking: string;
     confirmReceiverThenSubmit: string;
-    transferKeyLabel: string;
     transferKeyHint: string;
     /** P3 §(b)#4: the pubkey field is replaced by an address resolved via
      * GET /v1/registry/pubkey/:address; the paste field survives only as the
@@ -946,7 +923,6 @@ export type Copy = {
     delegationNotConfigured: string;
     delegationTargetsLabel: string;
     delegationTargetsPlaceholder: string;
-    delegationOwnerOnly: string;
     delegationToast: (hash: string) => string;
     errDelegationForm: string;
     errDelegationWallet: string;
@@ -1016,7 +992,6 @@ const frS = (count: number) => (count > 1 ? "s" : "");
 const deS = (count: number) => (count === 1 ? "" : "en");
 
 const english: Copy = {
-  localeName: "English",
   nav: {
     howItWorks: "How Axiom works",
     connectWallet: "Connect wallet",
@@ -1047,12 +1022,7 @@ const english: Copy = {
     reviewTitle: (kind) => `Review ${kind}`,
     reviewSummary: "Recover the existing receipt before retrying.",
     reviewImpact: "No asset movement until you continue.",
-    fundTitle: (tokenId) =>
-      tokenId ? `Fund agent #${tokenId}` : "Open payment route",
-    fundSummary: "Review an exact ERC-20 allowance before any value moves.",
-    fundImpact: "Allowance and payment confirm separately.",
     proofReceipt: "Receipt",
-    proofAgent: "Agent",
     openReview: "Open review",
     whyNow: "Why now",
     seeAllQueue: "See all queue",
@@ -1073,7 +1043,6 @@ const english: Copy = {
     primaryNav: "Primary navigation",
     openNav: "Open primary navigation",
     closeNav: "Close navigation",
-    collapseSidebar: "Collapse sidebar",
     hideSidebar: "Hide sidebar",
     resizeSidebar: "Resize sidebar",
     openCommand: "Open Command Center",
@@ -1096,22 +1065,17 @@ const english: Copy = {
     description:
       "Mint an agent with a bounded vault. It works inside rules you set.",
     nextSafeAction: "Next safe action",
-    signatureBoundary: "How signing works",
     consoleAccess: "Console access",
     menuGuideHint: "How signing and receipts work",
     menuDevelopers: "Developers",
     menuDevelopersHint: "APIs and developer tools",
     tryAssistant: "Try the assistant",
-    stripVerifySmall: "No gas, no custody",
     stripOperateSmall: "Receipts beside action",
     proofCaptionSmall: "Sealed transfer",
     proofPlateA11y: "Open the proofs hub",
     proofCaptionBody: "Every payload is re-keyed to its new owner.",
-    previewAgentTitle: "Agent #7",
     previewAgentDesc: "Oracle attestations, every 10 minutes",
-    previewVaultLabel: "Vault",
     previewReceiptTitle: "Tick receipt",
-    previewReceiptMeta: "Just now",
     nav: {
       overview: "Overview",
       principles: "Principles",
@@ -1347,7 +1311,6 @@ const english: Copy = {
     localeGerman: "Deutsch",
     liveWallet: "live wallet",
     signingContext: "Signing",
-    connectionOk: "Working ✓",
     connectionFail: "Check connection ✗",
     profileNameLabel: "Operator profile name",
     profileNameSave: "Save name",
@@ -1428,10 +1391,8 @@ const english: Copy = {
     agentsScoped: (count) => `across ${count} agent${count === 1 ? "" : "s"}`,
     needReview: (count) => `${count} need review`,
     fleetNominal: "All set.",
-    readyLabel: "ready",
     needsSetupLabel: "needs setup",
     queueAwaiting: "awaiting confirmation",
-    oracleUnreachable: "status checks failing",
     telemetryTitle: "Balances & recent activity",
     noEvidence: "Nothing here yet",
     noEvidenceHint: "Mint an agent to create the first receipt.",
@@ -1595,7 +1556,6 @@ const english: Copy = {
     depositPlaceholder: "Deposit amount",
     depositAction: "Deposit",
     refillAction: "Claim free gas grant",
-    sponsoredBadge: "sponsored",
     tankLowBanner:
       "Your gas tank is nearly empty : ops keep running until your free grants run out.",
     faucetBalanceLabel: "Test tokens",
@@ -1757,13 +1717,11 @@ const english: Copy = {
       `Can't sign for ${receiver} here. Add that account, or have the receiver accept themselves.`,
     stageTitle: "Review before you act.",
     reviewOpenLabel: "Review open",
-    detailsEditable: "Details editable",
     chainLive: "chain {chainId}, live wallet",
     reviewAction: "Review operation",
     agentLabel: "Agent",
     agentA11y: "Target agent",
     agentSelectPlaceholder: "select an agent",
-    noAgentsOption: "No agents yet, create one",
     agentOption: (id) => `Agent #${id}`,
     agentHint: "The agent whose vault or record this operation targets.",
     errAmountPositive: "Enter an amount above zero.",
@@ -1771,10 +1729,8 @@ const english: Copy = {
     errInvalidAmount: "Enter a valid amount.",
     errNameLength: "Use 2–80 characters.",
     errRecipientAddress: "Recipient must be a valid 0x address.",
-    errRecipientKey: "Recipient public key must be 64 bytes of hex (0x…).",
     errRecipientKeyIsAddress:
       "This looks like an Ethereum address (42 chars). A transfer needs the receiver's public key (132 chars). See “How to get it” below.",
-    transferKeyWalkthroughTitle: "How to get it",
     transferKeyWalkthroughSteps: [
       "The receiver opens their wallet and picks the account that will hold the agent",
       "They open the account details and choose “Export public key”",
@@ -1856,7 +1812,6 @@ const english: Copy = {
     confirmOneAllowance: "No, your approval covers it",
     confirmChecking: "Up to 2 wallet asks (checking approval…)",
     confirmReceiverThenSubmit: "Approval needed: yes",
-    transferKeyLabel: "Recipient public key",
     transferKeyHint: "64-byte hex (0x…), the new owner's encryption key.",
     transferPubkeyFallbackSummary: "Advanced, paste the public key instead",
     transferPubkeyResolvePending: "Looking up the key for this address…",
@@ -2006,7 +1961,6 @@ const english: Copy = {
     delegationTargetsLabel:
       "Allowed operations (contract:selector, one per line)",
     delegationTargetsPlaceholder: "0x…:0x1a2b3c4d",
-    delegationOwnerOnly: "Only the agent owner sees this card.",
     delegationToast: (hash) => `Delegation updated (${hash.slice(0, 10)}…)`,
     errDelegationForm: "Check the delegation fields : {error}",
     errDelegationWallet: "Connect your wallet to install a delegation.",
@@ -2149,7 +2103,6 @@ const frFlowNotice = (head: string): string =>
   `${head} Reçu ajouté au centre transactionnel.`;
 
 const french: Copy = {
-  localeName: "Français",
   nav: {
     ...english.nav,
     howItWorks: "Comprendre Axiom",
@@ -2176,11 +2129,6 @@ const french: Copy = {
     reviewTitle: (kind) => `Examiner ${kind}`,
     reviewSummary: "Récupérez le reçu existant avant de réessayer.",
     reviewImpact: "Aucun mouvement d’actifs avant votre reprise.",
-    fundTitle: (tokenId) =>
-      tokenId ? `Financer l’agent #${tokenId}` : "Ouvrir la route de paiement",
-    fundSummary:
-      "Examinez une approbation ERC-20 exacte avant tout mouvement de valeur.",
-    fundImpact: "Approbation et paiement se confirment séparément.",
     proofReceipt: "Reçu",
     openReview: "Ouvrir la revue",
     whyNow: "Pourquoi maintenant",
@@ -2203,7 +2151,6 @@ const french: Copy = {
     primaryNav: "Navigation principale",
     openNav: "Ouvrir la navigation principale",
     closeNav: "Fermer la navigation",
-    collapseSidebar: "Replier la barre latérale",
     hideSidebar: "Masquer la barre latérale",
     resizeSidebar: "Redimensionner la barre latérale",
     openCommand: "Ouvrir le centre de commande",
@@ -2227,23 +2174,18 @@ const french: Copy = {
     description:
       "Mintez un agent sur 0G, mettez vos fonds au travail et gardez le contrôle.",
     nextSafeAction: "Prochaine action sûre",
-    signatureBoundary: "Comment fonctionne la signature",
     consoleAccess: "Accès console",
     tryAssistant: "Essayer l’assistant",
     menuGuideHint: "Comment fonctionnent signatures et reçus",
     menuDevelopers: "Développeurs",
     menuDevelopersHint: "APIs et outils pour développeurs",
-    stripVerifySmall: "Sans gas, sans garde",
     stripOperateSmall: "Reçus à côté de l’action",
     proofCaptionSmall: "Transfert scellé",
     proofPlateA11y: "Ouvrir le hub des preuves",
     proofCaptionBody:
       "Chaque payload est recréé pour son nouveau propriétaire.",
-    previewAgentTitle: "Agent nº 7",
     previewAgentDesc: "Attestations oracle, toutes les 10 minutes",
-    previewVaultLabel: "Coffre",
     previewReceiptTitle: "Reçu de tick",
-    previewReceiptMeta: "À l’instant",
     nav: {
       overview: "Aperçu",
       principles: "Principes",
@@ -2479,7 +2421,6 @@ const french: Copy = {
     pageDescription: "Vos préférences.",
     liveWallet: "wallet actif",
     signingContext: "Signature",
-    connectionOk: "Tout fonctionne ✓",
     connectionFail: "Vérifiez la connexion ✗",
     profileNameLabel: "Nom du profil opérateur",
     profileNameSave: "Enregistrer",
@@ -2559,10 +2500,8 @@ const french: Copy = {
     agentsScoped: (count) => `sur ${count} agent${frS(count)}`,
     needReview: (count) => `${count} à examiner`,
     fleetNominal: "Tout est en ordre.",
-    readyLabel: "prêt",
     needsSetupLabel: "à configurer",
     queueAwaiting: "confirmation en attente",
-    oracleUnreachable: "vérifications en échec",
     telemetryTitle: "Soldes et activité récente",
     noEvidence: "Rien ici pour l’instant",
     noEvidenceHint:
@@ -2730,7 +2669,6 @@ const french: Copy = {
     depositPlaceholder: "Montant du dépôt",
     depositAction: "Déposer",
     refillAction: "Réclamer une subvention de gaz",
-    sponsoredBadge: "offert",
     tankLowBanner:
       "Votre réservoir de gaz est presque vide : les opérations continuent jusqu'à épuisement de vos subventions gratuites.",
     faucetBalanceLabel: "Jetons de test",
@@ -2898,12 +2836,10 @@ const french: Copy = {
       `Impossible de signer pour ${receiver} ici. Ajoutez ce compte, ou laissez le destinataire accepter de son côté.`,
     stageTitle: "Revoyez avant d’agir.",
     reviewOpenLabel: "Revue ouverte",
-    detailsEditable: "Détails modifiables",
     chainLive: "chaîne {chainId}, wallet réel",
     reviewAction: "Revoir l’opération",
     agentA11y: "Agent ciblé",
     agentSelectPlaceholder: "choisir un agent",
-    noAgentsOption: "Pas encore d’agent, créez-en un",
     agentHint:
       "L’agent dont le vault ou la fiche est visé par cette opération.",
     errAmountPositive: "Saisissez un montant supérieur à zéro.",
@@ -2911,11 +2847,8 @@ const french: Copy = {
     errInvalidAmount: "Saisissez un montant valide.",
     errNameLength: "Utilisez 2 à 80 caractères.",
     errRecipientAddress: "Le destinataire doit être une adresse 0x valide.",
-    errRecipientKey:
-      "La clé publique du destinataire doit être 64 octets de hex (0x…).",
     errRecipientKeyIsAddress:
       "Ceci ressemble à une adresse Ethereum (42 caractères) ; un transfert exige la clé publique du destinataire (132 caractères). Voyez « Comment l’obtenir » ci-dessous.",
-    transferKeyWalkthroughTitle: "Comment l’obtenir",
     transferKeyWalkthroughSteps: [
       "Le destinataire ouvre son wallet et choisit le compte qui recevra l’agent",
       "Il ouvre les détails du compte et choisit « Exporter la clé publique »",
@@ -3001,7 +2934,6 @@ const french: Copy = {
     confirmOneAllowance: "Non, l’approbation suffit",
     confirmChecking: "Jusqu’à 2 demandes wallet (vérification…)",
     confirmReceiverThenSubmit: "Approbation requise : oui",
-    transferKeyLabel: "Clé publique du destinataire",
     transferKeyHint:
       "Hex 64 octets (0x…), la clé de chiffrement du nouveau propriétaire.",
     transferPubkeyFallbackSummary: "Avancé, coller la clé publique à la place",
@@ -3262,7 +3194,6 @@ const deFlowNotice = (head: string): string =>
   `${head} Beleg zum Transaktionszentrum hinzugefügt.`;
 
 const german: Copy = {
-  localeName: "Deutsch",
   nav: {
     ...english.nav,
     howItWorks: "So funktioniert Axiom",
@@ -3290,10 +3221,6 @@ const german: Copy = {
     reviewSummary:
       "Stelle den vorhandenen Beleg wieder her, bevor du es erneut versuchst.",
     reviewImpact: "Keine Vermögensbewegung, bis du fortfährst.",
-    fundTitle: (tokenId) =>
-      tokenId ? `Agent #${tokenId} finanzieren` : "Zahlungsroute öffnen",
-    fundSummary: "Prüfe eine exakte ERC-20-Freigabe, bevor Wert fließt.",
-    fundImpact: "Freigabe und Zahlung werden getrennt bestätigt.",
     proofReceipt: "Beleg",
     openReview: "Prüfung öffnen",
     whyNow: "Warum jetzt",
@@ -3316,7 +3243,6 @@ const german: Copy = {
     primaryNav: "Hauptnavigation",
     openNav: "Hauptnavigation öffnen",
     closeNav: "Navigation schließen",
-    collapseSidebar: "Seitenleiste einklappen",
     hideSidebar: "Seitenleiste ausblenden",
     resizeSidebar: "Seitenleiste anpassen",
     openCommand: "Command Center öffnen",
@@ -3340,23 +3266,18 @@ const german: Copy = {
     description:
       "Minte einen Agent auf 0G, lass deine Mittel arbeiten und behalte die Kontrolle.",
     nextSafeAction: "Nächste sichere Aktion",
-    signatureBoundary: "Wie die Signatur funktioniert",
     consoleAccess: "Konsolenzugriff",
     tryAssistant: "Assistent testen",
     menuGuideHint: "Wie Signatur und Beleg funktionieren",
     menuDevelopers: "Entwickler",
     menuDevelopersHint: "APIs und Entwickler-Tools",
-    stripVerifySmall: "Kein Gas, keine Verwahrung",
     stripOperateSmall: "Belege neben der Aktion",
     proofCaptionSmall: "Versiegelte Übertragung",
     proofPlateA11y: "Proofs-Hub öffnen",
     proofCaptionBody:
       "Jede Nutzlast wird neu für ihren neuen Eigentümer verschlüsselt.",
-    previewAgentTitle: "Agent Nr. 7",
     previewAgentDesc: "Oracle-Attestierungen, alle 10 Minuten",
-    previewVaultLabel: "Tresor",
     previewReceiptTitle: "Tick-Beleg",
-    previewReceiptMeta: "Gerade eben",
     nav: {
       overview: "Überblick",
       principles: "Prinzipien",
@@ -3591,7 +3512,6 @@ const german: Copy = {
     pageDescription: "Deine Einstellungen.",
     liveWallet: "Live-Wallet",
     signingContext: "Signierung",
-    connectionOk: "Funktioniert ✓",
     connectionFail: "Verbindung prüfen ✗",
     profileNameLabel: "Name des Operator-Profils",
     profileNameSave: "Namen speichern",
@@ -3669,10 +3589,8 @@ const german: Copy = {
     agentsScoped: (count) => `über ${count} Agent${count === 1 ? "" : "en"}`,
     needReview: (count) => `${count} prüfen`,
     fleetNominal: "Alles bereit.",
-    readyLabel: "bereit",
     needsSetupLabel: "einrichten",
     queueAwaiting: "Bestätigung ausstehend",
-    oracleUnreachable: "Statusprüfungen fehlerhaft",
     telemetryTitle: "Guthaben & letzte Aktivität",
     noEvidence: "Noch nichts hier",
     noEvidenceHint:
@@ -3839,7 +3757,6 @@ const german: Copy = {
     depositPlaceholder: "Einzahlungsbetrag",
     depositAction: "Einzahlen",
     refillAction: "Gratis-Gas-Zuschuss anfordern",
-    sponsoredBadge: "gratis",
     tankLowBanner:
       "Dein Gas-Tank ist fast leer : Operationen laufen weiter, bis deine Gratis-Zuschüsse aufgebraucht sind.",
     faucetBalanceLabel: "Test-Token",
@@ -4010,12 +3927,10 @@ const german: Copy = {
       `Signieren für ${receiver} hier nicht möglich. Konto hinzufügen, oder der Empfänger akzeptiert selbst.`,
     stageTitle: "Prüfen Sie, bevor Sie handeln.",
     reviewOpenLabel: "Prüfung offen",
-    detailsEditable: "Details bearbeitbar",
     chainLive: "Chain {chainId}, Live-Wallet",
     reviewAction: "Vorgang prüfen",
     agentA11y: "Ziel-Agent",
     agentSelectPlaceholder: "Agent auswählen",
-    noAgentsOption: "Keine Agenten vorhanden, erst erstellen",
     agentHint:
       "Der Agent, dessen Vault oder Datensatz dieser Vorgang anspricht.",
     errAmountPositive: "Geben Sie einen Betrag über null ein.",
@@ -4023,11 +3938,8 @@ const german: Copy = {
     errInvalidAmount: "Geben Sie einen gültigen Betrag ein.",
     errNameLength: "Verwenden Sie 2–80 Zeichen.",
     errRecipientAddress: "Der Empfänger muss eine gültige 0x-Adresse sein.",
-    errRecipientKey:
-      "Der öffentliche Schlüssel des Empfängers muss 64 Byte Hex sein (0x…).",
     errRecipientKeyIsAddress:
       "Das sieht nach einer Ethereum-Adresse aus (42 Zeichen); eine Übertragung benötigt den öffentlichen Schlüssel des Empfängers (132 Zeichen). Siehe „Wie erhält man ihn“ unten.",
-    transferKeyWalkthroughTitle: "Wie erhält man ihn",
     transferKeyWalkthroughSteps: [
       "Der Empfänger öffnet sein Wallet und wählt das Konto, das den Agent empfangen soll",
       "Er öffnet die Kontodetails und wählt „Öffentlichen Schlüssel exportieren“",
@@ -4115,7 +4027,6 @@ const german: Copy = {
     confirmOneAllowance: "Nein, die Freigabe reicht",
     confirmChecking: "Bis zu 2 Wallet-Anfragen (Freigabe wird geprüft…)",
     confirmReceiverThenSubmit: "Zustimmung erforderlich: ja",
-    transferKeyLabel: "Öffentlicher Schlüssel des Empfängers",
     transferKeyHint:
       "64 Byte Hex (0x…), der Verschlüsselungsschlüssel des neuen Eigentümers.",
     transferPubkeyFallbackSummary:

@@ -129,12 +129,7 @@ serve({
     const path = url.pathname === "/" ? "/index.html" : url.pathname;
     const file = Bun.file(join(distDev, path));
     if (await file.exists()) return new Response(file);
-        if (path === "__h3b_mock.js") {
-      return new Response(Bun.file(join(frontendDir, "public", "__h3b_mock.js")), {
-        headers: { "content-type": "text/javascript" },
-      });
-    }
-const publicFile = Bun.file(join(frontendDir, "public", path));
+    const publicFile = Bun.file(join(frontendDir, "public", path));
     if (await publicFile.exists()) {
       return new Response(publicFile, {
         headers: { "cache-control": "no-cache" },

@@ -96,7 +96,6 @@
    stack mark above toggle — side-by-side cannot fit, and the hide toggle
    would overflow the rail and overlap the toggle's 40px hit halo. */
 .sidebar.is-collapsed .side-head { display: grid; justify-items: center; padding-inline: var(--space-1); }
-.sidebar.is-collapsed .rail-hide { display:none; }
 .sidebar.is-collapsed .brand span:not(.axiom-brand-mark),.sidebar.is-collapsed .nav-item span,.sidebar.is-collapsed .nav-item kbd,.sidebar.is-collapsed .nav-group-label,.sidebar.is-collapsed .network-card div,.sidebar.is-collapsed .account div:not(.avatar),.sidebar.is-collapsed .account>svg { display:none; }
 .rail-resize:hover { background:color-mix(in srgb,var(--copper) 18%,transparent); }
 .is-resizing,.is-resizing * { cursor:ew-resize!important; user-select:none!important; }
@@ -105,7 +104,7 @@
 .wallet-gate-head { margin-bottom:var(--space-6); }
 .guide-card { grid-template-columns:1fr; max-height:calc(100dvh - 28px); overflow:auto; }
 .guide-media { min-height:210px; }
-.rail-hide,.rail-toggle { display:none; }
+.rail-toggle { display:none; }
 
 /* === from axiom-refinement === */
 .context-cell.context-action { border-inline-start:2px solid var(--copper); }
@@ -1683,23 +1682,6 @@ body .icon-button.landing-menu-trigger { display: grid; width: var(--icon-hit-lg
   .receipt-drawer,
   .operation-review-sheet { animation: none; }
 }
-.connect-modal-close {
-  position: absolute;
-  top: 8px;
-  inset-inline-end: 8px;
-  display: grid;
-  place-items: center;
-  width: 44px;
-  height: 44px;
-  border: 1px solid var(--line);
-  background: transparent;
-  color: var(--muted);
-  cursor: pointer;
-}
-.connect-modal-close:hover,
-.connect-modal-close:focus-visible { border-color: var(--copper); color: var(--copper-bright); }
-.connect-modal-close:focus-visible { outline: 2px solid var(--phosphor); outline-offset: 2px; }
-.connect-options { display: grid; gap: var(--space-2); }
 .connect-option { display: grid; gap: 2px; text-align: start; }
 .connect-option small { color: var(--dim); font-size: var(--fs-small); font-family: 'JetBrains Mono', monospace; }
 
