@@ -4113,7 +4113,7 @@ strong {
 @media (max-width: 900px) { .principles-grid { grid-template-columns: 1fr; } }
 
 /* ---- L2-N7: journey (replaces the strip; same destinations) ---- */
-.journey { display: grid; grid-template-columns: 1.5fr 1fr; gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: var(--radius-lg); overflow: hidden; }
+.journey { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: var(--radius-lg); overflow: hidden; }
 .journey-card { display: grid; gap: var(--space-3); padding: var(--space-5); background: var(--panel); transition: background-color var(--motion-fade-220); }
 .journey-card:hover { background: color-mix(in srgb, var(--copper) 4%, var(--panel)); }
 .journey-card h3 { margin: 0; font: 500 var(--fs-title)/1.15 var(--font-serif-display); letter-spacing: -0.015em; font-feature-settings: "ss01"; color: var(--ink); }
