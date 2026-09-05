@@ -8,7 +8,7 @@
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
 
-const POINT_COUNT = 1400;
+const POINT_COUNT = 6000;
 const DPR_CAP = 1.75;
 
 export function ThreeBackground() {
@@ -52,19 +52,22 @@ export function ThreeBackground() {
     );
     camera.position.z = 14;
 
-    // Two-hue field: copper majority, phosphor sparks (brand palette).
+    // Two-hue dome field: copper majority, phosphor sparks (brand palette).
+    // Structure-flow distribution (adapted from ThreeUI Community, MIT):
+    // points on a large sphere cap biased toward the crown, so the camera
+    // sits inside a drifting data dome instead of a sparse shell.
     const positions = new Float32Array(POINT_COUNT * 3);
     const colors = new Float32Array(POINT_COUNT * 3);
     const copper = new THREE.Color("#d28b52");
     const phosphor = new THREE.Color("#67e8b4");
+    const radius = 25;
     for (let i = 0; i < POINT_COUNT; i++) {
-      // Shell distribution keeps the center clear behind the copy column.
-      const r = 5 + Math.random() * 11;
       const theta = Math.random() * Math.PI * 2;
-      const y = (Math.random() - 0.5) * 16;
-      positions[i * 3] = r * Math.cos(theta);
-      positions[i * 3 + 1] = y;
-      positions[i * 3 + 2] = r * Math.sin(theta) - 4;
+      // acos(0.2..1) keeps points on the upper cap — no floor clutter.
+      const phi = Math.acos(Math.random() * 0.8 + 0.2);
+      positions[i * 3] = radius * Math.sin(phi) * Math.cos(theta);
+      positions[i * 3 + 1] = radius * Math.cos(phi) - 20;
+      positions[i * 3 + 2] = radius * Math.sin(phi) * Math.sin(theta);
       const c = Math.random() < 0.18 ? phosphor : copper;
       colors[i * 3] = c.r;
       colors[i * 3 + 1] = c.g;
@@ -74,11 +77,11 @@ export function ThreeBackground() {
     geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
     geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
     const material = new THREE.PointsMaterial({
-      size: 0.05,
+      size: 0.09,
       sizeAttenuation: true,
       vertexColors: true,
       transparent: true,
-      opacity: 0.75,
+      opacity: 0.5,
       depthWrite: false,
       blending: THREE.AdditiveBlending,
     });
@@ -109,10 +112,12 @@ export function ThreeBackground() {
     let running = true;
     const frame = () => {
       if (!running) return;
+      // Structure-flow drift: two slow axes read as a rotating data dome.
       points.rotation.y += 0.0007;
+      points.rotation.z += 0.0002;
       camera.position.x += (targetX - camera.position.x) * 0.04;
       camera.position.y += (-targetY - camera.position.y) * 0.04;
-      camera.lookAt(0, 0, -4);
+      camera.lookAt(0, -8, 0);
       renderer.render(scene, camera);
       if (!reduce) raf = requestAnimationFrame(frame);
     };
