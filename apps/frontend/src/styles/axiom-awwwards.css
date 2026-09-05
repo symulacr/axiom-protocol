@@ -385,7 +385,16 @@
 }
 .landing-visual.hero-visual-modern .hero-visual-poster {
   opacity: 0.5;
-  filter: saturate(0.9) contrast(1.06);
+}
+
+/* The only brand photo is a 1200×630 OG banner; cover-cropping it into the
+   portrait hero frame shows ~26% of its width and read as a truncated
+   screenshot under the receipt card. Blur + overscale turn it into ambient
+   texture — a backdrop, not a picture. Matches index.css's winning selector
+   (child combinator) so this last-loaded layer actually applies. */
+.landing-page .landing-visual.hero-visual-modern > img.hero-visual-poster {
+  filter: saturate(0.9) contrast(1.06) blur(16px);
+  transform: scale(1.25);
 }
 
 .floating-receipt {
