@@ -1,14 +1,13 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import { createConfig, fallback, http, WagmiProvider } from "wagmi";
+import { createConfig, http, WagmiProvider } from "wagmi";
 import { injected, walletConnect } from "wagmi/connectors";
-import { zeroGMainnet, zeroGTestnet } from "viem/chains";
+import { zeroGMainnet } from "viem/chains";
 
-/** Supported 0G chains — viem's built-in definitions (not hand-rolled). */
+/** Supported 0G chains — mainnet only (testnet retired 2026-09-05). */
 const CHAINS = {
   [zeroGMainnet.id]: zeroGMainnet, // Aristotle mainnet 16661
-  [zeroGTestnet.id]: zeroGTestnet, // Galileo testnet 16602
 } as const;
 
 // Per-chain RPC allowlist for the localStorage override — a stale override can
@@ -16,13 +15,6 @@ const CHAINS = {
 // every read/write). The resolved chain's own default RPC is always accepted.
 const RPC_ALLOWLISTS: Record<number, readonly string[]> = {
   [zeroGMainnet.id]: ["https://evmrpc.0g.ai", "https://rpc.0g.ai"],
-  // Official evmrpc-testnet is documented "development only"; dRPC/Ankr are the
-  // sanctioned production 3rd-party endpoints (rd2 §1 R1/R4).
-  [zeroGTestnet.id]: [
-    "https://evmrpc-testnet.0g.ai",
-    "https://0g-galileo-testnet.drpc.org",
-    "https://rpc.ankr.com/0g_galileo_testnet_evm",
-  ],
 };
 
 /**
@@ -110,16 +102,8 @@ function resolveWagmiInputs() {
   return {
     projectId,
     mainnetRpc: resolveRpc(zeroGMainnet.id),
-    testnetRpc: resolveRpc(zeroGTestnet.id),
   };
 }
-
-// Sanctioned 3rd-party Galileo RPCs (rd2 §1 R4): the official testnet endpoint
-// is dev-only, so the transport degrades to dRPC/Ankr when the primary fails.
-const TESTNET_RPC_FALLBACKS = [
-  "https://0g-galileo-testnet.drpc.org",
-  "https://rpc.ankr.com/0g_galileo_testnet_evm",
-] as const;
 
 function createWagmiConfig(inputs: ReturnType<typeof resolveWagmiInputs>) {
   return createConfig({
@@ -127,15 +111,6 @@ function createWagmiConfig(inputs: ReturnType<typeof resolveWagmiInputs>) {
     ssr: false,
     transports: {
       [zeroGMainnet.id]: http(inputs.mainnetRpc),
-      [zeroGTestnet.id]: fallback(
-        [
-          http(inputs.testnetRpc),
-          ...TESTNET_RPC_FALLBACKS.map((url) => http(url)),
-        ],
-        // rank: pings all transports and prefers the healthiest; retryCount 3
-        // per rd2 §1 R2 (viem default is also 3 — pinned explicitly here).
-        { rank: true, retryCount: 3 },
-      ),
     },
     connectors: [
       // Bare injected() = mipd/EIP-6963 discovery lists every installed
@@ -156,11 +131,7 @@ let cached: {
 
 function getWagmiConfig(): ReturnType<typeof createWagmiConfig> {
   const inputs = resolveWagmiInputs();
-  const key = JSON.stringify([
-    inputs.projectId,
-    inputs.mainnetRpc,
-    inputs.testnetRpc,
-  ]);
+  const key = JSON.stringify([inputs.projectId, inputs.mainnetRpc]);
   if (cached?.key === key) return cached.config;
   cached = { key, config: createWagmiConfig(inputs) };
   return cached.config;

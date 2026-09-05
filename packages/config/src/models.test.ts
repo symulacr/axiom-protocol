@@ -50,12 +50,9 @@ describe("chain-driven compute resolution", () => {
     }
   });
 
-  it("router URL defaults per chain: 16602→Galileo testnet router, 16661→mainnet router", () => {
+  it("router URL: retired testnet chain (16602) falls back to the mainnet router; 16661 uses mainnet", () => {
     for (const key of BASE_URL_KEYS) delete process.env[key];
-    assert.equal(
-      resolveComputeRouterUrl(16602),
-      "https://router-api-testnet.integratenetwork.work/v1",
-    );
+    assert.equal(resolveComputeRouterUrl(16602), "https://router-api.0g.ai/v1");
     assert.equal(resolveComputeRouterUrl(16661), "https://router-api.0g.ai/v1");
   });
 
@@ -65,7 +62,7 @@ describe("chain-driven compute resolution", () => {
     assert.equal(
       resolveComputeRouterUrl(16602),
       "https://custom-router.example/v1",
-    );
+    ); // override wins even on a retired chain
     delete process.env.AXIOM_COMPUTE_BASE_URL;
     process.env.OG_COMPUTE_BASE_URL = "https://og-alias.example/v1";
     assert.equal(resolveComputeRouterUrl(16661), "https://og-alias.example/v1");
@@ -80,15 +77,15 @@ describe("chain-driven compute resolution", () => {
     assert.equal(resolveComputeRouterUrl(31337), "https://router-api.0g.ai/v1");
   });
 
-  it("default chat model per chain: 16602→qwen2.5-omni (Galileo-only catalog), 16661/absent→deepseek-v4-flash", () => {
-    assert.equal(defaultChatModelForChain(16602), "qwen2.5-omni");
+  it("default chat model: retired testnet (16602) and mainnet/absent all resolve to deepseek-v4-flash", () => {
+    assert.equal(defaultChatModelForChain(16602), DEFAULT_CHAT_MODEL);
     assert.equal(defaultChatModelForChain(16661), DEFAULT_CHAT_MODEL);
     assert.equal(defaultChatModelForChain(undefined), DEFAULT_CHAT_MODEL);
     assert.equal(defaultChatModelForChain(31337), DEFAULT_CHAT_MODEL);
   });
 
   it("resolveChatModel: unset override → chain default; explicit override wins on any chain", () => {
-    assert.equal(resolveChatModel(undefined, 16602), "qwen2.5-omni");
+    assert.equal(resolveChatModel(undefined, 16602), DEFAULT_CHAT_MODEL);
     assert.equal(resolveChatModel("", 16661), DEFAULT_CHAT_MODEL);
     assert.equal(resolveChatModel("custom/model", 16602), "custom/model");
   });
@@ -105,12 +102,9 @@ describe("resolveRpcFallbackUrls (RPC resilience, rd2 §1)", () => {
     }
   });
 
-  it("defaults to the chain registry's sanctioned 3rd-party list for 16602", () => {
+  it("retired testnet chain (16602) falls back to an empty list — mainnet carries no testnet RPCs", () => {
     delete process.env.AXIOM_EVM_RPC_FALLBACKS;
-    assert.deepEqual(resolveRpcFallbackUrls(16602), [
-      "https://0g-galileo-testnet.drpc.org",
-      "https://rpc.ankr.com/0g_galileo_testnet_evm",
-    ]);
+    assert.deepEqual(resolveRpcFallbackUrls(16602), []);
   });
 
   it("returns an empty list for mainnet (no verified 3rd-party endpoints)", () => {

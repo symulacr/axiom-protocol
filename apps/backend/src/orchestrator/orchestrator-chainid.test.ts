@@ -34,7 +34,7 @@ test("StrategyRunner with an unsupported chainId throws at construction time (fa
   );
 });
 
-test("compute router URL is chain-driven when AXIOM_COMPUTE_BASE_URL is unset (16602→Galileo, 16661→mainnet)", () => {
+test("compute router URL: retired testnet (16602) and mainnet both resolve to the mainnet router", () => {
   const savedBase = process.env.AXIOM_COMPUTE_BASE_URL;
   const savedChain = process.env.AXIOM_CHAIN_ID;
   delete process.env.AXIOM_COMPUTE_BASE_URL;
@@ -42,7 +42,7 @@ test("compute router URL is chain-driven when AXIOM_COMPUTE_BASE_URL is unset (1
     process.env.AXIOM_CHAIN_ID = "16602";
     assert.equal(
       getComputeBaseUrl(),
-      "https://router-api-testnet.integratenetwork.work/v1",
+      "https://router-api.0g.ai/v1",
     );
     process.env.AXIOM_CHAIN_ID = "16661";
     assert.equal(getComputeBaseUrl(), "https://router-api.0g.ai/v1");

@@ -29,21 +29,7 @@ const OG_NETWORKS: Record<number, OGNetwork> = {
     computeDefaultModel: "deepseek-v4-flash",
     blockExplorer: "https://chainscan.0g.ai",
   },
-  16602: {
-    name: "galileo",
-    chainId: 16602,
-    evmRpc: "https://evmrpc-testnet.0g.ai",
-    // Official endpoint is documented "development only"; dRPC/Ankr are the
-    // sanctioned production 3rd-party RPCs (0g-doc testnet overview, rd2 §1 R1).
-    evmRpcFallbacks: [
-      "https://0g-galileo-testnet.drpc.org",
-      "https://rpc.ankr.com/0g_galileo_testnet_evm",
-    ],
-    storageRpc: "https://indexer-storage-testnet-turbo.0g.ai",
-    computeRouterUrl: "https://router-api-testnet.integratenetwork.work/v1",
-    computeDefaultModel: "qwen2.5-omni",
-    blockExplorer: "https://chainscan-testnet.0g.ai",
-  },
+
 };
 
 export function pickOGNetwork(chainId: number): OGNetwork | null {
@@ -74,12 +60,12 @@ function resolveNetworkUrl(
 }
 
 export function resolveRpcUrl(chainId?: number): string {
-  // Fallback matches the env default chain (16602 Galileo testnet) — .env.example says 16602.
+  // Fallback matches the env default chain (16661 Aristotle mainnet).
   return resolveNetworkUrl(
     chainId,
     ["AXIOM_EVM_RPC", "OG_RPC_URL", "RPC_URL"],
     "evmRpc",
-    "https://evmrpc-testnet.0g.ai",
+    "https://evmrpc.0g.ai",
   );
 }
 
