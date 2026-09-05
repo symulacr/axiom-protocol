@@ -3349,6 +3349,14 @@ body.light .landing-visual.hero-visual-modern .receipt-meta .hash { color: var(-
    passes at 4.6:1. Scoped to both light scopes (console + body-level). */
 .app-shell.light .button-primary,
 body.light .button-primary { color: #fffdf8; }
+/* R27 theme sweep: aria-disabled primary buttons tied this cream pin at
+   (0,3,0) and lost on cascade order — cream on the paper disabled glass
+   measured 1.1:1. Re-assert the disabled ink (graphite, matches :509) at
+   (0,4,0) for both light scopes. */
+.app-shell.light .button[aria-disabled="true"],
+.app-shell.light .button-primary[aria-disabled="true"],
+body.light .button[aria-disabled="true"],
+body.light .button-primary[aria-disabled="true"] { color: #69645b; }
 
 /* ------------------------------------------------------------------ *
  * Element resets.                                                     *
@@ -4865,3 +4873,55 @@ strong {
   }
 }
 /* ==================== end Wave-12B appendix ==================== */
+
+/* R27 (theme sweep): L3-B9 brand-lock completion. The locked-preview and
+   404/recovery shells keep the dark canvas BY DESIGN, but body.light's base
+   token overrides inherited into them and flipped their text dark-on-dark
+   (measured 1.3:1 on headings). Re-pin the dark token set — and the
+   completion aliases, whose var() chains resolve in this scope — on the
+   shells, so light mode cannot reach their contents. */
+.public-locked,
+.recovery-404 {
+  --bg: #111315;
+  --bg-2: #171a1d;
+  --panel: #1b1f22;
+  --panel-2: #202529;
+  --line: #32383c;
+  --line-soft: #272d31;
+  --text: #f0eee9;
+  --ink: #ece9de;
+  --ink-bright: #fff4dc;
+  --muted: #99a09f;
+  --dim: #858e8d;
+  --copper: #d28b52;
+  --copper-bright: #efae6b;
+  --phosphor: #67e8b4;
+  --teal: #79c4cd;
+  --danger: #e27d74;
+  --warning: #f0b36b;
+  --surface-elevated: #0d1112;
+  --canvas: #0b0e0f;
+  --completion-panel: color-mix(in srgb, var(--panel) 94%, transparent);
+  --completion-panel-2: color-mix(in srgb, var(--panel-2) 94%, transparent);
+  --completion-line: color-mix(in srgb, var(--line) 88%, transparent);
+  --completion-copper: var(--copper);
+  --completion-bright: var(--copper-bright);
+  --completion-phosphor: var(--phosphor);
+  --completion-muted: var(--muted);
+  --completion-dim: var(--dim);
+  --completion-warning: var(--warning);
+  --completion-text: var(--text);
+  --completion-canvas: var(--bg);
+  --completion-elevated: var(--bg-2);
+  /* Inherited computed color: body.light paints body text light-dark and
+     descendants inherit the RESOLVED value — the re-pinned tokens never
+     reach them. Declare color here so the shells own it. */
+  color: var(--text);
+}
+/* Wins over the body.light .button-primary cream pin (0,2,1): the locked
+   shells keep the LIGHT copper bg under the brand lock, where cream text
+   measures 2.7:1 — dark --bg text matches dark-theme buttons instead. */
+body.light .public-locked .button-primary,
+body.light .recovery-404 .button-primary {
+  color: var(--bg);
+}
