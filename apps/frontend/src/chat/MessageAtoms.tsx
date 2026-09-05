@@ -15,13 +15,26 @@ import {
 } from "@axiom/config/chat-tools";
 import { Spinner, Textarea } from "../components/ui.js";
 import { Button } from "../components/axiom/Controls.js";
-import { Check, ShieldCheck, Wallet } from "../components/axiom/icons.js";
+import {
+  Check,
+  ChevronRight,
+  ShieldCheck,
+  Wallet,
+  X,
+} from "../components/axiom/icons.js";
 import { formatEther } from "viem";
 import { getCopy } from "../lib/copy.js";
 import { useUiStore } from "../lib/uiStore.js";
 import { APP_CHAIN } from "../config/wagmi.js";
 import { humanizeError } from "../utils/format.js";
 import { TOOL_LABELS } from "./tools.js";
+import {
+  deriveStepStatus,
+  isFailurePayload,
+  type StepInput,
+  type StepStatus,
+} from "./lib.js";
+export { deriveStepStatus, type StepInput, type StepStatus };
 import type { Copy } from "../lib/copy.js";
 
 export const insetCardStyle: CSSProperties = {
@@ -491,6 +504,140 @@ export function ToolCallCard({
   );
 }
 
+function StepIcon({ status }: { status: StepStatus }): ReactElement {
+  if (status === "running") return <Spinner size={12} />;
+  if (status === "success")
+    return (
+      <span className="step__ic step__ic--ok" aria-hidden="true">
+        <Check size={13} />
+      </span>
+    );
+  if (status === "error")
+    return (
+      <span className="step__ic step__ic--fail" aria-hidden="true">
+        <X size={13} />
+      </span>
+    );
+  return <span className="step__ic step__ic--pend" aria-hidden="true">·</span>;
+}
+
+/** Merged, collapsible "Worked for Ns · N steps" block: one row per tool call,
+ * each expandable to args + result/error + Retry. Replaces the stacked
+ * ToolCallCard + tool bubble pair (manifest 002 §2.3). */
+export function Steps({
+  steps,
+  open,
+  onToggleOpen,
+  expanded,
+  onToggleStep,
+  onRetry,
+  copy,
+  sendTransactionAsync,
+}: {
+  steps: StepInput[];
+  open: boolean;
+  onToggleOpen: () => void;
+  expanded: Set<string>;
+  onToggleStep: (id: string) => void;
+  onRetry?: (id: string) => void;
+  copy: Copy["chat"];
+  sendTransactionAsync?: (a: {
+    to: `0x${string}`;
+    data?: `0x${string}`;
+    value?: bigint;
+  }) => Promise<`0x${string}`>;
+}): ReactElement | null {
+  if (steps.length === 0) return null;
+  const statuses = steps.map(deriveStepStatus);
+  const running = statuses.includes("running");
+  const failed = statuses.filter((s) => s === "error").length;
+  const started = Math.min(
+    ...steps.map((s) => s.run?.startedAt ?? Number.POSITIVE_INFINITY),
+  );
+  const seconds = Number.isFinite(started)
+    ? Math.max(0, Math.floor((Date.now() - started) / 1000))
+    : 0;
+  const summary =
+    (running ? copy.stepsWorking(steps.length) : copy.stepsSummary(steps.length, seconds)) +
+    (failed > 0 ? copy.stepsFailedSuffix(failed) : "");
+  return (
+    <div className={`steps${failed > 0 ? " steps--failed" : ""}`}>
+      <button
+        type="button"
+        className="steps__summary"
+        onClick={onToggleOpen}
+        aria-expanded={open}
+      >
+        <ChevronRight size={12} className="steps__chev" />
+        {/* T5 a11y: the live seconds counter must not re-announce. */}
+        <span aria-hidden={running || undefined}>{summary}</span>
+      </button>
+      {open
+        ? steps.map((step, i) => {
+            const status = statuses[i] ?? "pending";
+            const isOpen = expanded.has(step.id);
+            const label = TOOL_LABELS[step.name] ?? step.name;
+            const errorBody =
+              step.run?.error ??
+              (status === "error" && step.hasResult ? step.result ?? undefined : undefined);
+            return (
+              <div key={step.id} className={`step${status === "error" ? " step--fail" : ""}`}>
+                <button
+                  type="button"
+                  className="step__head"
+                  onClick={() => onToggleStep(step.id)}
+                  aria-expanded={isOpen}
+                >
+                  <StepIcon status={status} />
+                  <span className="step__label">{label}</span>
+                  <ToolClassBadge name={step.name} />
+                  <span className="step__meta">
+                    {status === "pending" ? copy.stepNoResult : null}
+                    <ChevronRight
+                      size={12}
+                      className={`steps__chev${isOpen ? " is-open" : ""}`}
+                    />
+                  </span>
+                </button>
+                {status === "error" && onRetry ? (
+                  <button
+                    type="button"
+                    className="icon-button icon-button--sm icon-button--ghost msg-action step__retry"
+                    onClick={() => onRetry(step.id)}
+                  >
+                    {copy.retry}
+                  </button>
+                ) : null}
+                {isOpen ? (
+                  <div className="step__body">
+                    {step.args && Object.keys(step.args).length > 0 ? (
+                      <pre className="tool-card__args">
+                        {JSON.stringify(step.args, null, 2)}
+                      </pre>
+                    ) : null}
+                    {errorBody && !step.hasResult ? (
+                      <div className="tool-card__err">
+                        <span>{humanizeError(errorBody)}</span>
+                      </div>
+                    ) : step.hasResult ? (
+                      <ToolResultBody
+                        name={step.name}
+                        content={step.result ?? null}
+                        sendTransactionAsync={sendTransactionAsync}
+                      />
+                    ) : step.run?.result ? (
+                      <ToolResultBody name={step.name} content={step.run.result} />
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
+            );
+          })
+        : null}
+    </div>
+  );
+}
+
 export function ToolResultBody({
   name,
   content,
@@ -548,14 +695,6 @@ export function ToolResultBody({
   );
 }
 
-/** Wave 6B: tool failures arrive either as an `{error}` JSON envelope or a
- * bare "Error: …" string; both mark the danger tone. */
-function isFailurePayload(content: string | null): boolean {
-  if (!content) return false;
-  const obj = parseObj(content);
-  if (obj) return obj.error !== undefined;
-  return /^error\b/i.test(content.trim());
-}
 
 type EncodePreview = {
   encodeOnly?: boolean;

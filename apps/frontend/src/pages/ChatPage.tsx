@@ -77,15 +77,12 @@ import {
   AskUserCard,
   ChatBanner,
   InsightsDisclosure,
-  insetCardStyle,
   MessageEditConfirm,
   MsgCopyAction,
-  StatusDot,
-  MsgAvatar,
   MsgTimestamp,
-  ToolCallCard,
-  ToolClassBadge,
-  ToolResultBody,
+  Steps,
+  deriveStepStatus,
+  type StepInput,
   type ToolRun,
 } from "../chat/MessageAtoms.js";
 import {
@@ -110,7 +107,6 @@ import { buildWaitForReceipt } from "../chat/transport-browser.js";
 import {
   CHAT_TOOL_CLASS_LABELS,
   AXIOM_ASSISTANT_NAME,
-  getChatToolSpec,
 } from "@axiom/config/chat-tools";
 import { CHAT_MODEL } from "../config/env.js";
 import { APP_CHAIN, APP_CHAIN_ID } from "../config/wagmi.js";
@@ -120,18 +116,17 @@ import { useGasTank } from "../hooks/useGasTank.js";
 import {
   Textarea,
   ErrorRef,
-  CopyButton,
   SectionTitle,
   MonoLabel,
 } from "../components/ui.js";
 import { Button } from "../components/axiom/Controls.js";
 import { ThinkingOrbs } from "../components/fx/fx.js";
 import {
-  CornerDownLeft,
+  ArrowUp,
   Menu,
-  MessageSquare,
   Network,
   Plus,
+  Search,
   X,
 } from "../components/axiom/icons.js";
 
@@ -238,48 +233,31 @@ function EmptyState(props: {
   insertInput: (text: string) => void;
 }): ReactElement {
   const { copy, nativeSymbol, toolsOpen } = props;
+  const [toolQuery, setToolQuery] = useState("");
+  const q = toolQuery.trim().toLowerCase();
+  const groups = q
+    ? TOOL_GROUPS.map((g) => ({
+        ...g,
+        tools: g.tools.filter(
+          (t) =>
+            t.label.toLowerCase().includes(q) ||
+            t.name.toLowerCase().includes(q) ||
+            t.hint.toLowerCase().includes(q),
+        ),
+      })).filter((g) => g.tools.length > 0)
+    : TOOL_GROUPS;
   return (
-    <div
-      className="fade-enter"
-      style={{
-        margin: "auto",
-        padding: "var(--space-2xl)",
-        textAlign: "center",
-        maxWidth: 520,
-        /* T5: stretch to the 520px max — as a shrink-to-fit flex item the
-           wrapper capped the card grid at ~303px and the 220px floor below
-           could never form a 2×2. */
-        width: "100%",
-      }}
-    >
-      <h2
-        style={{
-          fontSize: "var(--fs-title)",
-          color: "var(--text)",
-          marginBottom: "var(--space-sm)",
-          fontFamily: "var(--font-display)",
-        }}
-      >
-        {AXIOM_ASSISTANT_NAME}
-      </h2>
-      <p
-        style={{
-          color: "var(--muted)",
-          fontSize: "var(--fs-body)",
-          margin: "0 auto var(--space-lg)",
-        }}
-      >
-        {copy.emptyTagline}
-      </p>
-      <div
-        style={{
-          display: "grid",
-          /* T5: 220px floor — 4 starter cards land 2×2 at ~520px instead of
-             4-across 118px slivers. */
-          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-          gap: "var(--space-sm)",
-        }}
-      >
+    <div className="fade-enter chat-empty">
+      <img
+        src={BRAND.chatAvatar}
+        alt=""
+        width={40}
+        height={40}
+        className="chat-empty__mark"
+      />
+      <h2 className="chat-empty__title">{AXIOM_ASSISTANT_NAME}</h2>
+      <p className="chat-empty__tagline">{copy.emptyTagline}</p>
+      <div className="chat-empty__pills">
         {[
           {
             label: copy.promptAgents,
@@ -304,47 +282,38 @@ function EmptyState(props: {
         ].map((p) => (
           <button
             key={p.label}
-            className="prompt-card"
+            type="button"
+            className="chat-pill"
+            title={p.hint}
             onClick={() => props.send(p.prompt)}
           >
-            <div className="prompt-card__label prompt-card__label--stack">
-              {p.label}
-            </div>
-            <div className="prompt-card__hint">{p.hint}</div>
+            {p.label}
           </button>
         ))}
       </div>
-      <div style={{ marginTop: "var(--space-md)", textAlign: "left" }}>
-        <button
-          type="button"
-          className="prompt-card"
-          onClick={props.toggleTools}
-          aria-expanded={toolsOpen}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            width: "100%",
-          }}
-        >
-          <span className="prompt-card__label">
-            {copy.toolsToggle(CLIENT_TOOL_CATALOG.length)}
-          </span>
-          <span className="prompt-card__hint">
-            {toolsOpen ? copy.toolsHide : copy.toolsBrowse}
-          </span>
-        </button>
-        {toolsOpen && (
-          <div
-            style={{
-              marginTop: "var(--space-sm)",
-              maxHeight: 320,
-              overflowY: "auto",
-              paddingRight: 4,
-            }}
-          >
-            {TOOL_GROUPS.map((g) => (
-              <div key={g.cls} style={{ marginBottom: "var(--space-sm)" }}>
+      <button
+        type="button"
+        className="chat-empty__browse"
+        onClick={props.toggleTools}
+        aria-expanded={toolsOpen}
+      >
+        {copy.browseTools(CLIENT_TOOL_CATALOG.length)}
+      </button>
+      {toolsOpen && (
+        <div className="chat-tools" role="region" aria-label={copy.toolsToggle(CLIENT_TOOL_CATALOG.length)}>
+          <label className="chat-tools__search">
+            <Search size={14} aria-hidden="true" />
+            <input
+              type="search"
+              value={toolQuery}
+              onChange={(e) => setToolQuery(e.target.value)}
+              placeholder={copy.historySearch}
+              aria-label={copy.toolsToggle(CLIENT_TOOL_CATALOG.length)}
+            />
+          </label>
+          <div className="chat-tools__list">
+            {groups.map((g) => (
+              <div key={g.cls} className="chat-tools__group">
                 <SectionTitle style={{ marginBottom: 4 }}>
                   {CHAT_TOOL_CLASS_LABELS[g.cls]}
                 </SectionTitle>
@@ -358,20 +327,18 @@ function EmptyState(props: {
                     }
                     title={t.hint}
                   >
-                    <span style={{ color: "var(--text)" }}>{t.label}</span>
+                    <span className="chat-tool-row__label">{t.label}</span>
                     <MonoLabel style={{ padding: "0.125rem 0.35rem" }}>
                       {t.name}
                     </MonoLabel>
-                    <span style={{ color: "var(--muted)" }}>
-                      {t.hintShort}
-                    </span>
+                    <span className="chat-tool-row__hint">{t.hintShort}</span>
                   </button>
                 ))}
               </div>
             ))}
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1566,15 +1533,131 @@ function ChatPageInner(): ReactElement {
       ? document.getElementById("sidebar-threads-slot")
       : null;
 
+  // Turn grouping (manifest 002 §3 Phase 2): an assistant tool_calls message,
+  // its tool-role results and the following assistant text form ONE turn.
+  const turns = useMemo(() => {
+    const grouped = groupTurns(messages);
+    for (const t of grouped) {
+      if (t.kind !== "assistant") continue;
+      for (const s of t.steps) s.run = toolRuns[s.id];
+    }
+    return grouped;
+  }, [messages, toolRuns]);
+  const lastMsgId = messages[messages.length - 1]?.id;
+  const toggleHistory = () => {
+    const opening = !sidebarOpen;
+    setSidebarOpen(opening);
+    // Opening history is the gesture that needs server threads — only now
+    // may the wallet-proof signature fire.
+    if (opening) setHistoryRequested(true);
+  };
+  const [openStepGroups, setOpenStepGroups] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const toggleStepGroup = (key: string) =>
+    setOpenStepGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  const toggleStep = (id: string) =>
+    setExpandedToolCalls((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  const composerRef = useRef<HTMLTextAreaElement | null>(null);
+  useEffect(() => {
+    // Autofocus on thread switches — the first action is one keystroke away.
+    composerRef.current?.focus();
+  }, [threadId]);
+  const canSend = input.trim().length > 0;
+  const sendIsStop = isStreaming && !canSend;
+
+  const renderActions = (msg: Message): ReactNode => (
+    <span className="turn__actions">
+      {msg.role === "user" && editConfirmId === msg.id ? (
+        <MessageEditConfirm
+          copy={chatCopy}
+          onConfirm={() => {
+            const text = msg.content ?? "";
+            const idx = idxOfMsg(msg.id);
+            if (idx >= 0) {
+              // Stale run must never commit into edited history
+              // (same pattern as openThread/startNewChat).
+              runEpochRef.current += 1;
+              abortRef.current?.abort();
+              applyHistoryRewrite(
+                stripSummaryLead(messagesRef.current.slice(0, idx)),
+              );
+            }
+            setEditConfirmId(null);
+            setInput(text);
+          }}
+          onCancel={() => setEditConfirmId(null)}
+        />
+      ) : msg.role === "user" ? (
+        <MsgActionBtn
+          title={chatCopy.editResend}
+          onClick={() => {
+            const idx = idxOfMsg(msg.id);
+            if (idx >= 0 && idx < messagesRef.current.length - 1) {
+              setEditConfirmId(msg.id);
+            } else {
+              setInput(msg.content ?? "");
+            }
+          }}
+        >
+          {chatCopy.edit}
+        </MsgActionBtn>
+      ) : null}
+      <MsgCopyAction text={msg.content ?? ""} copy={chatCopy} />
+      {msg.role === "assistant" && !msg.meta?.error && msg.id === lastMsgId ? (
+        <MsgActionBtn
+          title={chatCopy.regenerate}
+          onClick={() => {
+            if (isStreamingRef.current) return;
+            const idx = idxOfMsg(msg.id);
+            if (idx > 0) {
+              applyHistoryRewrite(
+                stripSummaryLead(messagesRef.current.slice(0, idx)),
+              );
+              rerunLastUser();
+            }
+          }}
+        >
+          {chatCopy.regenerateShort}
+        </MsgActionBtn>
+      ) : null}
+      <MsgTimestamp id={msg.id} />
+    </span>
+  );
+
+  const brandMark = (
+    <span className="turn__mark" aria-hidden="true">
+      <img src={BRAND.chatAvatar} alt="" width={20} height={20} />
+      {AXIOM_ASSISTANT_NAME}
+    </span>
+  );
+
   return (
     <div className="chat-layout">
       {threadsSlot &&
         createPortal(
           <ChatHistorySection
             activeThreadId={threadId}
-            onOpen={openThread}
-            onNew={startNewChat}
+            onOpen={(t) => {
+              openThread(t);
+              setSidebarOpen(false);
+            }}
+            onNew={() => {
+              startNewChat();
+              setSidebarOpen(false);
+            }}
             onDelete={deleteThread}
+            onClose={() => setSidebarOpen(false)}
             serverThreads={serverHistory}
             serverLoading={historyLoading}
             serverRestore={!!address && !historyRequested}
@@ -1584,68 +1667,47 @@ function ChatPageInner(): ReactElement {
           threadsSlot,
         )}
       <div className="chat-main">
-        {/* Shell grammar: one h1 per page. /chat is a fixed-viewport
-            surface, so the head is visually hidden — the compact topbar below
-            stays the surface chrome (audit-sanctioned exception). */}
+        {/* Shell grammar: one h1 per page; /chat is a fixed-viewport surface
+            with no visible page head. */}
         <h1 className="visually-hidden">{chatCopy.pageTitle}</h1>
-        <div className="chat-topbar">
+        {/* Corner controls: history drawer + new chat. The thread list is a
+            drawer on EVERY viewport (owner decision 2026-09-05: the always-on
+            rail was dead side space) so the transcript owns the full width. */}
+        <div className="chat-corner">
           <button
             type="button"
             className="icon-button chat-sidebar-toggle"
             aria-label={chatCopy.historyToggle}
             aria-expanded={sidebarOpen}
             ref={sidebarToggleRef}
-            onClick={() => {
-              const opening = !sidebarOpen;
-              setSidebarOpen(opening);
-              // Opening the rail is the mobile gesture that needs history —
-              // only now may the wallet-proof signature fire.
-              if (opening) setHistoryRequested(true);
-            }}
+            onClick={toggleHistory}
           >
             <Menu size={16} />
           </button>
-          <img
-            src={BRAND.chatAvatar}
-            alt=""
-            width={32}
-            height={32}
-            className="chat-topbar__mark"
-          />
-          <div className="chat-topbar__meta">
-            <div className="chat-topbar__name">{AXIOM_ASSISTANT_NAME}</div>
-            <div className="chat-topbar__status">
-              {chainSupported
-                ? interpolate(chatCopy.statusOnline, chainVars)
-                : interpolate(chatCopy.statusWrongNetwork, chainVars)}
-            </div>
-          </div>
-          {/* Plan §3: the rail head owns creation on desktop (rail is always
-              visible ≥701px); this topbar affordance stays mobile-only, where
-              the rail is a closed drawer. Kept as a no-JS CSS show/hide. */}
-          <Button
-            variant="ghost"
-            className="chat-topbar__new"
+          <button
+            type="button"
+            className="icon-button chat-corner__new"
+            aria-label={chatCopy.newChat}
+            title={chatCopy.newChat}
             onClick={startNewChat}
-            icon={<MessageSquare size={14} />}
           >
-            {chatCopy.newChat}
-          </Button>
+            <Plus size={16} />
+          </button>
         </div>
 
-        {computeHint && <ChatBanner>{computeHint}</ChatBanner>}
-
-        {/* V3 W5-B tank strip: low-tank banner when prepaid gas + grants run out. */}
-        <TankStrip locale={uiState.settings.locale} />
-
-        {!chainSupported && (
-          <ChatBanner>
-            {interpolate(chatCopy.wrongNetworkBanner, chainVars)}
-          </ChatBanner>
-        )}
+        <div className="chat-notices">
+          {computeHint && <ChatBanner>{computeHint}</ChatBanner>}
+          {/* V3 W5-B tank strip: renders null unless the tank is low. */}
+          <TankStrip locale={uiState.settings.locale} />
+          {!chainSupported && (
+            <ChatBanner>
+              {interpolate(chatCopy.wrongNetworkBanner, chainVars)}
+            </ChatBanner>
+          )}
+        </div>
 
         <div
-          className="chat-messages"
+          className="chat-scroll"
           ref={listRef}
           onClick={(e) => {
             // SPA-route internal links produced by linkifyConsoleRefs.
@@ -1670,501 +1732,225 @@ function ChatPageInner(): ReactElement {
               toolsOpen={toolsOpen}
               toggleTools={() => setToolsOpen((v) => !v)}
               send={sendMessage}
-              insertInput={setInput}
+              insertInput={(text) => {
+                setInput(text);
+                composerRef.current?.focus();
+              }}
             />
           )}
 
-          {messages.map((msg) => (
-            <div
-              key={msg.id}
-              className={`fade-enter chat-bubble${
-                msg.role === "user"
-                  ? " chat-bubble--user"
-                  : msg.role === "tool"
-                    ? " chat-bubble--tool"
-                    : ""
-              }`}
-            >
-              <StatusDot
-                color={
-                  msg.role === "user"
-                    ? "var(--copper-bright)"
-                    : msg.role === "tool"
-                      ? "var(--dim)"
-                      : "var(--text)"
+          {(messages.length > 0 || isStreaming) && (
+            <div className="chat-thread">
+              {turns.map((turn, turnIdx) => {
+                if (turn.kind === "user") {
+                  const msg = turn.message;
+                  return (
+                    <div key={msg.id} className="fade-enter turn turn--user">
+                      <div className="turn__msg chat-msg-wrap">
+                        {msg.content}
+                      </div>
+                      {renderActions(msg)}
+                    </div>
+                  );
                 }
-              >
-                {/* W6-A: avatar fallback + per-turn timestamp (browser-3 #5
-                    "no timestamps, no avatars") — chips render inside the
-                    flex header row; see the Wave-6A CSS appendix. */}
-                <MsgAvatar role={msg.role} content={msg.content} />
-                {msg.role === "user"
-                  ? chatCopy.roleYou
-                  : msg.role === "tool"
-                    ? (TOOL_LABELS[msg.name ?? ""] ??
-                      msg.name ??
-                      chatCopy.roleTool)
-                    : chatCopy.roleAssistant}
-                {msg.role === "tool" && msg.name ? (
-                  <ToolClassBadge name={msg.name} />
-                ) : null}
-                {/* W6-A: per-turn timestamp (browser-3 #5). User/assistant
-                    rows only — a tool row's provenance is its tool name, and
-                    its wall-clock belongs to the parent turn. */}
-                {msg.role !== "tool" ? <MsgTimestamp id={msg.id} /> : null}
-                {/* W6-A: header is a flex row (see .chat-bubble header rules);
-                    CSS pins .msg-actions to the right edge — the old inline
-                    marginLeft:auto sat inside an inline span and did nothing
-                    ("YouEdit Copy" collision, 2026-09-02 re-audit). */}
-                <span className="msg-actions">
-                  {msg.role === "user" && editConfirmId === msg.id ? (
-                    <MessageEditConfirm
+                const groupKey =
+                  turn.steps[0]?.id ?? turn.text?.id ?? `t${turnIdx}`;
+                const failedStep = turn.steps.some(
+                  (s) => deriveStepStatus(s) === "error",
+                );
+                const runningStep = turn.steps.some(
+                  (s) => deriveStepStatus(s) === "running",
+                );
+                // Auto-open while working or failed; collapsed once done.
+                // A user toggle inverts the automatic state.
+                const autoOpen = runningStep || failedStep;
+                const groupOpen = openStepGroups.has(groupKey)
+                  ? !autoOpen
+                  : autoOpen;
+                const isFirstAssistant =
+                  turns.findIndex((t) => t.kind === "assistant") === turnIdx;
+                const textMsg = turn.text;
+                const isError = textMsg?.meta?.error === true;
+                return (
+                  <div
+                    key={groupKey}
+                    className={`fade-enter turn turn--assistant${isError ? " turn--error" : ""}`}
+                  >
+                    {isFirstAssistant ? brandMark : null}
+                    <Steps
+                      steps={turn.steps}
+                      open={groupOpen}
+                      onToggleOpen={() => toggleStepGroup(groupKey)}
+                      expanded={expandedToolCalls}
+                      onToggleStep={toggleStep}
+                      onRetry={(id) => void retryToolRun(id)}
                       copy={chatCopy}
-                      onConfirm={() => {
-                        const text = msg.content ?? "";
-                        const idx = idxOfMsg(msg.id);
-                        if (idx >= 0) {
-                          // Stale run must never commit into edited history
-                          // (same pattern as openThread/startNewChat).
-                          runEpochRef.current += 1;
-                          abortRef.current?.abort();
-                          applyHistoryRewrite(
-                            stripSummaryLead(messagesRef.current.slice(0, idx)),
-                          );
-                        }
-                        setEditConfirmId(null);
-                        setInput(text);
-                      }}
-                      onCancel={() => setEditConfirmId(null)}
+                      sendTransactionAsync={toolCtx.sendTransactionAsync}
                     />
-                  ) : msg.role === "user" ? (
-                    <MsgActionBtn
-                      title={chatCopy.editResend}
-                      onClick={() => {
-                        const idx = idxOfMsg(msg.id);
-                        if (idx >= 0 && idx < messagesRef.current.length - 1) {
-                          setEditConfirmId(msg.id);
-                        } else {
-                          setInput(msg.content ?? "");
-                        }
-                      }}
+                    {turn.asks.map((ask) => (
+                      <AskUserCard
+                        key={ask.id}
+                        content={ask.content ?? ""}
+                        onAnswer={sendMessage}
+                        copy={chatCopy}
+                      />
+                    ))}
+                    {textMsg && textMsg.content ? (
+                      <>
+                        <div
+                          className="chat-md chat-msg"
+                          dangerouslySetInnerHTML={{
+                            __html: renderMarkdown(textMsg.content, explorerTx),
+                          }}
+                        />
+                        {textMsg.meta?.usage ? (
+                          <InsightsDisclosure
+                            text={textMsg.meta.usage}
+                            showLabel={chatCopy.metricsShow}
+                            hideLabel={chatCopy.metricsHide}
+                          />
+                        ) : null}
+                        {!isError ? renderActions(textMsg) : null}
+                      </>
+                    ) : null}
+                  </div>
+                );
+              })}
+
+              {txRows.length > 0 && (
+                <div
+                  className="fade-enter chat-txrows"
+                  role="status"
+                  aria-label={a11y.txConfirmations}
+                >
+                  {txRows.map((row) => (
+                    <div
+                      key={row.id}
+                      className="chat-dim-row chat-dim-row--wrap"
                     >
-                      {chatCopy.edit}
-                    </MsgActionBtn>
-                  ) : null}
-                  {msg.role === "assistant" &&
-                  !msg.meta?.error &&
-                  msg.id === messages[messages.length - 1]?.id ? (
+                      <span>
+                        {chatCopy.txMined(
+                          row.tokenId ?? null,
+                          row.eventName ?? null,
+                          row.blockNumber ?? null,
+                        )}
+                      </span>
+                      {row.txHash ? (
+                        <a
+                          href={explorerTxUrl(chainId, row.txHash)}
+                          target="_blank"
+                          rel="noreferrer noopener"
+                          className="num copper"
+                        >
+                          {truncateHex(row.txHash)}
+                        </a>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {streamError !== null && (
+                <div
+                  role="alert"
+                  className="fade-enter turn__notice is-danger"
+                >
+                  <span>{streamError}</span>
+                  <span className="turn__notice-actions">
                     <MsgActionBtn
-                      title={chatCopy.regenerate}
                       onClick={() => {
                         if (isStreamingRef.current) return;
-                        const idx = idxOfMsg(msg.id);
-                        if (idx > 0) {
-                          applyHistoryRewrite(
-                            stripSummaryLead(messagesRef.current.slice(0, idx)),
-                          );
+                        const last = lastStreamErrorRef.current;
+                        setStreamError(null);
+                        if (last && messagesRef.current.length > 0) {
                           rerunLastUser();
                         }
                       }}
                     >
-                      {chatCopy.regenerateShort}
+                      {chatCopy.retry}
                     </MsgActionBtn>
-                  ) : null}
-                  <MsgCopyAction text={msg.content ?? ""} copy={chatCopy} />
-                </span>
-              </StatusDot>
-              {msg.role === "tool" ? (
-                msg.name === "ask_user" ? (
-                  <AskUserCard
-                    content={msg.content ?? ""}
-                    onAnswer={sendMessage}
-                    copy={chatCopy}
-                  />
-                ) : (
-                  (() => {
-                    // 04: a semantically-failed tool (error
-                    // payload) renders danger-styled with a Retry affordance
-                    // keyed to its run — never as neutral body text.
-                    const failedRun = msg.tool_call_id
-                      ? toolRuns[msg.tool_call_id]?.status === "error"
-                      : false;
-                    return (
-                      <div
-                        role="region"
-                        aria-label={
-                          getChatToolSpec(msg.name ?? "")?.hint ??
-                          TOOL_LABELS[msg.name ?? ""] ??
-                          chatCopy.toolResultFallback
-                        }
-                        style={{
-                          ...insetCardStyle,
-                          fontSize: "var(--fs-body)",
-                          color: failedRun
-                            ? "var(--danger)"
-                            : "var(--muted)",
-                        }}
-                      >
-                        <ToolResultBody
-                          name={msg.name ?? ""}
-                          content={msg.content}
-                          sendTransactionAsync={toolCtx.sendTransactionAsync}
-                        />
-                        {failedRun && msg.tool_call_id ? (
-                          <MsgActionBtn
-                            style={{ marginTop: 6 }}
-                            onClick={() =>
-                              void retryToolRun(msg.tool_call_id as string)
-                            }
-                          >
-                            {chatCopy.retry}
-                          </MsgActionBtn>
-                        ) : null}
-                      </div>
-                    );
-                  })()
-                )
-              ) : msg.tool_calls ? (
-                <div
-                  style={{
-                    fontSize: "var(--fs-body)",
-                    color: "var(--muted)",
-                  }}
-                >
-                  {dedupeToolCalls(msg.tool_calls).map((tc) => {
-                    const run = tc.id ? toolRuns[tc.id] : undefined;
-                    return (
-                      <ToolCallCard
-                        key={tc.id}
-                        run={
-                          run ?? {
-                            // R1-8: no live run (reset or never marked) must
-                            // read as "running" — that liar card renders
-                            // "0s…" forever; the tool row itself carries the
-                            // truth (humanized result / error).
-                            name: tc.function.name,
-                            status: "error",
-                            error: chatCopy.toolResultFallback,
-                            startedAt: 0,
-                          }
-                        }
-                        expanded={expandedToolCalls.has(tc.id)}
-                        onToggle={() =>
-                          setExpandedToolCalls((prev) => {
-                            const next = new Set(prev);
-                            if (next.has(tc.id)) next.delete(tc.id);
-                            else next.add(tc.id);
-                            return next;
-                          })
-                        }
-                        onRetry={
-                          run?.status === "error"
-                            ? () => void retryToolRun(tc.id)
-                            : undefined
-                        }
-                        retryLabel={chatCopy.retry}
-                      />
-                    );
-                  })}
-                </div>
-              ) : (
-                <div>
-                  <div
-                    className="chat-md chat-msg"
-                    dangerouslySetInnerHTML={{
-                      __html: renderMarkdown(msg.content, explorerTx),
-                    }}
-                  />
-                  {msg.role === "assistant" && !msg.meta?.error ? (
-                    <div
-                      style={{
-                        display: "flex",
-                        gap: "var(--space-sm)",
-                        marginTop: "var(--space-sm)",
-                      }}
-                    >
-                      <CopyButton text={msg.content ?? ""} />
-                    </div>
-                  ) : null}
-                  {msg.meta?.usage ? (
-                    <InsightsDisclosure
-                      text={msg.meta.usage}
-                      showLabel={chatCopy.metricsShow}
-                      hideLabel={chatCopy.metricsHide}
-                    />
-                  ) : null}
+                    <MsgActionBtn onClick={() => setStreamError(null)}>
+                      {chatCopy.dismiss}
+                    </MsgActionBtn>
+                  </span>
                 </div>
               )}
-            </div>
-          ))}
 
-          {txRows.length > 0 && (
-            <div
-              className="fade-enter"
-              role="status"
-              aria-label={a11y.txConfirmations}
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: 4,
-                padding: "0 var(--space-lg)",
-                marginTop: "var(--space-sm)",
-              }}
-            >
-              {txRows.map((row) => (
-                <div key={row.id} className="chat-dim-row chat-dim-row--wrap">
-                  {/* one localized string instead of
-                      glyph-joined label spans ("⛓ tx mined" · "agent #N" · …). */}
-                  <span>
-                    {chatCopy.txMined(
-                      row.tokenId ?? null,
-                      row.eventName ?? null,
-                      row.blockNumber ?? null,
-                    )}
-                  </span>
-                  {row.txHash ? (
-                    <a
-                      href={explorerTxUrl(chainId, row.txHash)}
-                      target="_blank"
-                      rel="noreferrer noopener"
-                      className="num copper"
-                    >
-                      {truncateHex(row.txHash)}
-                    </a>
-                  ) : null}
-                </div>
-              ))}
-            </div>
-          )}
-
-          {streamError !== null && (
-            <div
-              role="alert"
-              className="fade-enter chat-bubble chat-bubble--danger"
-            >
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: "var(--space-md)",
-                }}
-              >
-                <span
-                  style={{ fontSize: "var(--fs-body)", color: "var(--text)" }}
+              {isStreaming && (
+                <div
+                  className="fade-enter turn turn--assistant turn--live"
+                  role="status"
+                  aria-live="polite"
+                  aria-label={chatCopy.assistantResponding}
                 >
-                  {streamError}
-                </span>
-                <span
-                  style={{
-                    display: "flex",
-                    gap: "var(--space-sm)",
-                    flexShrink: 0,
-                  }}
-                >
-                  <Button
-                    variant="primary"
-                    onClick={() => {
-                      if (isStreamingRef.current) return;
-                      const last = lastStreamErrorRef.current;
-                      setStreamError(null);
-                      if (last && messagesRef.current.length > 0) {
-                        rerunLastUser();
-                      }
-                    }}
-                  >
-                    {chatCopy.retry}
-                  </Button>
-                  <Button variant="ghost" onClick={() => setStreamError(null)}>
-                    {chatCopy.dismiss}
-                  </Button>
-                </span>
-              </div>
-            </div>
-          )}
-
-          {isStreaming && (
-            <div
-              className="fade-enter chat-bubble"
-              role="status"
-              aria-live="polite"
-              aria-label={chatCopy.assistantResponding}
-            >
-              <StatusDot color="var(--text)">
-                <MsgAvatar role="assistant" />
-                {chatCopy.roleAssistant}
-              </StatusDot>
-              {streamText ? (
-                <div className="chat-msg chat-msg-wrap">
-                  <span className="stream-tail">{streamText}</span>
-                  <span
-                    className="caret-blink"
-                    aria-hidden="true"
-                    style={{
-                      display: "inline-block",
-                      width: 2,
-                      height: "1em",
-                      background: "var(--phosphor)",
-                      marginLeft: 2,
-                      verticalAlign: "text-bottom",
-                    }}
-                  />
-                </div>
-              ) : (
-                <p className="chat-msg chat-msg-wrap chat-msg--flush">
-                  <span
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: 8,
-                    }}
-                  >
-                    <ThinkingOrbs label={chatCopy.assistantResponding} />
-                    <span style={{ color: "var(--copper-bright)" }}>
-                      {phaseLabel(elapsed, toolRuns, streamText, chatCopy)}
-                    </span>
-                    {tickRunning ? (
-                      <span className="chat-dim-xs">
-                        {chatCopy.tickInProgress}
+                  {turns.every((t) => t.kind === "user") ? brandMark : null}
+                  {streamText ? (
+                    <div className="chat-msg chat-msg-wrap">
+                      <span className="stream-tail">{streamText}</span>
+                      <span
+                        className="caret-blink chat-caret"
+                        aria-hidden="true"
+                      />
+                    </div>
+                  ) : (
+                    <p className="chat-msg chat-msg--flush turn__thinking">
+                      <ThinkingOrbs label={chatCopy.assistantResponding} />
+                      <span>
+                        {phaseLabel(elapsed, toolRuns, streamText, chatCopy)}
                       </span>
-                    ) : null}
-                  </span>
-                </p>
+                      {tickRunning ? (
+                        <span className="chat-dim-xs">
+                          {chatCopy.tickInProgress}
+                        </span>
+                      ) : null}
+                    </p>
+                  )}
+                </div>
               )}
             </div>
           )}
         </div>
 
-        {queue.length > 0 && (
-          <div
-            style={{
-              display: "flex",
-              flexWrap: "wrap",
-              gap: "var(--space-xs)",
-              padding: "0 var(--space-lg) var(--space-sm)",
-            }}
-          >
-            <span
-              style={{
-                fontSize: "var(--fs-small)",
-                color: "var(--muted)",
-                alignSelf: "center",
-              }}
-            >
-              {chatCopy.queuedCount(queue.length)}
-            </span>
-            {queue.map((q, i) => (
-              <span key={`${i}-${q}`} title={q} className="queue-chip">
-                {q.length > 40 ? `${q.slice(0, 40)}…` : q}
-                <button
-                  type="button"
-                  aria-label={chatCopy.removeQueued}
-                  className="icon-button icon-button--sm icon-button--ghost chat-queue-remove"
-                  onClick={() => {
-                    const next = queueRef.current.filter((_, idx) => idx !== i);
-                    queueRef.current = next;
-                    setQueue(next);
-                  }}
-                >
-                  {/* SVG icon, not a text glyph (pro-max: no glyph icons). */}
-                  <X size={12} aria-hidden="true" />
-                </button>
+        <div className="chat-dock">
+          {queue.length > 0 && (
+            <div className="chat-queue">
+              <span className="chat-queue__count">
+                {chatCopy.queuedCount(queue.length)}
               </span>
-            ))}
-          </div>
-        )}
-
-        <div className="chat-composer">
-          <div className="chat-composer__row">
-            <div className="routing-anchor">
-              {routingOpen && (
-                <>
-                  <div
-                    className="routing-backdrop"
-                    onClick={() => setRoutingOpen(false)}
-                  />
-                  <div
-                    className="routing-popover"
-                    role="dialog"
-                    aria-label={chatCopy.routing}
+              {queue.map((q, i) => (
+                <span key={`${i}-${q}`} title={q} className="queue-chip">
+                  {q.length > 40 ? `${q.slice(0, 40)}…` : q}
+                  <button
+                    type="button"
+                    aria-label={chatCopy.removeQueued}
+                    className="icon-button icon-button--sm icon-button--ghost chat-queue-remove"
+                    onClick={() => {
+                      const next = queueRef.current.filter(
+                        (_, idx) => idx !== i,
+                      );
+                      queueRef.current = next;
+                      setQueue(next);
+                    }}
                   >
-                    <div className="routing-popover__head">
-                      <strong>{chatCopy.routing}</strong>
-                      <span className="routing-popover__hint">
-                        {chatCopy.routingHint}
-                      </span>
-                    </div>
-                    <select
-                      aria-label={chatCopy.routing}
-                      value={prefKey}
-                      onChange={(e) => applyProviderPref(e.target.value)}
-                      className="chat-inline-select routing-popover__select"
-                    >
-                      <option value="auto">{chatCopy.routingAuto}</option>
-                      <option value="cheapest">
-                        {chatCopy.routingCheapest}
-                      </option>
-                      {pinCandidates.map((p) => (
-                        <option key={p.address} value={`pin:${p.address}`}>
-                          {pinLabel(p)}
-                        </option>
-                      ))}
-                    </select>
-                    <label className="routing-popover__check">
-                      <input
-                        type="checkbox"
-                        checked={providerPref?.trustMode === "verified"}
-                        onChange={(e) =>
-                          toggleTrustMode("verified", e.target.checked)
-                        }
-                      />
-                      {chatCopy.routingVerified}
-                    </label>
-                    <label
-                      className={`routing-popover__check${hasPrivateProvider ? "" : " is-disabled"}`}
-                      title={
-                        hasPrivateProvider
-                          ? chatCopy.routingPrivateHintOn
-                          : chatCopy.routingPrivateHintOff
-                      }
-                    >
-                      <input
-                        type="checkbox"
-                        disabled={!hasPrivateProvider}
-                        checked={providerPref?.trustMode === "private"}
-                        onChange={(e) =>
-                          toggleTrustMode("private", e.target.checked)
-                        }
-                      />
-                      {chatCopy.routingPrivate}
-                    </label>
-                    <p className="routing-popover__status">
-                      {routingStatusLine(providerPref, chatCopy)}
-                    </p>
-                  </div>
-                </>
-              )}
-              <button
-                type="button"
-                className={`routing-chip${isNonDefaultRouting(providerPref) ? " is-nondefault" : ""}`}
-                aria-expanded={routingOpen}
-                aria-haspopup="dialog"
-                onClick={() => setRoutingOpen((v) => !v)}
-                title={chatCopy.routingChipTitle}
-              >
-                <Network size={14} />
-                {routingSummary(providerPref, chatCopy)}
-              </button>
+                    <X size={12} aria-hidden="true" />
+                  </button>
+                </span>
+              ))}
             </div>
+          )}
+
+          <div className="chat-composer">
             <Textarea
+              ref={composerRef}
               aria-label={a11y.chatInput}
               value={input}
               rows={1}
+              className="chat-composer__input"
               onChange={(e) => {
                 setInput(e.target.value);
                 const el = e.target;
                 el.style.height = "auto";
-                el.style.height = `${Math.min(el.scrollHeight, 6 * 22)}px`;
+                el.style.height = `${Math.min(el.scrollHeight, 8 * 22)}px`;
               }}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
@@ -2179,39 +1965,145 @@ function ChatPageInner(): ReactElement {
               }
               maxLength={COMPOSER_MAX_LENGTH}
             />
-            {/* L1-L6: maxLength silently truncates pastes — surface the
-                remaining budget once it gets tight (90% of the cap). */}
-            {COMPOSER_MAX_LENGTH - input.length <=
-              Math.ceil(COMPOSER_MAX_LENGTH / 10) && (
-              <p className="chat-composer__counter" aria-live="polite">
-                {chatCopy.composerNearLimit(COMPOSER_MAX_LENGTH - input.length)}
-              </p>
-            )}
-            {/* L1-L10: Stop must not appear/disappear into a different DOM
-                position mid-stream — its slot is always rendered and only
-                toggles visually, so focus and tab order stay stable. */}
-            <Button
-              variant="ghost"
-              onClick={cancelStream}
-              className={`chat-stop${isStreaming ? "" : " chat-stop--hidden"}`}
-              disabled={!isStreaming}
-            >
-              {chatCopy.stop}
-            </Button>
-            {/* W6-A: send is an icon button inside the composer panel; the
-                accessible name stays the localized Send/Queue label. */}
-            <Button
-              variant="primary"
-              onClick={() => sendMessage(input)}
-              disabled={!input.trim()}
-              className="chat-send"
-              icon={<CornerDownLeft size={16} aria-hidden="true" />}
-            >
-              <span className="visually-hidden">
-                {isStreaming ? chatCopy.queue : chatCopy.send}
-              </span>
-            </Button>
+            <div className="chat-composer__bar">
+              <div className="routing-anchor">
+                {routingOpen && (
+                  <>
+                    <div
+                      className="routing-backdrop"
+                      onClick={() => setRoutingOpen(false)}
+                    />
+                    <div
+                      className="routing-popover"
+                      role="dialog"
+                      aria-label={chatCopy.routing}
+                    >
+                      <div className="routing-popover__head">
+                        <strong>{chatCopy.routing}</strong>
+                        <span className="routing-popover__hint">
+                          {chatCopy.routingHint}
+                        </span>
+                      </div>
+                      <select
+                        aria-label={chatCopy.routing}
+                        value={prefKey}
+                        onChange={(e) => applyProviderPref(e.target.value)}
+                        className="chat-inline-select routing-popover__select"
+                      >
+                        <option value="auto">{chatCopy.routingAuto}</option>
+                        <option value="cheapest">
+                          {chatCopy.routingCheapest}
+                        </option>
+                        {pinCandidates.map((p) => (
+                          <option key={p.address} value={`pin:${p.address}`}>
+                            {pinLabel(p)}
+                          </option>
+                        ))}
+                      </select>
+                      <label className="routing-popover__check">
+                        <input
+                          type="checkbox"
+                          checked={providerPref?.trustMode === "verified"}
+                          onChange={(e) =>
+                            toggleTrustMode("verified", e.target.checked)
+                          }
+                        />
+                        {chatCopy.routingVerified}
+                      </label>
+                      <label
+                        className={`routing-popover__check${hasPrivateProvider ? "" : " is-disabled"}`}
+                        title={
+                          hasPrivateProvider
+                            ? chatCopy.routingPrivateHintOn
+                            : chatCopy.routingPrivateHintOff
+                        }
+                      >
+                        <input
+                          type="checkbox"
+                          disabled={!hasPrivateProvider}
+                          checked={providerPref?.trustMode === "private"}
+                          onChange={(e) =>
+                            toggleTrustMode("private", e.target.checked)
+                          }
+                        />
+                        {chatCopy.routingPrivate}
+                      </label>
+                      <p className="routing-popover__status">
+                        {routingStatusLine(providerPref, chatCopy)}
+                      </p>
+                    </div>
+                  </>
+                )}
+                <button
+                  type="button"
+                  className={`routing-chip${isNonDefaultRouting(providerPref) ? " is-nondefault" : ""}`}
+                  aria-expanded={routingOpen}
+                  aria-haspopup="dialog"
+                  onClick={() => setRoutingOpen((v) => !v)}
+                  title={chatCopy.routingChipTitle}
+                >
+                  <Network size={14} />
+                  {routingSummary(providerPref, chatCopy)}
+                </button>
+              </div>
+              <span className="chat-composer__spacer" />
+              {/* L1-L6: maxLength silently truncates pastes — surface the
+                  remaining budget once it gets tight (90% of the cap). */}
+              {COMPOSER_MAX_LENGTH - input.length <=
+                Math.ceil(COMPOSER_MAX_LENGTH / 10) && (
+                <span className="chat-composer__counter" aria-live="polite">
+                  {chatCopy.composerNearLimit(
+                    COMPOSER_MAX_LENGTH - input.length,
+                  )}
+                </span>
+              )}
+              {/* Stop is a separate ghost only while queued text is pending;
+                  otherwise the single send button IS the stop button. Slot is
+                  always rendered (L1-L10: no DOM position change mid-stream). */}
+              <Button
+                variant="ghost"
+                onClick={cancelStream}
+                className={`chat-stop${isStreaming && canSend ? "" : " chat-stop--hidden"}`}
+                disabled={!isStreaming}
+              >
+                {chatCopy.stop}
+              </Button>
+              <button
+                type="button"
+                className={`chat-send${sendIsStop ? " chat-send--stop" : ""}`}
+                onClick={() =>
+                  sendIsStop ? cancelStream() : sendMessage(input)
+                }
+                disabled={!canSend && !sendIsStop}
+                aria-label={
+                  sendIsStop
+                    ? chatCopy.stop
+                    : isStreaming
+                      ? chatCopy.queue
+                      : chatCopy.send
+                }
+              >
+                {sendIsStop ? (
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    aria-hidden="true"
+                    fill="currentColor"
+                  >
+                    <rect x="5" y="5" width="14" height="14" rx="2" />
+                  </svg>
+                ) : (
+                  <ArrowUp size={16} aria-hidden="true" />
+                )}
+              </button>
+            </div>
           </div>
+          <p className={`chat-foot${chainSupported ? "" : " is-danger"}`}>
+            {chainSupported
+              ? `${APP_CHAIN.name} · ${CHAT_MODEL} · ${chatCopy.footHint}`
+              : interpolate(chatCopy.statusWrongNetwork, chainVars)}
+          </p>
         </div>
         {transferTokenId !== null && (
           <Suspense fallback={null}>
@@ -2238,6 +2130,74 @@ function ChatPageInner(): ReactElement {
       </div>
     </div>
   );
+}
+
+type Turn =
+  | { kind: "user"; message: Message }
+  | {
+      kind: "assistant";
+      steps: StepInput[];
+      asks: Message[];
+      text: Message | null;
+    };
+
+/** Group the flat transcript into turns. Tool results attach to their call by
+ * tool_call_id; an unmatched tool message becomes its own step. Live run
+ * state is layered on at render time (see `turnsWithRuns`). */
+function groupTurns(messages: Message[]): Turn[] {
+  const turns: Turn[] = [];
+  let cur: Extract<Turn, { kind: "assistant" }> | null = null;
+  const flush = () => {
+    if (cur) turns.push(cur);
+    cur = null;
+  };
+  for (const msg of messages) {
+    if (msg.role === "user") {
+      flush();
+      turns.push({ kind: "user", message: msg });
+      continue;
+    }
+    if (!cur || cur.text) {
+      flush();
+      cur = { kind: "assistant", steps: [], asks: [], text: null };
+    }
+    if (msg.role === "tool") {
+      if (msg.name === "ask_user") {
+        cur.asks.push(msg);
+        continue;
+      }
+      const step = msg.tool_call_id
+        ? cur.steps.find((s) => s.id === msg.tool_call_id)
+        : undefined;
+      if (step) {
+        step.result = msg.content;
+        step.hasResult = true;
+      } else {
+        cur.steps.push({
+          id: msg.tool_call_id ?? msg.id,
+          name: msg.name ?? "",
+          result: msg.content,
+          hasResult: true,
+        });
+      }
+      continue;
+    }
+    if (msg.tool_calls && msg.tool_calls.length > 0) {
+      for (const tc of dedupeToolCalls(msg.tool_calls)) {
+        cur.steps.push({
+          id: tc.id,
+          name: tc.function.name,
+          args: parseToolArguments(tc.function.arguments),
+          result: undefined,
+          hasResult: false,
+        });
+      }
+      if (!msg.content) continue;
+    }
+    cur.text = msg;
+  }
+  flush();
+  return turns;
 }
 
 function phaseLabel(
@@ -2348,6 +2308,8 @@ interface ChatHistorySectionProps {
   onOpen: (t: StoredThread) => void;
   onNew: () => void;
   onDelete: (id: string) => void;
+  /** Closes the history drawer (it is a drawer on every viewport). */
+  onClose: () => void;
   /** Server-persisted transcripts (useChatHistory); merged with localStorage
    * threads — dedupe by threadId, server takes precedence (newer-wins on a
    * tie is server; local only wins when it is strictly newer, i.e. the user
@@ -2372,6 +2334,7 @@ function ChatHistorySection({
   onOpen,
   onNew,
   onDelete,
+  onClose,
   serverThreads = [],
   serverLoading = false,
   serverRestore = false,
@@ -2409,67 +2372,46 @@ function ChatHistorySection({
 
   return (
     <div className="chat-history">
-      {/* U25: discoverability — an empty rail next to a connected wallet
-          explains where chats live and offers the one-signature restore
-          before "New chat", instead of burying it below the list. */}
-      {serverRestore && !serverLoading && threads.length === 0 ? (
-        <div>
-          <p className="chat-history__empty">{copy.historyOnChainNote}</p>
-          <button
-            type="button"
-            className="chat-history__restore"
-            onClick={onRequestServerHistory}
-            title={copy.historyRestoreHint}
-          >
-            {copy.historyRestore}
-          </button>
-        </div>
-      ) : null}
       <div className="chat-history__head">
+        <h2 className="chat-history__title">{copy.historyTitle}</h2>
         <button
           type="button"
           className="icon-button chat-history__new"
           onClick={onNew}
-          title={copy.historyNew}
-          aria-label={copy.historyNew}
+          title={copy.newChat}
+          aria-label={copy.newChat}
         >
           <Plus size={16} />
         </button>
+        <button
+          type="button"
+          className="icon-button icon-button--ghost chat-history__close"
+          onClick={onClose}
+          aria-label={copy.historyClose}
+        >
+          <X size={16} />
+        </button>
+      </div>
+      <label className="chat-history__search">
+        <Search size={14} aria-hidden="true" />
         <input
+          type="search"
           aria-label={copy.historySearch}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder={copy.historySearch}
-          className="chat-history__search"
         />
-        <h2 className="chat-history__title">{copy.historyTitle}</h2>
-      </div>
+      </label>
       <div className="chat-history__list" aria-live="polite">
         {filtered.length === 0 ? (
-          /* W6-B (browser-3, Empty states: thread rail): the bare
-             "No chats yet." paragraph gave the rail's first impression no
-             action; a new-chat affordance reuses the existing
-             copy.chat.historyNew string — no new copy key. */
-          <div className="chat-history__empty-group">
-            <p className="chat-history__empty">
-              {search ? copy.historyNoMatch : copy.historyEmpty}
-            </p>
-            {!search ? (
-              <button
-                type="button"
-                className="chat-history__empty-cta"
-                onClick={onNew}
-              >
-                {copy.historyNew}
-              </button>
-            ) : null}
-          </div>
+          <p className="chat-history__empty">
+            {search ? copy.historyNoMatch : copy.historyEmpty}
+          </p>
         ) : (
           filtered.map((t) => (
             <div
               key={t.id}
               className={`chat-history__item${t.id === activeThreadId ? " is-active" : ""}`}
-              style={{ display: "flex", alignItems: "center" }}
             >
               <button
                 type="button"
@@ -2479,10 +2421,14 @@ function ChatHistorySection({
                 aria-current={t.id === activeThreadId ? "true" : undefined}
               >
                 {t.title}
-                {/^0x[0-9a-fA-F]{40}$/.test(t.id) ? (
-                  <span className="chat-history__badge">0G</span>
-                ) : null}
               </button>
+              {/^0x[0-9a-fA-F]{40}$/.test(t.id) ? (
+                <span
+                  className="chat-history__badge"
+                  title={copy.storedOn0G}
+                  aria-label={copy.storedOn0G}
+                />
+              ) : null}
               <button
                 type="button"
                 className="icon-button icon-button--sm icon-button--ghost chat-history__delete"
@@ -2498,6 +2444,18 @@ function ChatHistorySection({
           <p className="chat-history__empty">{copy.historyLoading}</p>
         )}
       </div>
+      {/* U25: the one-signature restore is the explicit gesture that
+          authorizes the wallet-proof history fetch. */}
+      {serverRestore && !serverLoading ? (
+        <button
+          type="button"
+          className="chat-history__restore"
+          onClick={onRequestServerHistory}
+          title={copy.historyRestoreHint}
+        >
+          {copy.historyRestore}
+        </button>
+      ) : null}
     </div>
   );
 }

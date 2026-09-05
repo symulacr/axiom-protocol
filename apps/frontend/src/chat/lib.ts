@@ -266,3 +266,43 @@ export function parseToolArguments(
   }
   return {};
 }
+
+/** Tool failures arrive either as an `{error}` JSON envelope or a bare
+ * "Error: …" string; both mark the danger tone. */
+export function isFailurePayload(content: string | null): boolean {
+  if (!content) return false;
+  try {
+    const obj = JSON.parse(content) as unknown;
+    if (typeof obj === "object" && obj !== null && !Array.isArray(obj)) {
+      return (obj as Record<string, unknown>).error !== undefined;
+    }
+  } catch {
+    /* not JSON */
+  }
+  return /^error\b/i.test(content.trim());
+}
+
+export type StepStatus = "running" | "success" | "error" | "pending";
+
+/** One tool call paired with its tool-role result message (if any) and the
+ * live run (if the call belongs to the in-flight turn). */
+export type StepInput = {
+  id: string;
+  name: string;
+  args?: Record<string, unknown>;
+  result: string | null | undefined;
+  hasResult: boolean;
+  run?: { status: "running" | "success" | "error"; startedAt: number; result?: string; error?: string };
+};
+
+/** Status is derived, never synthesized: a live run wins; otherwise the
+ * paired tool message proves completion (danger only when its payload is a
+ * failure); a call with no result and no run is `pending` — never "running"
+ * (R1-8) and never red (plan 002 F-1: restored threads painted history red). */
+export function deriveStepStatus(step: StepInput): StepStatus {
+  if (step.run) return step.run.status;
+  if (step.hasResult) {
+    return isFailurePayload(step.result ?? null) ? "error" : "success";
+  }
+  return "pending";
+}
