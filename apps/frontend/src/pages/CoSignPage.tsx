@@ -155,7 +155,7 @@ export function CoSignPage({ go }: { go: (path: string) => void }) {
             <div className="review-cosign" data-testid="cosign-no-link">
               <ShieldCheck size={14} />
               <div>
-                <strong>{f.receiveNoLinkTitle}</strong>
+                <h2 className="review-cosign-title">{f.receiveNoLinkTitle}</h2>
                 <p>{f.receiveNoLinkBody}</p>
               </div>
             </div>

@@ -73,18 +73,24 @@ for (const route of ROUTES) {
   const jsErrors = [];
   const handler = (m) => {
     if (m.method === "Log.entryAdded" && m.params.entry.level === "error") {
-      jsErrors.push(`${String(m.params.entry.text).slice(0, 90)} <- ${String(m.params.entry.url ?? "").slice(0, 60)}`);
+      // Known noise, not an app defect: the sandbox WalletConnect placeholder
+      // projectId 403s on every appkit telemetry/limits call.
+      const url = String(m.params.entry.url ?? "");
+      if (url.includes("api.web3modal.org")) return;
+      jsErrors.push(`${String(m.params.entry.text).slice(0, 90)} <- ${url.slice(0, 60)}`);
     }
     if (m.method === "Runtime.exceptionThrown") {
       const d = m.params.exceptionDetails;
-      jsErrors.push(String(d.exception?.description ?? d.text ?? "").slice(0, 130));
+      const desc = String(d.exception?.description ?? d.text ?? "");
+      if (desc.includes("api.web3modal.org")) return;
+      jsErrors.push(desc.slice(0, 130));
     }
   };
   events.push(handler);
   try {
     await next("Page.navigate", { url: BASE + route });
     for (let i = 0; i < 24; i++) {
-      const ready = await evalJs(`!!(document.querySelector('.ops-page') || document.querySelector('.public-locked') || document.querySelector('.landing-page') || document.querySelector('.recovery-404') || document.querySelector('.session-settling'))`);
+      const ready = await evalJs(`!!(document.querySelector('.ops-page') || document.querySelector('.public-locked') || document.querySelector('.landing-page') || document.querySelector('.recovery-404') || document.querySelector('.session-settling') || document.querySelector('.operator-preferences'))`);
       if (ready === true) break;
       await sleep(250);
     }
@@ -116,8 +122,15 @@ for (const route of ROUTES) {
         if (!el) return 'no-target';
         try { el.click(); return 'clicked'; } catch (e) { return 'error'; }
       })()`);
-      await sleep(600);
-      const stillAlive = await evalJs(`!!document.body && document.body.innerText.trim().length > 0`);
+      // A click that navigates (e.g. 404 "Return to landing") must be given
+      // time to mount the next route before liveness is judged — a fixed
+      // 600ms check fired mid-load and produced false CLICK-KILLED-PAGE.
+      let stillAlive = null;
+      for (let i = 0; i < 20; i++) {
+        await sleep(300);
+        stillAlive = await evalJs(`!!document.body && document.body.innerText.trim().length > 0`);
+        if (stillAlive === true) break;
+      }
       if (clickOk === "clicked" && stillAlive !== true) clickOk = "clicked-then-blank";
     }
     results.push({ route, ...audit, clickOk, jsErrors: jsErrors.slice(0, 3) });
