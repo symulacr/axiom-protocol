@@ -9,6 +9,9 @@ const frontendDir = import.meta.dirname;
 const repoRoot = resolve(frontendDir, "../..");
 
 // Load VITE_* from root .env (single source of truth; Vite's envDir is gone).
+// Shell/CI/Vercel-exported VITE_* (process.env) take PRECEDENCE over the file,
+// mirroring dev.mjs — a CI build with Vercel Environment Variables must be
+// able to override the committed public defaults without editing .env.
 // A missing .env is fine — every VITE_* has a runtime default in src/config.
 let envSrc = "";
 try {
@@ -16,11 +19,22 @@ try {
 } catch {
   envSrc = "";
 }
-const define = {};
+const envFileVars = {};
 for (const line of envSrc.split("\n")) {
 	const key = /^VITE_[A-Z_]+(?==)/.exec(line)?.[0];
 	if (!key) continue;
-	define[`import.meta.env.${key}`] = JSON.stringify(line.slice(key.length + 1));
+	envFileVars[key] = line.slice(key.length + 1);
+}
+function pickViteEnv(source) {
+	const out = {};
+	for (const [key, value] of Object.entries(source)) {
+		if (key.startsWith("VITE_") && value !== undefined && value !== "") out[key] = value;
+	}
+	return out;
+}
+const define = {};
+for (const [key, value] of Object.entries({ ...envFileVars, ...pickViteEnv(process.env) })) {
+	define[`import.meta.env.${key}`] = JSON.stringify(value);
 }
 // Library dev-asserts check MODE !== "production" (wagmi) and guard on bare
 // `import.meta.env` truthiness. Define both.
