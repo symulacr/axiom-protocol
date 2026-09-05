@@ -11,7 +11,7 @@
 		},
 		"run": {
 			"enabled": true,
-			"command": "cd apps/frontend && PORT=3000 mise x bun@1.4.0 -- bun dev.mjs"
+			"command": "cd apps/frontend && PORT=3000 mise x bun@1.4.0 -- bun --hot dev.mjs"
 		},
 		"archive": {
 			"enabled": true,

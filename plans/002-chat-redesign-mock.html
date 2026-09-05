@@ -1,0 +1,500 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Axiom /chat — redesign mock (before / after)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Syne:wght@600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+/* ------------------------------------------------------------------ *
+ * Tokens — copied from apps/frontend/src/styles/index.css (both themes)
+ * plus the §2.2 additions of plans/002-chat-redesign-manifest.md.
+ * ------------------------------------------------------------------ */
+:root{
+  --font-ui:"Inter",ui-sans-serif,system-ui,sans-serif;
+  --font-display:"Syne",sans-serif;
+  --font-mono:"JetBrains Mono",monospace;
+  --fs-mono:12px;--fs-small:13px;--fs-body:14px;--fs-title:20px;
+  --radius-md:6px;--radius-lg:8px;
+  --space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-6:24px;
+  --dur-fast:150ms;--motion-ease:cubic-bezier(.2,.7,.2,1);
+  --chat-measure:760px;--turn-gap:28px;--turn-gap-inner:10px;
+}
+[data-theme="light"]{
+  --bg:#f1eee8;--bg-2:#f7f4ee;--panel:#fffdf8;--panel-2:#f3eee6;
+  --line:#d9d0c4;--line-soft:#e8dfd4;--text:#202528;--muted:#5b5b55;--dim:#686760;
+  --copper:#a96333;--copper-bright:#8d4d25;--warning:#8a4a12;--danger:#a83a2e;--ok:#2f6f4e;
+  --shadow:0 1px 2px rgb(0 0 0/.05),0 8px 24px -16px rgb(0 0 0/.18);
+}
+[data-theme="dark"]{
+  --bg:#111315;--bg-2:#171a1d;--panel:#1b1f22;--panel-2:#202529;
+  --line:#32383c;--line-soft:#272d31;--text:#f0eee9;--muted:#99a09f;--dim:#858e8d;
+  --copper:#d28b52;--copper-bright:#efae6b;--warning:#e2a15b;--danger:#e57a6e;--ok:#67e8b4;
+  --shadow:0 1px 2px rgb(0 0 0/.4),0 8px 24px -16px rgb(0 0 0/.6);
+}
+:root{
+  --copper-06:color-mix(in srgb,var(--copper) 6%,transparent);
+  --copper-10:color-mix(in srgb,var(--copper) 10%,transparent);
+  --copper-12:color-mix(in srgb,var(--copper) 12%,transparent);
+  --c-bronze-bg:color-mix(in srgb,var(--copper) 12%,transparent);
+  --c-bronze-border:color-mix(in srgb,var(--copper) 40%,transparent);
+  --c-danger-bg:color-mix(in srgb,var(--danger) 10%,transparent);
+  --c-danger-border:color-mix(in srgb,var(--danger) 40%,transparent);
+  --c-warning-bg:color-mix(in srgb,var(--warning) 10%,transparent);
+  --c-warning-border:color-mix(in srgb,var(--warning) 40%,transparent);
+  --chat-user-bg:color-mix(in srgb,var(--copper) 10%,var(--panel));
+  --chat-step-bg:color-mix(in srgb,var(--panel-2) 70%,transparent);
+  --chat-send-bg:var(--copper);--chat-send-fg:#fff;--chat-caret:var(--copper-bright);
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font:var(--fs-body)/1.5 var(--font-ui)}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+input,textarea{font:inherit;color:inherit}
+.vh{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+
+/* ---------------- Mock chrome (not part of the product) ---------------- */
+.mock-bar{position:sticky;top:0;z-index:10;display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;padding:10px 16px;background:var(--panel);border-bottom:1px solid var(--line);font-size:var(--fs-small)}
+.mock-bar strong{font-family:var(--font-display);letter-spacing:.02em}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden}
+.seg button{padding:4px 12px;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--copper);color:#fff}
+.mock-note{padding:12px 16px;color:var(--muted);font-size:var(--fs-small);max-width:1100px}
+.mock-note code{font-family:var(--font-mono);font-size:12px}
+.frame{width:min(1280px,100% - 32px);height:760px;margin:0 auto 24px;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--bg);box-shadow:var(--shadow);display:flex;flex-direction:column}
+.frame[data-viewport="mobile"]{width:390px;height:780px}
+.legend{width:min(1280px,100% - 32px);margin:0 auto 8px;display:flex;gap:16px;font-size:var(--fs-small);color:var(--muted)}
+.legend b{color:var(--text)}
+[hidden]{display:none!important}
+
+/* shell topbar (unchanged in both) */
+.shell-top{display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid var(--line-soft);background:var(--bg)}
+.shell-top .sp{flex:1}
+.ibtn{display:inline-grid;place-items:center;width:32px;height:32px;border:1px solid var(--line);border-radius:6px;color:var(--muted);background:var(--panel)}
+.ibtn svg{width:15px;height:15px}
+.pillmono{font:500 12px var(--font-mono);letter-spacing:.06em;text-transform:uppercase;border:1px solid var(--line);padding:8px 12px;color:var(--dim);background:var(--panel)}
+.surface{display:grid;grid-template-columns:minmax(0,1fr) 250px;gap:16px;flex:1;min-height:0;padding:12px 16px 12px 0}
+.frame[data-viewport="mobile"] .surface{grid-template-columns:1fr;padding:0}
+.frame[data-viewport="mobile"] .rail{display:none}
+.main{display:flex;flex-direction:column;min-height:0;min-width:0}
+svg{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+/* =============================== BEFORE =============================== */
+.b .chat-topbar{display:flex;align-items:center;gap:8px;padding:8px 4px;border-bottom:1px solid var(--line-soft)}
+.b .chat-topbar .ibtn.ring{outline:2px solid var(--copper);outline-offset:2px}
+.b .avatar{width:32px;height:32px;border-radius:8px;background:#111;color:#fff;font:600 7px var(--font-ui);display:grid;place-items:center}
+.b .tname{font-family:var(--font-display);font-weight:600}
+.b .tstatus{font-size:12px;color:var(--dim)}
+.b .newchat{margin-left:auto;font:500 13px var(--font-mono);color:var(--copper-bright);display:inline-flex;gap:6px;align-items:center;padding:0 12px}
+.b .msgs{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding:12px 4px;width:100%;max-width:880px;margin-inline:auto}
+.b .bubble{padding:12px 16px;border-radius:8px;border:1px solid var(--line);background:var(--panel)}
+.b .bubble--user{border-color:var(--c-bronze-border);background:var(--c-bronze-bg);margin-top:16px;align-self:flex-end;width:fit-content;max-width:72ch;min-width:240px}
+.b .bubble--tool{background:var(--bg-2)}
+.b .bubble--danger{border-color:var(--c-danger-border);background:var(--c-danger-bg)}
+.b .head{display:flex;align-items:center;gap:8px;margin-bottom:4px;font:600 12px var(--font-ui);color:var(--dim)}
+.b .dot{width:6px;height:6px;border-radius:50%;background:var(--text)}
+.b .dot.u{background:var(--copper-bright)}.b .dot.t{background:var(--dim)}
+.b .av{width:20px;height:20px;border-radius:50%;border:1px solid var(--line);display:grid;place-items:center;font-size:10px;background:var(--panel)}
+.b .av.u{background:var(--c-bronze-bg);border-color:var(--c-bronze-border);color:var(--copper-bright)}
+.b .time{font-weight:500;color:var(--dim)}
+.b .acts{margin-left:auto;display:inline-flex;gap:4px;position:relative;width:110px;justify-content:flex-end}
+.b .acts.clash span:first-child{position:absolute;right:26px}
+.b .act{padding:2px 4px;color:var(--copper);font-weight:500}
+.b .body{font-size:15px;line-height:1.6}
+.b .bubble--user .body{font-size:14px}
+.b .toolcard{display:flex;align-items:center;gap:8px;padding:6px 10px;border:1px solid var(--line);border-radius:6px;background:var(--bg-2);font-size:14px}
+.b .toolcard.err{border-color:var(--c-danger-border);background:var(--c-danger-bg);color:var(--danger)}
+.b .toolcard .lbl{font-weight:600;color:var(--copper)}
+.b .toolcard.err .lbl{color:var(--danger)}
+.b .toolcard .st{margin-left:auto;color:var(--muted)}
+.b .toolcard.err .st{color:var(--danger)}
+.b .inset{border:1px solid var(--line);border-radius:6px;background:var(--bg-2);padding:8px 12px;color:var(--muted);font-size:14px}
+.b .copy2{display:inline-block;margin-top:6px;border:1px solid var(--c-bronze-border);color:var(--copper);font-size:13px;padding:1px 8px;border-radius:4px}
+.b .composer{border:1px solid var(--line);border-radius:10px;background:var(--panel-2);padding:8px 12px;width:100%;max-width:880px;margin-inline:auto;position:relative;overflow:hidden}
+.b .composer .row{display:flex;align-items:flex-end;gap:8px}
+.b .chip{border:1px solid var(--line);border-radius:6px;padding:6px 10px;font:500 13px var(--font-mono);color:var(--muted);display:inline-flex;gap:6px;align-items:center;margin-left:-26px;background:var(--panel)}
+.b .ta{flex:1;border:1px solid var(--line);border-radius:6px;background:var(--panel);padding:10px 12px;color:var(--dim);min-height:42px}
+.b .send{width:40px;height:40px;border:1px solid var(--line);border-radius:8px;display:grid;place-items:center;color:var(--dim);background:var(--panel)}
+.b .empty{margin:auto;text-align:center;max-width:520px;width:100%;padding:24px}
+.b .empty h2{font-family:var(--font-display);font-size:20px;margin:0 0 8px}
+.b .empty p{color:var(--muted);margin:0 0 16px}
+.b .grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.b .pcard{border:1px solid var(--line);border-radius:6px;background:var(--panel);padding:12px;text-align:left}
+.b .pcard b{display:block;font-size:14px}
+.b .pcard span{font-size:12px;color:var(--dim)}
+.b .pcard.row{grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;margin-top:8px}
+.b .queue{display:flex;gap:4px;align-items:center;padding:0 16px 8px;font-size:13px;color:var(--muted);max-width:880px;margin-inline:auto;width:100%}
+.b .qchip{border:1px solid var(--line);border-radius:6px;padding:2px 8px;background:var(--panel)}
+/* before rail */
+.b.rail{display:flex;flex-direction:column;padding:16px 12px 12px;margin-top:4px;border:1px solid var(--line);border-radius:12px;background:var(--panel);height:fit-content}
+.b.rail .rhead{display:flex;gap:8px;align-items:center;margin-bottom:12px}
+.b.rail .rhead .ibtn.new{border-color:var(--copper);color:var(--copper-bright)}
+.b.rail .rtitle{margin-left:auto;font:500 12px var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
+.b.rail .item{display:grid;grid-template-columns:1fr auto;gap:4px;align-items:center;padding:8px;border-radius:6px;background:var(--copper-12);box-shadow:inset 2px 0 0 var(--copper)}
+.b.rail .item .t{border:1px solid var(--text);padding:8px;text-align:center;font-size:14px;background:var(--panel)}
+.b.rail .dashed{border:1px dashed var(--line);text-align:center;font:500 13px var(--font-mono);padding:6px;color:var(--dim);margin-top:8px}
+.b.rail .none{color:var(--dim);font-size:13px;padding:8px 4px}
+
+/* =============================== AFTER =============================== */
+.a .notices{width:100%;max-width:var(--chat-measure);margin:0 auto;padding:12px 16px 0}
+.a .banner{display:flex;gap:8px;align-items:center;padding:8px 12px;border:1px solid var(--c-warning-border);background:var(--c-warning-bg);border-radius:8px;color:var(--warning);font-size:13px}
+.a .banner .act{margin-left:auto;font-weight:600;color:var(--warning);text-decoration:underline}
+.a .scroll{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;scrollbar-width:thin}
+.a .thread{width:100%;max-width:var(--chat-measure);margin:0 auto;padding:28px 16px 12px;display:flex;flex-direction:column;gap:var(--turn-gap)}
+.a .turn{position:relative;display:flex;flex-direction:column;gap:var(--turn-gap-inner)}
+.a .turn--user{align-self:flex-end;max-width:min(100%,60ch);align-items:flex-end}
+.a .turn--user .msg{background:var(--chat-user-bg);border-radius:16px 16px 4px 16px;padding:10px 14px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere}
+.a .turn--assistant .md{font-size:15px;line-height:1.65}
+.a .md p{margin:0 0 .7em}.a .md p:last-child{margin:0}
+.a .md ul{margin:0 0 .7em;padding-left:1.25em}.a .md li{margin:.15em 0}
+.a .mark{display:inline-flex;align-items:center;gap:8px;font:600 12px var(--font-display);letter-spacing:.04em;color:var(--dim)}
+.a .mark i{width:20px;height:20px;border-radius:6px;background:#111;display:inline-block}
+[data-theme="dark"] .a .mark i{background:var(--copper)}
+.a .actions{display:flex;gap:2px;align-items:center;font-size:12px;color:var(--dim);opacity:0;transition:opacity 120ms var(--motion-ease)}
+.a .turn:hover .actions,.a .turn:focus-within .actions,.a .turn.is-hover .actions{opacity:1}
+.a .turn--user .actions{justify-content:flex-end}
+.a .actions button{padding:4px 8px;border-radius:6px;color:var(--muted);display:inline-flex;gap:5px;align-items:center}
+.a .actions button:hover{background:var(--copper-06);color:var(--text)}
+.a .actions button svg{width:13px;height:13px}
+.a .actions .time{padding:4px 6px;font-variant-numeric:tabular-nums}
+.a .confirm{display:inline-flex;gap:8px;align-items:center;font-size:12px;color:var(--muted)}
+.a .confirm b{color:var(--danger);font-weight:500;cursor:pointer}
+/* steps */
+.a .steps{border:1px solid var(--line-soft);border-radius:10px;background:var(--chat-step-bg);font-size:13px;overflow:hidden}
+.a .steps > summary,.a .steps .sum{list-style:none;display:flex;gap:8px;align-items:center;padding:8px 12px;color:var(--muted);cursor:pointer;user-select:none}
+.a .steps summary::-webkit-details-marker{display:none}
+.a .steps .chev{width:12px;height:12px;transition:transform 150ms var(--motion-ease);color:var(--dim)}
+.a .steps[open] .chev{transform:rotate(90deg)}
+.a .steps .sum .n{color:var(--dim)}
+.a .step{display:flex;gap:10px;align-items:center;padding:7px 12px 7px 14px;border-top:1px solid var(--line-soft);color:var(--text)}
+.a .step .ic{width:14px;height:14px;display:inline-grid;place-items:center;flex:none}
+.a .step .ic.ok{color:var(--ok)}.a .step .ic.fail{color:var(--danger)}.a .step .ic.pend{color:var(--dim)}
+.a .step .lbl{font-weight:500}
+.a .step .cls{font:500 11px var(--font-mono);letter-spacing:.04em;text-transform:uppercase;color:var(--dim);border:1px solid var(--line-soft);padding:1px 6px;border-radius:4px}
+.a .step .meta{margin-left:auto;color:var(--dim);display:inline-flex;gap:10px;align-items:center}
+.a .step.fail .lbl{color:var(--danger)}
+.a .step .retry{color:var(--copper);font-weight:500}
+.a .stepbody{border-top:1px solid var(--line-soft);padding:10px 14px 12px 38px;display:grid;gap:8px;color:var(--muted)}
+.a .stepbody pre{margin:0;font:12px/1.5 var(--font-mono);background:var(--panel);border:1px solid var(--line-soft);border-radius:6px;padding:8px 10px;color:var(--muted);overflow:auto}
+.a .stepbody ol{margin:0;padding-left:1.2em;color:var(--text)}
+.a .spin{width:12px;height:12px;border:2px solid var(--line);border-top-color:var(--copper);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+/* streaming */
+.a .thinking{display:inline-flex;gap:8px;align-items:center;color:var(--muted);font-size:14px}
+.a .orbs{display:inline-flex;gap:3px}.a .orbs i{width:5px;height:5px;border-radius:50%;background:var(--copper);animation:orb 1.2s ease-in-out infinite}
+.a .orbs i:nth-child(2){animation-delay:.15s}.a .orbs i:nth-child(3){animation-delay:.3s}
+@keyframes orb{0%,100%{opacity:.25;transform:translateY(0)}50%{opacity:1;transform:translateY(-2px)}}
+.a .caret{display:inline-block;width:2px;height:1em;background:var(--chat-caret);margin-left:2px;vertical-align:text-bottom;animation:caret 1s steps(1) infinite}
+@keyframes caret{50%{opacity:0}}
+/* notice */
+.a .notice{display:flex;gap:12px;align-items:center;padding:6px 0 6px 12px;border-left:2px solid var(--danger);font-size:13px;color:var(--text)}
+.a .notice .acts{margin-left:auto;display:inline-flex;gap:4px}
+.a .notice .acts button{padding:4px 10px;border-radius:6px;font-weight:500;color:var(--muted)}
+.a .notice .acts button.pri{color:var(--copper);border:1px solid var(--c-bronze-border)}
+/* dock */
+.a .dock{width:100%;max-width:var(--chat-measure);margin:0 auto;padding:8px 16px 10px;display:flex;flex-direction:column;gap:8px}
+.a .queue{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:12px;color:var(--dim);padding:0 4px}
+.a .qchip{display:inline-flex;gap:6px;align-items:center;border:1px solid var(--line-soft);background:var(--panel);border-radius:999px;padding:3px 6px 3px 10px;color:var(--muted);font-size:12px}
+.a .qchip button{display:grid;place-items:center;width:16px;height:16px;border-radius:50%;color:var(--dim)}
+.a .qchip button:hover{background:var(--copper-10);color:var(--text)}
+.a .composer{border:1px solid var(--line);border-radius:16px;background:var(--panel);box-shadow:0 1px 2px rgb(0 0 0/.04);transition:border-color var(--dur-fast) var(--motion-ease)}
+.a .composer.is-focus,.a .composer:focus-within{border-color:var(--copper)}
+.a .composer textarea{display:block;width:100%;border:0;outline:0;background:transparent;resize:none;padding:14px 16px 6px;line-height:1.5;min-height:46px;max-height:calc(8*1.5em + 20px);color:var(--text)}
+.a .composer textarea::placeholder{color:var(--dim)}
+.a .bar{display:flex;align-items:center;gap:6px;padding:4px 8px 8px 8px}
+.a .chipbtn{display:inline-flex;gap:6px;align-items:center;padding:6px 10px;border-radius:999px;color:var(--muted);font-size:13px}
+.a .chipbtn:hover{background:var(--copper-06);color:var(--text)}
+.a .chipbtn.nondef{color:var(--copper)}
+.a .chipbtn svg{width:14px;height:14px}
+.a .bar .sp{flex:1}
+.a .counter{font-size:12px;color:var(--warning);font-variant-numeric:tabular-nums}
+.a .ghoststop{padding:6px 12px;border-radius:999px;border:1px solid var(--line);font-size:13px;color:var(--muted)}
+.a .send{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:var(--chat-send-bg);color:var(--chat-send-fg);transition:background var(--dur-fast) var(--motion-ease),transform var(--dur-fast) var(--motion-ease)}
+.a .send:active{transform:scale(.96)}
+.a .send svg{width:16px;height:16px}
+.a .send:disabled{background:transparent;color:var(--dim);border:1px solid var(--line);cursor:default}
+.a .send.stop svg{fill:currentColor;stroke:none}
+.a .foot{text-align:center;font-size:12px;color:var(--dim)}
+.a .foot.danger{color:var(--danger)}
+.a .foot kbd{font:11px var(--font-mono);border:1px solid var(--line-soft);border-radius:4px;padding:0 4px}
+/* empty */
+.a .empty{margin:auto;text-align:center;max-width:var(--chat-measure);width:100%;padding:24px 16px;display:flex;flex-direction:column;align-items:center;gap:8px}
+.a .empty .bigmark{width:40px;height:40px;border-radius:12px;background:#111;margin-bottom:8px}
+[data-theme="dark"] .a .empty .bigmark{background:var(--copper)}
+.a .empty h2{font:600 24px var(--font-display);margin:0;letter-spacing:.01em}
+.a .empty p{margin:0 0 12px;color:var(--muted)}
+.a .pills{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;max-width:560px}
+.a .pill{border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:8px 14px;font-size:13px;color:var(--text);transition:border-color var(--dur-fast),background var(--dur-fast)}
+.a .pill:hover{border-color:var(--copper);background:var(--copper-06)}
+.a .empty .browse{margin-top:10px;font-size:13px;color:var(--copper);display:inline-flex;gap:6px;align-items:center}
+/* mobile toggle */
+.a .fab{display:none;position:absolute;top:8px;left:8px;z-index:2}
+.frame[data-viewport="mobile"] .a .fab{display:inline-grid}
+.frame[data-viewport="mobile"] .a .turn--user{max-width:88%}
+.frame[data-viewport="mobile"] .a .thread{padding-top:48px}
+.a .main{position:relative}
+/* after rail */
+.a.rail{display:flex;flex-direction:column;gap:8px;padding:12px 10px;margin-top:4px;border:1px solid var(--line);border-radius:12px;background:var(--panel);height:fit-content;min-height:280px}
+.a.rail .rhead{display:flex;align-items:center;gap:8px;padding:0 4px}
+.a.rail .rhead h2{margin:0;font:600 13px var(--font-ui);flex:1}
+.a.rail .rhead .ibtn.new{border-color:var(--copper);color:var(--copper-bright)}
+.a.rail .search{display:flex;gap:8px;align-items:center;border:1px solid var(--line-soft);background:var(--bg-2);border-radius:8px;padding:7px 10px;color:var(--dim);font-size:13px}
+.a.rail .search svg{width:14px;height:14px}
+.a.rail .grp{font:500 11px var(--font-ui);letter-spacing:.04em;text-transform:uppercase;color:var(--dim);padding:8px 8px 2px}
+.a.rail .item{display:flex;align-items:center;gap:6px;padding:8px 10px;border-radius:8px;color:var(--muted);font-size:13px}
+.a.rail .item span{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.a.rail .item:hover{background:var(--copper-06);color:var(--text)}
+.a.rail .item.active{background:var(--copper-12);color:var(--text);box-shadow:inset 2px 0 0 var(--copper)}
+.a.rail .item .zg{width:6px;height:6px;border-radius:50%;background:var(--copper);flex:none}
+.a.rail .item .del{opacity:0;display:grid;place-items:center;width:20px;height:20px;border-radius:4px;color:var(--dim)}
+.a.rail .item:hover .del,.a.rail .item.active .del{opacity:1}
+.a.rail .restore{margin-top:auto;padding:8px 10px;border-top:1px solid var(--line-soft);font-size:12px;color:var(--copper);display:flex;gap:6px;align-items:center}
+.a.rail .empty-note{padding:16px 10px;color:var(--dim);font-size:13px}
+
+@media (prefers-reduced-motion:reduce){.a .actions,.a .orbs i,.a .caret,.a .spin{animation:none;transition:none}}
+</style>
+</head>
+<body>
+
+<div class="mock-bar">
+  <strong>Axiom /chat — redesign mock</strong>
+  <span class="seg" id="segView"><button data-v="before">Before</button><button data-v="after" aria-pressed="true">After</button><button data-v="both">Side by side</button></span>
+  <span class="seg" id="segTheme"><button data-t="light" aria-pressed="true">Light</button><button data-t="dark">Dark</button></span>
+  <span class="seg" id="segVp"><button data-vp="desktop" aria-pressed="true">1280</button><button data-vp="mobile">390</button></span>
+  <span class="seg" id="segState">
+    <button data-s="empty">Empty</button>
+    <button data-s="thread" aria-pressed="true">Thread</button>
+    <button data-s="hover">Hover</button>
+    <button data-s="streaming">Streaming</button>
+    <button data-s="tool">Tool running</button>
+    <button data-s="failed">Tool failed</button>
+    <button data-s="error">Error</button>
+    <button data-s="queue">Queue</button>
+    <button data-s="wrongnet">Wrong network</button>
+  </span>
+</div>
+<p class="mock-note">Companion to <code>plans/002-chat-redesign-manifest.md</code>. "Before" reproduces the current <code>ChatPage.tsx</code> render faithfully (including the live defects F-1 red history, F-2 double Copy, F-3 overlapping actions, F-7 clipped routing chip). "After" is the build target: structure and states are normative, pixel values are the tokens in §2.2. Hover the After turns to reveal actions.</p>
+
+<!-- ================================ BEFORE ================================ -->
+<section id="before">
+<div class="legend"><b>Before</b> — current app (commit 2063358)</div>
+<div class="frame" id="frameB">
+  <div class="shell-top"><span class="ibtn"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg></span><span class="sp"></span><span class="ibtn"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg></span><span class="ibtn"><svg viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></span><span class="pillmono">not connected</span><span class="ibtn"><svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg></span></div>
+  <div class="surface">
+    <div class="main b">
+      <div class="chat-topbar">
+        <span class="ibtn ring"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg></span>
+        <span class="avatar">Axiom</span>
+        <div><div class="tname">Axiom</div><div class="tstatus" data-b-status>Online, 0G Mainnet</div></div>
+        <button class="newchat"><svg viewBox="0 0 24 24" width="14" height="14"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>New chat</button>
+      </div>
+      <div class="banner-slot" data-b-banner hidden style="max-width:880px;width:100%;margin:8px auto 0;padding:0 4px"><div style="display:flex;gap:8px;align-items:center;padding:8px 12px;border:1px solid var(--c-warning-border);background:var(--c-warning-bg);border-radius:6px;color:var(--warning);font-size:13px">Wrong network. Switch wallet to 0G Mainnet.</div></div>
+      <div class="msgs" data-b-msgs>
+        <!-- empty -->
+        <div class="empty" data-b-only="empty">
+          <h2>Axiom</h2><p>Chat with your agents. They handle the chain.</p>
+          <div class="grid">
+            <div class="pcard"><b>My agents</b><span>What you own</span></div>
+            <div class="pcard"><b>Mint agent</b><span>Wallet signs</span></div>
+            <div class="pcard"><b>Vault balance</b><span>0G holdings</span></div>
+            <div class="pcard"><b>Simulate tick</b><span>Safe dry-run first</span></div>
+            <div class="pcard row"><b>All 39 tools</b><span>browse ▾</span></div>
+          </div>
+        </div>
+        <!-- thread -->
+        <div data-b-only="thread hover streaming tool failed error queue wrongnet" style="display:contents">
+          <div class="bubble bubble--user"><div class="head"><i class="dot u"></i><span class="av u">L</span>You <span class="time">06:49 PM</span><span class="acts"><span class="act">Edit</span><span class="act">Copy</span></span></div><div class="body">List my agents and their vault balances</div></div>
+          <div class="bubble"><div class="head"><i class="dot"></i><span class="av">A</span>Assistant <span class="time">06:49 PM</span><span class="acts"><span class="act">Copy</span></span></div>
+            <div class="toolcard err"><span>✕</span><span class="lbl">list_agents</span><span class="st">failed</span></div></div>
+          <div class="bubble bubble--tool"><div class="head"><i class="dot t"></i>list_agents<span class="acts"><span class="act">Copy</span></span></div><div class="inset">1. Agent #7 — Sentinel<br>2. Agent #12 — Harvester</div></div>
+          <div class="bubble"><div class="head"><i class="dot"></i><span class="av">A</span>Assistant <span class="time">06:49 PM</span><span class="acts"><span class="act">Copy</span></span></div>
+            <div class="body">You own <b>2 agents</b>:<ul style="margin:.6em 0"><li><b>Sentinel</b> (#7) — vault 1.42 0G</li><li><b>Harvester</b> (#12) — vault 0.08 0G</li></ul>Harvester is low. Want me to top it up or dry-run its next tick first?</div>
+            <span class="copy2">Copy</span></div>
+          <div class="bubble bubble--user"><div class="head"><i class="dot u"></i><span class="av u">D</span>You <span class="time">06:49 PM</span><span class="acts"><span class="act">Edit</span><span class="act">Copy</span></span></div><div class="body">Dry-run Harvester first</div></div>
+          <div class="bubble" data-b-only="thread hover queue wrongnet"><div class="head"><i class="dot"></i><span class="av">A</span>Assistant <span class="time">06:49 PM</span><span class="acts clash"><span class="act">Regenerate</span><span class="act">Copy</span></span></div>
+            <div class="body">Dry-run complete. The tick would swap 0.02 0G and post a 0.001 0G fee; no revert detected. Safe to execute when you are ready.</div><span class="copy2">Copy</span></div>
+          <div class="bubble" data-b-only="tool"><div class="head"><i class="dot"></i><span class="av">A</span>Assistant <span class="time">06:50 PM</span></div>
+            <div class="toolcard"><span class="a"><i class="spin" style="display:inline-block;width:12px;height:12px;border:2px solid var(--line);border-top-color:var(--copper);border-radius:50%"></i></span><span class="lbl">simulate_tick</span><span class="st">3s…</span></div></div>
+          <div class="bubble" data-b-only="failed"><div class="head"><i class="dot"></i><span class="av">A</span>Assistant <span class="time">06:50 PM</span></div>
+            <div class="toolcard err"><span>✕</span><span class="lbl">simulate_tick</span><span class="st">failed</span></div>
+            <div class="inset" style="margin-top:6px;color:var(--danger)">Execution reverted: vault balance below minimum. <span class="act" style="display:block;margin-top:6px">Retry</span></div></div>
+          <div class="bubble bubble--danger" data-b-only="error"><div style="display:flex;justify-content:space-between;align-items:center;gap:12px"><span>Stream timed out after 60s.</span><span style="display:flex;gap:8px"><span class="pillmono" style="background:var(--copper);color:#fff;border-color:var(--copper)">Retry</span><span class="pillmono">Dismiss</span></span></div></div>
+          <div class="bubble" data-b-only="streaming"><div class="head"><i class="dot"></i><span class="av">A</span>Assistant</div><div class="body">Dry-run complete. The tick would swap 0.02 0G and<span style="display:inline-block;width:2px;height:1em;background:#67e8b4;margin-left:2px;vertical-align:text-bottom"></span></div></div>
+        </div>
+      </div>
+      <div class="queue" data-b-only="queue">Queued 1 <span class="qchip">Then execute it for real <span style="color:var(--dim)">×</span></span></div>
+      <div class="composer" style="margin:0 auto 8px">
+        <div class="row"><span class="chip">⚡ Auto</span><div class="ta" data-b-ta>Message Axiom…</div><span class="pillmono" data-b-stop hidden style="padding:10px 12px">Stop</span><span class="send"><svg viewBox="0 0 24 24" width="16" height="16"><path d="M9 10 4 15l5 5M20 4v7a4 4 0 0 1-4 4H4"/></svg></span></div>
+      </div>
+    </div>
+    <aside class="rail b">
+      <div class="rhead"><span class="ibtn new"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span><span class="ibtn"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg></span><span class="rtitle">Chats</span></div>
+      <div data-b-only="empty"><div class="none">No chats yet.</div><div class="dashed">New</div></div>
+      <div data-b-only="thread hover streaming tool failed error queue wrongnet"><div class="item"><span class="t">List my agents and their vault balances</span><span style="color:var(--dim)">×</span></div></div>
+    </aside>
+  </div>
+</div>
+</section>
+
+<!-- ================================ AFTER ================================ -->
+<section id="after">
+<div class="legend"><b>After</b> — build target (manifest §2)</div>
+<div class="frame" id="frameA">
+  <div class="shell-top"><span class="ibtn"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg></span><span class="sp"></span><span class="ibtn"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg></span><span class="ibtn"><svg viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></span><span class="pillmono">not connected</span><span class="ibtn"><svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg></span></div>
+  <div class="surface">
+    <div class="main a">
+      <h1 class="vh">Chat</h1>
+      <button class="ibtn fab" aria-label="History" aria-expanded="false"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+      <div class="notices" data-a-only="wrongnet"><div class="banner" role="status"><svg viewBox="0 0 24 24" width="14" height="14"><path d="M12 9v4m0 4h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>Wrong network. Switch wallet to 0G Mainnet.<button class="act">Switch</button></div></div>
+
+      <div class="scroll">
+        <!-- EMPTY -->
+        <div class="empty" data-a-only="empty">
+          <div class="bigmark"></div>
+          <h2>Axiom</h2>
+          <p>Chat with your agents. They handle the chain.</p>
+          <div class="pills">
+            <button class="pill" title="What you own">My agents</button>
+            <button class="pill" title="Wallet signs">Mint an agent</button>
+            <button class="pill" title="0G holdings">Vault balances</button>
+            <button class="pill" title="Safe dry-run first">Simulate a tick</button>
+          </div>
+          <button class="browse">Browse all 39 tools <svg viewBox="0 0 24 24" width="12" height="12"><path d="m9 18 6-6-6-6"/></svg></button>
+        </div>
+
+        <!-- THREAD -->
+        <div class="thread" data-a-only="thread hover streaming tool failed error queue wrongnet">
+          <div class="turn turn--user">
+            <div class="msg">List my agents and their vault balances</div>
+            <div class="actions"><span class="time" title="Sep 5, 2026 06:49 PM">06:49 PM</span><button><svg viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>Edit</button><button><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copy</button></div>
+          </div>
+
+          <div class="turn turn--assistant">
+            <span class="mark"><i></i>Axiom</span>
+            <details class="steps">
+              <summary><svg class="chev" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg>Worked for 2s <span class="n">· 1 step</span></summary>
+              <div class="step"><span class="ic ok"><svg viewBox="0 0 24 24" width="14" height="14"><path d="M20 6 9 17l-5-5"/></svg></span><span class="lbl">Listed agents</span><span class="cls">read</span><span class="meta">2 results<svg class="chev" viewBox="0 0 24 24" style="transform:rotate(90deg)"><path d="m9 18 6-6-6-6"/></svg></span></div>
+              <div class="stepbody"><pre>{ "owner": "0x1234…" }</pre><ol><li>Agent #7 — Sentinel</li><li>Agent #12 — Harvester</li></ol></div>
+            </details>
+            <div class="md"><p>You own <b>2 agents</b>:</p><ul><li><b>Sentinel</b> (#7) — vault 1.42 0G</li><li><b>Harvester</b> (#12) — vault 0.08 0G</li></ul><p>Harvester is low. Want me to top it up or dry-run its next tick first?</p></div>
+            <div class="actions"><button><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copy</button><button>Insights</button><span class="time" title="Sep 5, 2026 06:49 PM">06:49 PM</span></div>
+          </div>
+
+          <div class="turn turn--user" data-a-hover>
+            <div class="msg">Dry-run Harvester first</div>
+            <div class="actions"><span class="time">06:49 PM</span><button><svg viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>Edit</button><button><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copy</button></div>
+          </div>
+
+          <!-- idle / hover / queue / wrongnet / error: finished answer -->
+          <div class="turn turn--assistant" data-a-only="thread hover queue wrongnet error" data-a-hover>
+            <details class="steps"><summary><svg class="chev" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg>Worked for 3s <span class="n">· 1 step</span></summary>
+              <div class="step"><span class="ic ok"><svg viewBox="0 0 24 24" width="14" height="14"><path d="M20 6 9 17l-5-5"/></svg></span><span class="lbl">Simulated tick</span><span class="cls">orchestrate</span><span class="meta">sponsored<svg class="chev" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></span></div></details>
+            <div class="md"><p>Dry-run complete. The tick would swap 0.02 0G and post a 0.001 0G fee; no revert detected. Safe to execute when you are ready.</p></div>
+            <div class="actions"><button><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copy</button><button><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.6-6.4M21 3v6h-6"/></svg>Regenerate</button><button>Insights</button><span class="time">06:49 PM</span></div>
+            <div class="notice" role="alert" data-a-only="error"><span>Stream timed out after 60s. Nothing was sent to the chain.</span><span class="acts"><button class="pri">Retry</button><button>Dismiss</button></span></div>
+          </div>
+
+          <!-- tool running -->
+          <div class="turn turn--assistant" data-a-only="tool" role="status" aria-live="polite">
+            <details class="steps" open><summary><svg class="chev" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg>Working… <span class="n">· 2 steps</span></summary>
+              <div class="step"><span class="ic ok"><svg viewBox="0 0 24 24" width="14" height="14"><path d="M20 6 9 17l-5-5"/></svg></span><span class="lbl">Read vault balance</span><span class="cls">read</span><span class="meta">0.08 0G</span></div>
+              <div class="step"><span class="ic"><i class="spin"></i></span><span class="lbl">Simulating tick</span><span class="cls">orchestrate</span><span class="meta" aria-hidden="true">3s</span></div></details>
+            <div class="thinking"><span class="orbs"><i></i><i></i><i></i></span>Running 1 tool…</div>
+          </div>
+
+          <!-- tool failed -->
+          <div class="turn turn--assistant" data-a-only="failed">
+            <details class="steps" open><summary><svg class="chev" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg>Worked for 4s <span class="n">· 2 steps · 1 failed</span></summary>
+              <div class="step"><span class="ic ok"><svg viewBox="0 0 24 24" width="14" height="14"><path d="M20 6 9 17l-5-5"/></svg></span><span class="lbl">Read vault balance</span><span class="cls">read</span><span class="meta">0.08 0G</span></div>
+              <div class="step fail"><span class="ic fail"><svg viewBox="0 0 24 24" width="14" height="14"><path d="M18 6 6 18M6 6l12 12"/></svg></span><span class="lbl">Simulate tick</span><span class="cls">orchestrate</span><span class="meta"><button class="retry">Retry</button><svg class="chev" viewBox="0 0 24 24" style="transform:rotate(90deg)"><path d="m9 18 6-6-6-6"/></svg></span></div>
+              <div class="stepbody" style="color:var(--danger)">Execution reverted: vault balance below the strategy minimum (0.1 0G).</div></details>
+            <div class="md"><p>The dry-run reverted because Harvester's vault (0.08 0G) is under the 0.1 0G minimum. Top it up first, then I can re-run the simulation.</p></div>
+            <div class="actions"><button>Copy</button><button>Regenerate</button></div>
+          </div>
+
+          <!-- streaming -->
+          <div class="turn turn--assistant" data-a-only="streaming" role="status" aria-live="polite">
+            <div class="md"><p>Dry-run complete. The tick would swap 0.02 0G and<span class="caret"></span></p></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="dock">
+        <div class="queue" data-a-only="queue">Queued 1<span class="qchip">Then execute it for real<button aria-label="Remove queued message"><svg viewBox="0 0 24 24" width="10" height="10"><path d="M18 6 6 18M6 6l12 12"/></svg></button></span></div>
+        <div class="composer" data-a-composer>
+          <textarea rows="1" placeholder="Message Axiom…" aria-label="Message" data-a-ta></textarea>
+          <div class="bar">
+            <button class="chipbtn" aria-haspopup="dialog" title="Choose compute routing"><svg viewBox="0 0 24 24"><path d="M12 3v6m0 0a3 3 0 1 0 0 6 3 3 0 1 0 0-6m0 6v6M3 12h6m6 0h6"/></svg>Auto<svg viewBox="0 0 24 24" style="width:12px;height:12px"><path d="m6 9 6 6 6-6"/></svg></button>
+            <button class="chipbtn" title="Browse tools" aria-label="Browse tools"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg></button>
+            <span class="sp"></span>
+            <span class="counter" data-a-counter hidden>380 left</span>
+            <button class="ghoststop" data-a-ghoststop hidden>Stop</button>
+            <button class="send" data-a-send disabled aria-label="Send"><svg viewBox="0 0 24 24"><path d="M12 19V5m-7 7 7-7 7 7"/></svg></button>
+          </div>
+        </div>
+        <div class="foot" data-a-foot>0G Mainnet · Qwen 3 · <kbd>Shift</kbd>+<kbd>Enter</kbd> for a new line</div>
+      </div>
+    </div>
+
+    <aside class="rail a">
+      <div class="rhead"><h2>Chats</h2><button class="ibtn new" aria-label="New chat"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button></div>
+      <div class="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>Search chats</div>
+      <div data-a-only="empty" class="empty-note">No chats yet. Your first message starts one.</div>
+      <div data-a-only="thread hover streaming tool failed error queue wrongnet">
+        <div class="grp">Today</div>
+        <div class="item active"><span>List my agents and their vault balances</span><i class="zg" title="Stored on 0G"></i><button class="del" aria-label="Delete chat"><svg viewBox="0 0 24 24" width="12" height="12"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+        <div class="item"><span>Mint agent walkthrough</span><i class="zg" title="Stored on 0G"></i><button class="del" aria-label="Delete chat"><svg viewBox="0 0 24 24" width="12" height="12"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+        <div class="grp">Earlier</div>
+        <div class="item"><span>Gas tank top-up and grants</span><button class="del" aria-label="Delete chat"><svg viewBox="0 0 24 24" width="12" height="12"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+      </div>
+      <div class="restore">Restore from 0G storage <svg viewBox="0 0 24 24" width="12" height="12"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></div>
+    </aside>
+  </div>
+</div>
+</section>
+
+<script>
+(function(){
+  const root=document.documentElement;
+  const q=(s,el=document)=>Array.from(el.querySelectorAll(s));
+  function press(seg,attr,val){q('button',seg).forEach(b=>b.setAttribute('aria-pressed',String(b.dataset[attr]===val)));}
+  // theme
+  document.getElementById('segTheme').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;root.dataset.theme=b.dataset.t;press(e.currentTarget,'t',b.dataset.t);});
+  // view
+  const secB=document.getElementById('before'),secA=document.getElementById('after');
+  document.getElementById('segView').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;const v=b.dataset.v;press(e.currentTarget,'v',v);secB.hidden=v==='after';secA.hidden=v==='before';});
+  // viewport
+  document.getElementById('segVp').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;press(e.currentTarget,'vp',b.dataset.vp);q('.frame').forEach(f=>f.dataset.viewport=b.dataset.vp);});
+  // state
+  function setState(s){
+    q('[data-b-only]').forEach(el=>el.hidden=!el.dataset.bOnly.split(' ').includes(s));
+    q('[data-a-only]').forEach(el=>el.hidden=!el.dataset.aOnly.split(' ').includes(s));
+    // BEFORE composer variants
+    const bStop=document.querySelector('[data-b-stop]'),bTa=document.querySelector('[data-b-ta]'),bStatus=document.querySelector('[data-b-status]'),bBanner=document.querySelector('[data-b-banner]');
+    const streamingB=(s==='streaming'||s==='tool'||s==='queue');
+    bStop.hidden=!streamingB;bTa.textContent=streamingB?'Assistant is responding… (Enter to queue)':'Message Axiom…';
+    bStatus.textContent=s==='wrongnet'?'Switch to 0G Mainnet':'Online, 0G Mainnet';bBanner.hidden=s!=='wrongnet';
+    // AFTER composer variants
+    const ta=document.querySelector('[data-a-ta]'),send=document.querySelector('[data-a-send]'),ghost=document.querySelector('[data-a-ghoststop]'),counter=document.querySelector('[data-a-counter]'),foot=document.querySelector('[data-a-foot]'),comp=document.querySelector('[data-a-composer]');
+    const streaming=(s==='streaming'||s==='tool'||s==='queue');
+    const arrow='<svg viewBox="0 0 24 24"><path d="M12 19V5m-7 7 7-7 7 7"/></svg>',stop='<svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>';
+    ta.value='';send.disabled=true;send.classList.remove('stop');send.innerHTML=arrow;send.setAttribute('aria-label','Send');ghost.hidden=true;counter.hidden=true;comp.classList.remove('is-focus');
+    foot.classList.remove('danger');foot.innerHTML='0G Mainnet · Qwen 3 · <kbd>Shift</kbd>+<kbd>Enter</kbd> for a new line';
+    if(s==='empty'){comp.classList.add('is-focus');}
+    if(streaming){ta.placeholder='Axiom is responding — type to queue a follow-up';send.disabled=false;send.classList.add('stop');send.innerHTML=stop;send.setAttribute('aria-label','Stop');}
+    else ta.placeholder='Message Axiom…';
+    if(s==='queue'){ta.value='And then transfer 0.1 0G to Harvester';send.classList.remove('stop');send.innerHTML=arrow;send.setAttribute('aria-label','Queue');ghost.hidden=false;}
+    if(s==='hover'){ta.value='Top up Harvester with 0.2 0G';send.disabled=false;counter.hidden=true;}
+    if(s==='wrongnet'){foot.classList.add('danger');foot.textContent='Wrong network — switch your wallet to 0G Mainnet';}
+    q('.turn').forEach(t=>t.classList.toggle('is-hover',s==='hover'&&t.hasAttribute('data-a-hover')));
+    press(document.getElementById('segState'),'s',s);
+  }
+  document.getElementById('segState').addEventListener('click',e=>{const b=e.target.closest('button');if(b)setState(b.dataset.s);});
+  // live send-state on typing in the After composer
+  const ta=document.querySelector('[data-a-ta]'),send=document.querySelector('[data-a-send]');
+  ta.addEventListener('input',()=>{if(send.classList.contains('stop'))return;send.disabled=ta.value.trim()==='';ta.style.height='auto';ta.style.height=Math.min(ta.scrollHeight,8*21+20)+'px';});
+  setState('thread');secB.hidden=true;
+})();
+</script>
+</body>
+</html>
