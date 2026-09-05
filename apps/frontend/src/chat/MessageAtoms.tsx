@@ -587,7 +587,7 @@ function formatNativeValue(weiStr: string): string {
 
 /* Chat path exception: EncodePreviewCard shows the RAW contract payload;
    the v2 review sheets are the parsed-facts surface. */
-export function EncodePreviewCard({
+function EncodePreviewCard({
   content,
   toolName,
   onSign,

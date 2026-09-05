@@ -3,18 +3,6 @@ import { useAccount, useWalletClient } from "wagmi";
 import { useMutation } from "@tanstack/react-query";
 import { encodeRelayTransaction } from "../utils/encodeRelay.js";
 
-export function buildDefaultPayload(agentName: string): string {
-  const name = agentName.trim() || "Axiom agent";
-  return JSON.stringify({
-    name,
-    version: 1,
-    kind: "axiom-inft-agent",
-    strategy: "default",
-    description: `${name} — ownable AI agent on Axiom Protocol (0G / ERC-7857)`,
-    createdAt: new Date().toISOString(),
-  });
-}
-
 type MintWizardStep = "name" | "minting" | "ready";
 
 export function useMintWizard() {

@@ -703,8 +703,7 @@
   to { inset-inline-start: 110%; }
 }
 
-.page-head h1,
-.page-head .page-title {
+.page-head h1 {
   font-family: Syne, sans-serif;
   letter-spacing: -0.02em;
 }

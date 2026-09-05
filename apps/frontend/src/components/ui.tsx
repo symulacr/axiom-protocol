@@ -58,10 +58,8 @@ export function SectionTitle({
 
 export function CopyButton({
   text,
-  style,
 }: {
   text: string;
-  style?: CSSProperties;
 }): ReactElement {
   const [copied, setCopied] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -112,7 +110,6 @@ export function CopyButton({
         minWidth: "4ch",
         textAlign: "center",
         cursor: "pointer",
-        ...style,
       }}
     >
       {/* Single node with label swap (a11y: one announcement). */}
@@ -177,11 +174,9 @@ export function ErrorRef({
 export function Spinner({
   size = 20,
   variant = "spin",
-  style,
 }: {
   size?: number;
   variant?: "spin" | "churn";
-  style?: CSSProperties;
 }): ReactElement {
   if (variant === "churn") {
     // One aria-live node (was 9 spans per instance); CSS paints the dots, so reduced-motion overrides apply.
@@ -190,7 +185,6 @@ export function Spinner({
         role="status"
         aria-label="Loading"
         className="spinner--churn"
-        style={style}
       />
     );
   }
@@ -205,7 +199,6 @@ export function Spinner({
         borderTopColor: "var(--copper)",
         borderRadius: "50%",
         animation: "axiom-spin var(--dur-spin) linear infinite",
-        ...style,
       }}
       aria-label="Loading"
     />

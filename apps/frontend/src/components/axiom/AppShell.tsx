@@ -38,7 +38,6 @@ import type { ConsoleAction } from "../../lib/consoleStore.js";
 import {
   getNextSafeActions,
   getRouteAction,
-  type FundTarget,
 } from "../../lib/nextSafeAction.js";
 import {
   getCommandRouteItems,
@@ -482,11 +481,9 @@ function isEditableTarget(target: EventTarget | null) {
 function CommandCenter({
   state,
   go,
-  fundTarget,
 }: {
   state: AppState;
   go: (path: string) => void;
-  fundTarget?: FundTarget;
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -496,8 +493,8 @@ function CommandCenter({
   const copy = getCopy(state.settings.locale);
   const cmd = copy.command;
   const safeActions = useMemo(
-    () => getNextSafeActions(state, fundTarget, copy.strip),
-    [state, fundTarget, copy.strip],
+    () => getNextSafeActions(state, copy.strip),
+    [state, copy.strip],
   );
 
   const items = useMemo<CommandItem[]>(() => {
@@ -749,7 +746,6 @@ function Topbar({
   onOpenMobileNav,
   onRestoreRail,
   railHidden,
-  fundTarget,
 }: {
   state: AppState;
   session: Session;
@@ -759,7 +755,6 @@ function Topbar({
   /** R16: desktop rail-restore (the topbar trigger when the rail is hidden). */
   onRestoreRail: () => void;
   railHidden: boolean;
-  fundTarget?: FundTarget;
 }) {
   const copy = getCopy(state.settings.locale);
   // Identity + session pill render only when authenticated — never a stale profile after disconnect.
@@ -789,7 +784,7 @@ function Topbar({
         </button>
       </div>
       <div className="topbar-actions">
-        <CommandCenter state={state} go={go} fundTarget={fundTarget} />
+        <CommandCenter state={state} go={go} />
         <ThemeToggle locale={state.settings.locale} />
         <button className="session-top" onClick={() => go("/settings")}>
           <Wallet size={14} />
@@ -828,18 +823,16 @@ function PriorityActionStrip({
   route,
   path,
   go,
-  fundTarget,
 }: {
   state: AppState;
   route: Route;
   path: string;
   go: (path: string) => void;
-  fundTarget?: FundTarget;
 }) {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const copy = getCopy(state.settings.locale);
   const strip = copy.strip;
-  const action = getRouteAction(state, path, fundTarget, strip);
+  const action = getRouteAction(state, strip);
 
   // No strip on chat (fills viewport) or flow pages — their copper primary must not compete with the payment CTA.
   if (
@@ -849,7 +842,7 @@ function PriorityActionStrip({
   )
     return null;
 
-  const actions = getNextSafeActions(state, fundTarget, strip);
+  const actions = getNextSafeActions(state, strip);
   const alternatives = actions
     .filter((item) => item.id !== action.id)
     .slice(0, 2);
@@ -922,7 +915,6 @@ export function AppShell({
   dispatch,
   go,
   onLock,
-  fundTarget,
   children,
 }: {
   route: Route;
@@ -931,7 +923,6 @@ export function AppShell({
   dispatch: React.Dispatch<ConsoleAction>;
   go: (path: string) => void;
   onLock: () => void;
-  fundTarget?: FundTarget;
   children: ReactNode;
 }) {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -1016,14 +1007,12 @@ export function AppShell({
             onOpenMobileNav={() => setMobileNavOpen(true)}
             onRestoreRail={restoreRail}
             railHidden={railHidden}
-            fundTarget={fundTarget}
           />
           <PriorityActionStrip
             state={state}
             route={route}
             path={path}
             go={go}
-            fundTarget={fundTarget}
           />
           {children}
         </main>

@@ -4,7 +4,7 @@ import { isRecoverableTx, type AppState } from "./models";
 import type { Copy } from "./copy";
 
 type NextSafeAction = {
-  id: "recover-receipt" | "fund-agent";
+  id: "recover-receipt";
   title: string;
   summary: string;
   impact: string;
@@ -15,11 +15,11 @@ type NextSafeAction = {
   shortcut: string;
 };
 
-export type FundTarget = { tokenId: string } | undefined;
-
+// U17/U18 lineage: the fund-agent arm was gated on a FundTarget prop no
+// caller ever passed — removed with its prop chain and copy keys. Re-add a
+// target when a real funding surface wires one in.
 export function getNextSafeActions(
   state: AppState,
-  fundTarget: FundTarget = undefined,
   strip: Copy["strip"],
 ): NextSafeAction[] {
   const actions: NextSafeAction[] = [];
@@ -49,33 +49,13 @@ export function getNextSafeActions(
     });
   }
 
-  // U17: gated on a concrete target — no generic fallback.
-  if (fundTarget) {
-    actions.push({
-      id: "fund-agent",
-      title: strip.fundTitle(fundTarget.tokenId),
-      summary: strip.fundSummary,
-      impact: strip.fundImpact,
-      proofLabel: strip.proofAgent,
-      proofValue: `#${fundTarget.tokenId}`,
-      path: `/payment?agent=${fundTarget.tokenId}&intent=fund&stage=amount`,
-      priority: "high",
-      shortcut: "Alt P",
-    });
-  }
-
   // U18: no storage push until a real backend exists.
   return actions;
 }
 
 export function getRouteAction(
   state: AppState,
-  path: string,
-  fundTarget: FundTarget = undefined,
   strip: Copy["strip"],
 ) {
-  const actions = getNextSafeActions(state, fundTarget, strip);
-  if (path.startsWith("/agents/") || path.startsWith("/payment"))
-    return actions.find((action) => action.id === "fund-agent") ?? actions[0];
-  return actions[0];
+  return getNextSafeActions(state, strip)[0];
 }
