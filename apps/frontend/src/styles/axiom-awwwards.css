@@ -895,3 +895,16 @@
   position: relative;
   z-index: 1;
 }
+
+/* R26: receipt card polish — Three.js copper seal beside the kind label and a
+   stiff perspective tilt on hover (the existing lift stays; rotate reads as
+   a solid slab, not a floaty card). */
+.receipt-kind { display: inline-flex; align-items: center; gap: 8px; }
+.receipt-seal { display: inline-block; width: 40px; height: 40px; flex: 0 0 auto; }
+.receipt-seal canvas { display: block; width: 40px; height: 40px; }
+.landing-visual.hero-visual-modern:hover .floating-receipt {
+  transform: perspective(700px) rotateX(1.5deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .landing-visual.hero-visual-modern:hover .floating-receipt { transform: none; }
+}

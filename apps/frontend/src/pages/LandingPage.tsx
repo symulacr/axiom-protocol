@@ -47,9 +47,12 @@ import {
 } from "../components/fx/fx.js";
 import { ThreeBackground } from "../components/fx/ThreeBackground.js";
 import { SignalArcField } from "../components/fx/SignalArcField.js";
+import { ReceiptSeal } from "../components/fx/ReceiptSeal.js";
 
 /** Splits a "{count}" template so the live number can animate via CountUp;
- *  templates without the placeholder render unchanged. */
+ *  templates without the placeholder render unchanged. A null value means
+ *  the live count is unavailable (no backend) — the whole line is hidden
+ *  instead of painting "Live · — agents online". */
 function CountText({
   template,
   value,
@@ -59,6 +62,7 @@ function CountText({
 }) {
   const [lead, tail = ""] = template.split("{count}");
   if (lead === template) return <>{template}</>;
+  if (value === null) return null;
   return (
     <>
       {lead}
@@ -320,13 +324,17 @@ export function Landing({
                 chainId,
               })}
             </span>
-            <span className="meta-item">
-              <span className="dot copper" />
-              <CountText
-                template={copy.landing.meta.agentsOnline}
-                value={agentsCount}
-              />
-            </span>
+            {/* Live count unavailable (no backend) → the whole item hides;
+                a lone dot next to nothing reads as a broken chip. */}
+            {agentsCount !== null && (
+              <span className="meta-item">
+                <span className="dot copper" />
+                <CountText
+                  template={copy.landing.meta.agentsOnline}
+                  value={agentsCount}
+                />
+              </span>
+            )}
           </div>
           <div className="button-row">
             <Button
@@ -413,6 +421,7 @@ export function Landing({
           <div className="floating-receipt">
             <div className="receipt-head">
               <span className="receipt-kind">
+                <ReceiptSeal />
                 {copy.landing.proof.receipt.kind}
               </span>
               <span className="receipt-state">
@@ -527,11 +536,15 @@ export function Landing({
             <article className="journey-card">
               <h3 dangerouslySetInnerHTML={{ __html: item.title }} />
               <p dangerouslySetInnerHTML={{ __html: item.body }} />
-              <div className="j-meta">
-                <strong>
-                  <CountText template={item.meta} value={agentsCount} />
-                </strong>
-              </div>
+              {/* Static meta always shows; the live-count line only when the
+                  count is real (no-backend builds hide the broken dash). */}
+              {(agentsCount !== null || !item.meta.includes("{count}")) && (
+                <div className="j-meta">
+                  <strong>
+                    <CountText template={item.meta} value={agentsCount} />
+                  </strong>
+                </div>
+              )}
               <button
                 type="button"
                 className="j-cta"
