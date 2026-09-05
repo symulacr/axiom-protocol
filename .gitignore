@@ -305,6 +305,12 @@ packages/config/wagmi.config.ts
 .antigravitycli/
 .kimchi/
 audit-reports/
+# Root .env is the ONE tracked exception (public values only — negated above).
+# Everything else matching .env* is ignored, including local secret overlays:
+#   .env.bak-compute-key          (76-var secrets backup — PKs, API keys)
+#   apps/frontend/.env.retired-*  (retired testnet-era env files)
+# The working .env holds REAL secrets on top of the tracked template:
+# NEVER `git add .env` after editing it locally — update Vercel/Railway vars instead.
 .env*
 
 # ── Untracked root config (kept on disk) ──────────────
