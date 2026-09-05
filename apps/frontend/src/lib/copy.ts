@@ -556,6 +556,14 @@ export type Copy = {
     undo: string;
     metricsShow: string;
     metricsHide: string;
+    stepsSummary: (count: number, seconds: number) => string;
+    stepsWorking: (count: number) => string;
+    stepsFailedSuffix: (failed: number) => string;
+    stepNoResult: string;
+    browseTools: (count: number) => string;
+    footHint: string;
+    storedOn0G: string;
+    historyClose: string;
   };
   /** GasTank card (V3 W5-B). Placeholders: {used}/{cap} grant counters. */
   gasTank: {
@@ -1543,6 +1551,16 @@ const english: Copy = {
     undo: "Undo",
     metricsShow: "Metrics",
     metricsHide: "Hide metrics",
+    stepsSummary: (count, seconds) =>
+      `Worked for ${seconds}s · ${count} ${count === 1 ? "step" : "steps"}`,
+    stepsWorking: (count) =>
+      `Working… · ${count} ${count === 1 ? "step" : "steps"}`,
+    stepsFailedSuffix: (failed) => ` · ${failed} failed`,
+    stepNoResult: "No result recorded",
+    browseTools: (count) => `Browse all ${count} tools`,
+    footHint: "Shift+Enter for a new line",
+    storedOn0G: "Stored on 0G",
+    historyClose: "Close history",
   },
   gasTank: {
     title: "Gas Tank",
@@ -2655,6 +2673,17 @@ const french: Copy = {
     undo: "Annuler",
     metricsShow: "métriques",
     metricsHide: "masquer les métriques",
+    stepsSummary: (count, seconds) =>
+      `${seconds}s de travail · ${count} étape${count === 1 ? "" : "s"}`,
+    stepsWorking: (count) =>
+      `En cours… · ${count} étape${count === 1 ? "" : "s"}`,
+    stepsFailedSuffix: (failed) =>
+      ` · ${failed} échec${failed === 1 ? "" : "s"}`,
+    stepNoResult: "Aucun résultat enregistré",
+    browseTools: (count) => `Parcourir les ${count} outils`,
+    footHint: "Maj+Entrée pour un saut de ligne",
+    storedOn0G: "Stocké sur 0G",
+    historyClose: "Fermer l'historique",
   },
   gasTank: {
     ...english.gasTank,
@@ -3743,6 +3772,16 @@ const german: Copy = {
     undo: "Rückgängig",
     metricsShow: "Metriken",
     metricsHide: "Metriken ausblenden",
+    stepsSummary: (count, seconds) =>
+      `${seconds}s gearbeitet · ${count} Schritt${count === 1 ? "" : "e"}`,
+    stepsWorking: (count) =>
+      `Arbeitet… · ${count} Schritt${count === 1 ? "" : "e"}`,
+    stepsFailedSuffix: (failed) => ` · ${failed} fehlgeschlagen`,
+    stepNoResult: "Kein Ergebnis aufgezeichnet",
+    browseTools: (count) => `Alle ${count} Werkzeuge durchsuchen`,
+    footHint: "Umschalt+Eingabe für eine neue Zeile",
+    storedOn0G: "Auf 0G gespeichert",
+    historyClose: "Verlauf schließen",
   },
   gasTank: {
     ...english.gasTank,

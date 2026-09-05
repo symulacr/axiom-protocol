@@ -36,3 +36,4 @@ documented one-frame transition freeze.
 | Plan | Status |
 |---|---|
 | [001-popover-origin-and-touch-gating.md](001-popover-origin-and-touch-gating.md) | DONE (executed in-commit with the audit) |
+| [002-chat-redesign-manifest.md](002-chat-redesign-manifest.md) + [mock](002-chat-redesign-mock.html) | PLAN — /chat redesign to Claude-web parity; baseline captures in `.design-audit/chat-before-*.png` |

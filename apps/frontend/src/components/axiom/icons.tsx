@@ -59,6 +59,10 @@ export const ArrowRight = createLucideIcon([
   ["path", { d: "M5 12h14", key: "1ays0h" }],
   ["path", { d: "m12 5 7 7-7 7", key: "xquz4c" }],
 ] as const);
+export const ArrowUp = createLucideIcon([
+  ["path", { d: "m5 12 7-7 7 7", key: "hw7z7l" }],
+  ["path", { d: "M12 19V5", key: "x0mq9r" }],
+] as const);
 export const Bot = createLucideIcon([
   ["path", { d: "M12 8V4H8", key: "hb8ula" }],
   [

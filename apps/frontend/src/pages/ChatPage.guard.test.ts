@@ -2,6 +2,7 @@ import { test } from "bun:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { deriveStepStatus } from "../chat/lib.js";
 
 // Structural regression guards for the ChatPage concurrency fixes (W1-4/W1-5):
 // Regenerate/Retry bypass the send queue, so runAgent itself must refuse
@@ -38,24 +39,44 @@ test("edit-confirm bumps run epoch and aborts in-flight run", () => {
   );
 });
 
-// R1-8: a tool_calls message with no live toolRun (post-run reset or never
-// marked id) must not synthesize a `running` run — that renders a spinner +
-// "0s…" elapsed clock forever on a card whose tool already finished/failed.
-test("tool-card fallback run is never a synthetic running state (R1-8)", () => {
-  const fallback = src.indexOf("run ?? {");
-  assert.ok(fallback >= 0, "tool-card fallback run present");
-  const window = src.slice(fallback, fallback + 400);
+// R1-8: a tool call with no live toolRun (post-run reset, restored thread or
+// never-marked id) must not synthesize a `running` run — that renders a
+// spinner + "0s…" forever. Plan 002 F-1: it must not synthesize a red
+// `error` either — the paired tool message proves completion. Status is
+// derived (deriveStepStatus), so the guard is behavioral.
+test("step status is derived, never a synthetic running/error state (R1-8, 002 F-1)", () => {
   assert.doesNotMatch(
-    window,
-    /status:\s*"running"/,
-    "fallback run must never be status running (stale Loading 0s… card)",
+    src,
+    /run \?\? \{[^}]*status:\s*"(running|error)"/s,
+    "no synthetic fallback run object in ChatPage",
   );
-  assert.match(
-    window,
-    /status:\s*"error"/,
-    "fallback run reads as an honest failed state",
+  const base = { id: "tc1", name: "list_agents" };
+  assert.equal(
+    deriveStepStatus({ ...base, result: undefined, hasResult: false }),
+    "pending",
   );
-  // The success/error paths mark real runs; only the no-run fallback is guarded here.
+  assert.equal(
+    deriveStepStatus({ ...base, result: '{"count":2}', hasResult: true }),
+    "success",
+  );
+  assert.equal(
+    deriveStepStatus({ ...base, result: '{"error":"boom"}', hasResult: true }),
+    "error",
+  );
+  assert.equal(
+    deriveStepStatus({ ...base, result: "Error: reverted", hasResult: true }),
+    "error",
+  );
+  assert.equal(
+    deriveStepStatus({
+      ...base,
+      result: undefined,
+      hasResult: false,
+      run: { name: "list_agents", status: "running", startedAt: Date.now() },
+    }),
+    "running",
+  );
+  // The success/error paths mark real runs; only the no-run case is derived.
   assert.match(src, /status: "running",\s*\n\s*startedAt: Date\.now\(\)/);
 });
 
