@@ -47,7 +47,9 @@ vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 
 # ── Environment + local overrides ──────────────────────────
-.env
+# Root .env is COMMITTED (public values only — secrets go to Vercel env vars,
+# which overlay it at build time). Local variants stay ignored.
+!.env
 .env.*
 !.env.example
 
