@@ -45,6 +45,13 @@
         "eciesjs": "^0.5.0",
       },
     },
+    "apps/bench": {
+      "name": "@axiom/bench",
+      "version": "0.1.0",
+      "devDependencies": {
+        "typescript": "^5.9.3",
+      },
+    },
     "apps/contracts": {
       "name": "@axiom/contracts",
       "version": "0.1.0",
@@ -134,6 +141,8 @@
     "@ast-grep/cli-win32-x64-msvc": ["@ast-grep/cli-win32-x64-msvc@0.45.2", "", { "os": "win32", "cpu": "x64" }, "sha512-IFV/nygDDDOecuyqaaHIRwhEgVu8+42jm9UIiiZ/P9zUxDMZa34Z440FFGqqRvf4Mnm+1X0jRsNRxGyWPpzPog=="],
 
     "@axiom/backend": ["@axiom/backend@workspace:apps/backend"],
+
+    "@axiom/bench": ["@axiom/bench@workspace:apps/bench"],
 
     "@axiom/chat-runtime": ["@axiom/chat-runtime@workspace:packages/chat-runtime"],
 
