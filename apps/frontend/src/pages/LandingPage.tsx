@@ -43,6 +43,7 @@ import {
   Reveal,
   ScrollProgress,
   SpotlightCard,
+  useReducedMotion,
 } from "../components/fx/fx.js";
 import { ThreeBackground } from "../components/fx/ThreeBackground.js";
 
@@ -132,6 +133,9 @@ export function Landing({
   // R20: the marquee strip needs enough duplicated sets that one half always
   // covers the viewport — a fixed 2-set strip left a right-side gap on wide
   // screens. Measured after mount (and on resize) from one set's width.
+  // Reduced motion: the tape is a static list, so ONE set renders — repeated
+  // copies read as a broken screenshot-like row, not as a motion fallback.
+  const reducedMotion = useReducedMotion();
   const [tickerCopies, setTickerCopies] = useState(2);
   const copiesRef = useRef(2);
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -274,7 +278,9 @@ export function Landing({
               measured so one loop half always covers the band. */}
           <div className="ticker-viewport" ref={viewportRef}>
             <div className="ticker-track" aria-hidden="true" ref={trackRef}>
-              {Array.from({ length: tickerCopies }).map((_, copy) => (
+              {Array.from({
+                length: reducedMotion ? 1 : tickerCopies,
+              }).map((_, copy) => (
                 <span key={copy} className="ticker-set">
                   {tickerItems.map((item, i) => (
                     <span key={i} className="ticker-item">
