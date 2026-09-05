@@ -4033,12 +4033,12 @@ strong {
   .landing-visual.hero-visual-modern .floating-receipt { transition: none; }
   .landing-visual.hero-visual-modern:hover .floating-receipt { translate: 0; }
 }
-.landing-visual.hero-visual-modern .floating-receipt { position: absolute; z-index: 4; right: clamp(16px, 2.5vw, 36px); bottom: clamp(24px, 5vw, 56px); width: clamp(260px, 24vw, 336px); padding: var(--space-3); border: 1px solid var(--line); border-radius: var(--radius-md); background: color-mix(in srgb, var(--panel) 85%, transparent); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); display: grid; gap: var(--space-2); }
+.landing-visual.hero-visual-modern .floating-receipt { position: absolute; z-index: 4; right: clamp(16px, 2.5vw, 36px); bottom: clamp(24px, 5vw, 56px); width: clamp(260px, 24vw, 336px); padding: var(--space-4); border: 1px solid var(--line); border-radius: var(--radius-md); background: color-mix(in srgb, var(--panel) 85%, transparent); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); display: grid; gap: var(--space-3); }
 .landing-visual.hero-visual-modern .receipt-head { display: flex; justify-content: space-between; align-items: center; font: 500 var(--fs-mono)/1 "JetBrains Mono", monospace; color: var(--muted); font-size: var(--fs-xs); }
 .landing-visual.hero-visual-modern .receipt-state { display: inline-flex; align-items: center; gap: var(--space-1); color: var(--phosphor); }
 .landing-visual.hero-visual-modern .receipt-title { margin: 0; font: 500 var(--fs-small)/1.2 var(--font-serif-display); font-feature-settings: "ss01"; color: var(--ink); }
-.landing-visual.hero-visual-modern .receipt-rows { display: grid; gap: 2px; }
-.landing-visual.hero-visual-modern .receipt-rows > div { display: grid; grid-template-columns: 1fr auto; align-items: baseline; padding: 2px 0; border-bottom: 1px dashed var(--line); font-size: var(--fs-xs); }
+.landing-visual.hero-visual-modern .receipt-rows { display: grid; gap: 4px; }
+.landing-visual.hero-visual-modern .receipt-rows > div { display: grid; grid-template-columns: 1fr auto; align-items: baseline; padding: 5px 0; border-bottom: 1px dashed var(--line); font-size: var(--fs-xs); }
 .landing-visual.hero-visual-modern .receipt-rows > div:last-child { border-bottom: 0; }
 .landing-visual.hero-visual-modern .receipt-rows span { color: var(--muted); font: 500 var(--fs-mono)/1 "JetBrains Mono", monospace; }
 .landing-visual.hero-visual-modern .receipt-rows strong { color: var(--ink); font: 500 var(--fs-mono)/1 "JetBrains Mono", monospace; }
