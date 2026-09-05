@@ -1232,7 +1232,7 @@ body.light .three-bg { opacity: .35; }
 .review-cosign { display: flex; gap: .45rem; align-items: flex-start; padding: .68rem; color: var(--muted); border: 1px solid color-mix(in srgb, var(--copper) 45%, transparent); background: var(--copper-08); font-size: var(--fs-small); line-height: 1.4; }
 .review-cosign > svg { flex: 0 0 auto; color: var(--copper); }
 .review-cosign div { display: grid; gap: .28rem; min-width: 0; }
-.review-cosign strong { color: var(--text); font-size: var(--fs-body); }
+.review-cosign strong, .review-cosign .review-cosign-title { color: var(--text); font-size: var(--fs-body); font-weight: var(--fw-strong); margin: 0; }
 .review-cosign p { margin: 0; overflow-wrap: anywhere; }
 .review-cosign small { color: var(--dim); font-size: var(--fs-small); }
 .review-cosign-blocked div { display: grid; gap: .28rem; min-width: 0; }
