@@ -908,3 +908,7 @@
 @media (prefers-reduced-motion: reduce) {
   .landing-visual.hero-visual-modern:hover .floating-receipt { transform: none; }
 }
+
+/* R27 theme sweep: light-mode j-cta measured 4.3:1 (copper-strong on paper)
+   — one step darker clears the 4.5 body-text bar. */
+body.light .journey-card .j-cta { color: #6f3a19; }
