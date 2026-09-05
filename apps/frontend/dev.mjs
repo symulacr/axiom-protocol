@@ -13,6 +13,19 @@ const frontendDir = import.meta.dirname;
 const BACKEND = process.env.PROXY_BACKEND_URL ?? "http://127.0.0.1:3000";
 const PORT = Number(process.env.PORT) || 5173;
 
+// Self-loop guard: when this server itself occupies the backend port (the
+// sandbox run script forces PORT=3000 = the backend's default), proxying
+// /api to BACKEND would fetch this server's own SPA fallback — a 200 HTML
+// body the client can only fail to JSON-parse. Answer 502 JSON instead so
+// callers see an honest "no backend" and fall back cleanly.
+const backendPort = Number(new URL(BACKEND).port || 80);
+const backendIsSelf = backendPort === PORT;
+const noBackendResponse = () =>
+  new Response(
+    JSON.stringify({ error: "Dev backend unavailable (frontend occupies the backend port)" }),
+    { status: 502, headers: { "content-type": "application/json" } },
+  );
+
 // VITE_* from the repo-root .env (single source of truth, same as build.mjs)
 // with shell-exported VITE_* taking precedence for one-off overrides. Without
 // this the dev build silently fell back to wagmi's mainnet default while the
@@ -78,6 +91,7 @@ serve({
       const url = new URL(req.url);
       // Same-origin API proxy (mirrors prod /api -> backend, /oracle -> backend).
       if (url.pathname.startsWith("/api")) {
+        if (backendIsSelf) return noBackendResponse();
         const upstream = new URL(url.pathname.slice(4) + url.search, BACKEND);
         // Buffer the request body: streaming req.body through with duplex
         // "half" truncates chunked upstream responses in some Bun versions
@@ -100,6 +114,7 @@ serve({
         });
       }
       if (url.pathname.startsWith("/oracle")) {
+        if (backendIsSelf) return noBackendResponse();
         // In-process oracle on the backend: forward /oracle* unchanged
         // (backend registers /oracle/health + /oracle/v1/agents/mint).
         const upstream = new URL(url.pathname + url.search, BACKEND);
