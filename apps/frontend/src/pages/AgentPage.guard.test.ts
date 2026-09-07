@@ -52,3 +52,21 @@ test("the 404 navigation effect stays above the early return", () => {
   assert.ok(effect >= 0, "navigation effect present");
   assert.ok(effect < earlyReturn, "effect (a hook) must precede the return");
 });
+
+// M9: the copy-hash button renders only with a real hash, and the copied
+// notice fires only after a resolved clipboard write.
+test("copy-hash button is hash-gated and the notice follows a resolved write (M9)", () => {
+  assert.match(
+    src,
+    /if \(!hash \|\| !clipboard\?\.writeText\) return;/,
+    "no hash or no clipboard API returns before any notice",
+  );
+  const write = src.indexOf("await clipboard.writeText(hash);");
+  const notice = src.indexOf("action(agentCopy.copiedNotice);");
+  assert.ok(write >= 0 && notice > write, "notice follows the resolved write");
+  assert.match(
+    src,
+    /\{metadata\?\.dataHash && \(\s*\n\s*<button\s*\n\s*className="inline-copy"/,
+    "copy button renders only when a hash exists",
+  );
+});

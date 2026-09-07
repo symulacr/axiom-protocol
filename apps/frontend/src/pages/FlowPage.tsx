@@ -492,8 +492,20 @@ export function FlowPage({
   const requestedStage = search.get("stage");
   const requestedInstruction = search.get("instruction");
 
+  const agentOptions = useMemo(
+    () => agents.map((agent) => agent.tokenId.toString()),
+    [agents],
+  );
+
+  // A stale or hand-edited ?agent= id must not submit a different agent than
+  // the select shows: once the register settles, an unlisted id falls back
+  // to the first real option.
+  const fallbackTokenId = agentOptions[0] ?? "";
+  const requestedTokenId = requestedAgent ?? (draft.agent || fallbackTokenId);
   const selectedTokenId =
-    requestedAgent ?? (draft.agent || agents[0]?.tokenId.toString() || "");
+    agentOptions.length > 0 && !agentOptions.includes(requestedTokenId)
+      ? fallbackTokenId
+      : requestedTokenId;
   const selectedAgentName = selectedTokenId
     ? f.agentOption(selectedTokenId)
     : f.agentSelectPlaceholder;
@@ -1006,11 +1018,13 @@ export function FlowPage({
         const hash = result.execution?.txHash ?? result.storage.rootHash;
         const outcome =
           result.recommendation.action === "act" ? f.tickActed : f.tickHeld;
+        const reason = result.recommendation.reason;
         addFlowReceipt(hash, {
           kind: flow.receiptKind,
           detail: interpolate(flow.detail, {
             action: outcome,
-            reason: result.recommendation.reason.slice(0, 48),
+            // Ellipsis on the cut so a truncated reason never reads as a complete sentence.
+            reason: reason.length > 48 ? `${reason.slice(0, 48)}…` : reason,
           }),
           route: "/tick",
           agent: selectedTokenId,
@@ -1137,11 +1151,6 @@ export function FlowPage({
             : paymentApprovalNeeded
               ? f.confirmTwoApprovePay
               : f.confirmOneAllowance;
-
-  const agentOptions = useMemo(
-    () => agents.map((agent) => agent.tokenId.toString()),
-    [agents],
-  );
 
   // T3a: the agents poll is the only unknown at first paint — a settled-but-empty
   // register means every non-mint flow is blocked, so the form is replaced by the
@@ -1326,7 +1335,9 @@ export function FlowPage({
                   <select
                     className="axiom-field"
                     aria-label={f.agentA11y}
-                    aria-invalid={submitError?.field === "agent" ? "true" : undefined}
+                    aria-invalid={
+                      submitError?.field === "agent" ? "true" : undefined
+                    }
                     value={selectedTokenId}
                     disabled={isReviewOpen}
                     onChange={(event) => {
@@ -1378,9 +1389,15 @@ export function FlowPage({
 
           {kind === "tick" &&
             (tickHook.isStreaming || tickHook.streamedTokens) && (
-              <div className="tick-stream" aria-live="polite">
-                <span className="visually-hidden">{f.streamLabel}</span>
-                <pre className="mono">
+              <div className="tick-stream">
+                {/* Live region on the status node only; the 50ms token flush
+                    stays aria-hidden so screen readers are not re-announcing
+                    every chunk. Errors announce via role=alert below,
+                    completion via the receipt StatePill. */}
+                <span className="visually-hidden" role="status">
+                  {tickHook.isStreaming ? f.streamLabel : ""}
+                </span>
+                <pre className="mono" aria-hidden="true">
                   {tickHook.streamedTokens || "…"}
                   {tickHook.isStreaming && (
                     <span className="caret-blink">▍</span>

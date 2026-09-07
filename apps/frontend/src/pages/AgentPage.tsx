@@ -471,9 +471,18 @@ export function AgentPage({
     }
   };
 
-  const copyDataHash = () => {
-    if (metadata?.dataHash) navigator.clipboard?.writeText(metadata.dataHash);
-    action(agentCopy.copiedNotice);
+  const copyDataHash = async () => {
+    // Guarded write (ui.tsx CopyButton pattern): no hash, no clipboard API or
+    // a denied write must not raise the copied notice.
+    const hash = metadata?.dataHash;
+    const clipboard = navigator.clipboard;
+    if (!hash || !clipboard?.writeText) return;
+    try {
+      await clipboard.writeText(hash);
+      action(agentCopy.copiedNotice);
+    } catch {
+      // clipboard denied — no copied notice for a copy that did not happen
+    }
   };
 
   // W3-C: Permit2 pay panel — amount input + sign-and-pay; the hook picks the
@@ -699,13 +708,15 @@ export function AgentPage({
                 {metadata?.dataHash
                   ? truncateHex(metadata.dataHash, 8, 6)
                   : "—"}{" "}
-                <button
-                  className="inline-copy"
-                  onClick={copyDataHash}
-                  aria-label={agentCopy.copyHashA11y}
-                >
-                  <Copy size={14} />
-                </button>
+                {metadata?.dataHash && (
+                  <button
+                    className="inline-copy"
+                    onClick={() => void copyDataHash()}
+                    aria-label={agentCopy.copyHashA11y}
+                  >
+                    <Copy size={14} />
+                  </button>
+                )}
               </Fact>
               <Fact label={agentCopy.descriptionLabel}>
                 {metadata?.dataDescription || "—"}

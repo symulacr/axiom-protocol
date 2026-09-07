@@ -5,14 +5,39 @@
   renderer disposed on unmount. Reduced-motion users get a single static
   frame (no loop, no pointer parallax). Replaces OrbsField on the landing.
 */
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 
 const POINT_COUNT = 900;
 const DPR_CAP = 1.75;
 
+/** Fog + point palette per theme. Light values mirror the body.light tokens
+ *  (--bg #f1eee8 / --copper #a96333 / --phosphor #0a684a) so the plane
+ *  dissolves into paper instead of hazing dark over it. */
+const SCENE_COLORS = {
+  dark: { fog: 0x111315, copper: "#d28b52", phosphor: "#67e8b4" },
+  light: { fog: 0xf1eee8, copper: "#a96333", phosphor: "#0a684a" },
+} as const;
+
+type ThemeName = keyof typeof SCENE_COLORS;
+
+/** The resolved theme lives on documentElement (index.html boot + App theme bridge). */
+const readTheme = (): ThemeName =>
+  document.documentElement.dataset.theme === "light" ? "light" : "dark";
+
 export function ThreeBackground() {
   const hostRef = useRef<HTMLDivElement | null>(null);
+  // The landing ThemeToggle flips data-theme in place — watch the attribute
+  // so a switch re-themes the field without waiting for a route change.
+  const [theme, setTheme] = useState<ThemeName>(readTheme);
+  useEffect(() => {
+    const observer = new MutationObserver(() => setTheme(readTheme()));
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-theme"],
+    });
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     const host = hostRef.current;
@@ -45,8 +70,9 @@ export function ThreeBackground() {
 
     // Fog in the page surface tone so the plane dissolves into the
     // background instead of reading as a discrete shape.
+    const palette = SCENE_COLORS[theme];
     const scene = new THREE.Scene();
-    scene.fog = new THREE.Fog(0x111315, 8, 45);
+    scene.fog = new THREE.Fog(palette.fog, 8, 45);
     const camera = new THREE.PerspectiveCamera(
       55,
       host.clientWidth / host.clientHeight,
@@ -59,8 +85,8 @@ export function ThreeBackground() {
     // XZ rectangle with slight vertical jitter, no recognizable outline.
     const positions = new Float32Array(POINT_COUNT * 3);
     const colors = new Float32Array(POINT_COUNT * 3);
-    const copper = new THREE.Color("#d28b52");
-    const phosphor = new THREE.Color("#67e8b4");
+    const copper = new THREE.Color(palette.copper);
+    const phosphor = new THREE.Color(palette.phosphor);
     for (let i = 0; i < POINT_COUNT; i++) {
       positions[i * 3] = (Math.random() - 0.5) * 80;
       positions[i * 3 + 1] = -12 + (Math.random() - 0.5) * 4;
@@ -94,9 +120,10 @@ export function ThreeBackground() {
       targetX = (event.clientX / innerWidth - 0.5) * 0.6;
       targetY = (event.clientY / innerHeight - 0.5) * 0.6;
     };
-    if (!reduce) window.addEventListener("pointermove", onPointer, {
-      passive: true,
-    });
+    if (!reduce)
+      window.addEventListener("pointermove", onPointer, {
+        passive: true,
+      });
 
     const onResize = () => {
       const w = host.clientWidth;
@@ -147,7 +174,7 @@ export function ThreeBackground() {
       renderer.dispose();
       renderer.domElement.remove();
     };
-  }, []);
+  }, [theme]);
 
   return <div className="three-bg" ref={hostRef} aria-hidden="true" />;
 }

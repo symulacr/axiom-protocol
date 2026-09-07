@@ -74,6 +74,8 @@
 .seo-public-nav nav a {
   padding: var(--space-2) 0;
   border-bottom: 1px solid transparent;
+  /* Links never wrap mid-label; below 900px the strip scrolls instead. */
+  white-space: nowrap;
 }
 
 .seo-public-nav nav a:hover,
@@ -128,6 +130,19 @@
 	color: var(--aw-text);
 	font: 800 clamp(48px, 5.25vw, 78px) / 0.94 Syne, sans-serif;
 	letter-spacing: -0.055em;
+	text-wrap: balance;
+}
+
+/* The title's \n becomes span+<br> (MultilineHeading); a forced break
+   defeats h1-level text-wrap:balance, so each fragment balances as its own
+   block and the now-redundant <br> is hidden. */
+.seo-hero h1 span {
+  display: block;
+  text-wrap: balance;
+}
+
+.seo-hero h1 br {
+  display: none;
 }
 
 .seo-hero h1 span:last-child {
@@ -315,9 +330,21 @@
 
 @media (max-width: 900px) {
   .seo-public { padding: 0 var(--space-5); }
-  .seo-public-nav { display: flex; gap: var(--space-4); }
-  .seo-public-nav nav { display: none; }
-  .seo-console-link { margin-left: auto; }
+  .seo-public-nav { display: flex; flex-wrap: wrap; gap: 0 var(--space-4); }
+  /* No JS menu on the hubs: the nav wraps to a full-width strip under the
+     brand row and scrolls horizontally when the five links overflow. */
+  .seo-public-nav nav {
+    order: 3;
+    flex: 1 0 100%;
+    justify-content: flex-start;
+    overflow-x: auto;
+    scrollbar-width: none;
+    border-top: 1px solid color-mix(in srgb, var(--aw-accent) 24%, transparent);
+    margin-inline: calc(var(--space-5) * -1);
+    padding-inline: var(--space-5);
+  }
+  .seo-public-nav nav::-webkit-scrollbar { display: none; }
+  .seo-console-link { order: 2; margin-left: auto; }
 	.seo-hero { grid-template-columns: minmax(0, 1fr); gap: var(--space-6); padding: 44px 0; }
 	.seo-route-rail { grid-column: 1; flex-direction: row; align-items: center; gap: var(--space-2); min-height: auto; padding: 0 0 var(--space-2); border-left: 0; border-bottom: 1px solid color-mix(in srgb, var(--aw-accent) 38%, transparent); }
 	.seo-hero-copy { grid-column: 1; }
@@ -330,6 +357,7 @@
 @media (max-width: 480px) {
   .seo-public { padding: 0 var(--space-4); }
   .seo-public-nav { min-height: 64px; }
+  .seo-public-nav nav { margin-inline: calc(var(--space-4) * -1); padding-inline: var(--space-4); }
   .seo-console-link { padding: var(--space-2) var(--space-2); font-size: var(--fs-mono) !important; }
   .seo-proof-card { padding: var(--space-5); }
   .seo-link-grid a { padding: var(--space-4) var(--space-3); }

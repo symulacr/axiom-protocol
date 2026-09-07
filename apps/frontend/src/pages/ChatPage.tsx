@@ -300,7 +300,11 @@ function EmptyState(props: {
         {copy.browseTools(CLIENT_TOOL_CATALOG.length)}
       </button>
       {toolsOpen && (
-        <div className="chat-tools" role="region" aria-label={copy.toolsToggle(CLIENT_TOOL_CATALOG.length)}>
+        <div
+          className="chat-tools"
+          role="region"
+          aria-label={copy.toolsToggle(CLIENT_TOOL_CATALOG.length)}
+        >
           <label className="chat-tools__search">
             <Search size={14} aria-hidden="true" />
             <input
@@ -1521,10 +1525,16 @@ function ChatPageInner(): ReactElement {
       document.body.style.overflow = prevOverflow;
     };
   }, [sidebarOpen, setSidebarOpen]);
+  // Focus returns to the toggle only after the drawer was actually open: the
+  // rail starts closed on /chat, so a mount-time fire would steal the
+  // composer autofocus.
+  const sidebarWasOpenRef = useRef(false);
   useEffect(() => {
-    if (!sidebarOpen) {
-      sidebarToggleRef.current?.focus();
+    if (sidebarOpen) {
+      sidebarWasOpenRef.current = true;
+      return;
     }
+    if (sidebarWasOpenRef.current) sidebarToggleRef.current?.focus();
   }, [sidebarOpen]);
 
   // Thread list lives in the shell sidebar on chat routes; portal it in.
@@ -1851,10 +1861,7 @@ function ChatPageInner(): ReactElement {
               )}
 
               {streamError !== null && (
-                <div
-                  role="alert"
-                  className="fade-enter turn__notice is-danger"
-                >
+                <div role="alert" className="fade-enter turn__notice is-danger">
                   <span>{streamError}</span>
                   <span className="turn__notice-actions">
                     <MsgActionBtn
@@ -1877,15 +1884,13 @@ function ChatPageInner(): ReactElement {
               )}
 
               {isStreaming && (
-                <div
-                  className="fade-enter turn turn--assistant turn--live"
-                  role="status"
-                  aria-live="polite"
-                  aria-label={chatCopy.assistantResponding}
-                >
+                <div className="fade-enter turn turn--assistant turn--live">
                   {turns.every((t) => t.kind === "user") ? brandMark : null}
+                  {/* aria-live stays on the phase label only; the 50ms token
+                      flush renders aria-hidden so screen readers are not
+                      re-announcing every chunk. */}
                   {streamText ? (
-                    <div className="chat-msg chat-msg-wrap">
+                    <div className="chat-msg chat-msg-wrap" aria-hidden="true">
                       <span className="stream-tail">{streamText}</span>
                       <span
                         className="caret-blink chat-caret"
@@ -1895,7 +1900,7 @@ function ChatPageInner(): ReactElement {
                   ) : (
                     <p className="chat-msg chat-msg--flush turn__thinking">
                       <ThinkingOrbs label={chatCopy.assistantResponding} />
-                      <span>
+                      <span role="status" aria-live="polite">
                         {phaseLabel(elapsed, toolRuns, streamText, chatCopy)}
                       </span>
                       {tickRunning ? (

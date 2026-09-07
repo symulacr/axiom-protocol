@@ -61,7 +61,8 @@ function ReviewError({
 
 export function CoSignPage({ go }: { go: (path: string) => void }) {
   const { state } = useUiStore();
-  const f = getCopy(state.settings.locale).flowUi;
+  const pageCopy = getCopy(state.settings.locale);
+  const f = pageCopy.flowUi;
   const search = new URLSearchParams(window.location.search);
   // ~1 KB decode per render — cheaper than memoizing on a recreated URLSearchParams.
   const rawToken = search.get("data");
@@ -134,8 +135,12 @@ export function CoSignPage({ go }: { go: (path: string) => void }) {
   const copyCode = async () => {
     // U26: the receiver sends ONE piece — the claim link; raw signature stays behind "Advanced".
     if (!claimUrl) return;
+    // navigator.clipboard is undefined on insecure contexts — only a resolved
+    // write may flip the button to Copied; the link stays selectable either way.
+    const clipboard = navigator.clipboard;
+    if (!clipboard?.writeText) return;
     try {
-      await navigator.clipboard?.writeText(claimUrl);
+      await clipboard.writeText(claimUrl);
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1500);
     } catch {
@@ -308,22 +313,30 @@ export function CoSignPage({ go }: { go: (path: string) => void }) {
           {!signature && !expired && (
             <div className="review-actions">
               {!isConnected ? (
-                (connectors.length === 1 ? [connectors[0]!] : connectors).map(
-                  (connector) => (
-                    <Button
-                      key={connector.uid}
-                      variant={
-                        connectors.length === 1 ? undefined : "secondary"
-                      }
-                      busy={isConnecting}
-                      onClick={() => void connect(connector)}
-                      icon={<WalletIcon size={16} />}
-                    >
-                      {connectors.length === 1
-                        ? f.receiveConnect
-                        : connector.name}
-                    </Button>
-                  ),
+                connectors.length === 0 ? (
+                  // Zero connectors must not dead-end the receiver on a lone
+                  // Back button — say why there is nothing to connect with.
+                  <p className="field-hint">
+                    {pageCopy.wallet.noWalletDetected}
+                  </p>
+                ) : (
+                  (connectors.length === 1 ? [connectors[0]!] : connectors).map(
+                    (connector) => (
+                      <Button
+                        key={connector.uid}
+                        variant={
+                          connectors.length === 1 ? undefined : "secondary"
+                        }
+                        busy={isConnecting}
+                        onClick={() => void connect(connector)}
+                        icon={<WalletIcon size={16} />}
+                      >
+                        {connectors.length === 1
+                          ? f.receiveConnect
+                          : connector.name}
+                      </Button>
+                    ),
+                  )
                 )
               ) : (
                 <Button

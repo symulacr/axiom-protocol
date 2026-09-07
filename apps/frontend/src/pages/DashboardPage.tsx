@@ -402,11 +402,16 @@ export function DashboardPage({
           />
           <Stat
             label={copy.dashboard.agentsOnline}
-            value={`${agents.length - failing.length} / ${agents.length}`}
+            // The T2 buckets partition the fleet, so subtracting both counts
+            // configured + healthy only — fresh (unconfigured) agents are
+            // setup state, never "online".
+            value={`${agents.length - failing.length - unconfigured.length} / ${agents.length}`}
             change={
               failing.length
                 ? copy.dashboard.needReview(failing.length)
-                : copy.dashboard.fleetNominal
+                : unconfigured.length
+                  ? copy.dashboard.unconfigured(unconfigured.length)
+                  : copy.dashboard.fleetNominal
             }
             icon={<Bot size={16} />}
           />
@@ -512,8 +517,11 @@ export function DashboardPage({
                   <span>
                     <strong>Agent #{agent.tokenId.toString()}</strong>
                     <small>
+                      {/* Truncation mirrors ChatPage's hintShort: cut + ellipsis. */}
                       {agent.dataDescription
-                        ? agent.dataDescription.slice(0, 42)
+                        ? agent.dataDescription.length > 42
+                          ? `${agent.dataDescription.slice(0, 42)}…`
+                          : agent.dataDescription
                         : copy.dashboard.noDescription}
                     </small>
                   </span>

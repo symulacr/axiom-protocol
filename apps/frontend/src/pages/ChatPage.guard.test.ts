@@ -80,6 +80,42 @@ test("step status is derived, never a synthetic running/error state (R1-8, 002 F
   assert.match(src, /status: "running",\s*\n\s*startedAt: Date\.now\(\)/);
 });
 
+// M1: the sidebar-close focus restore must skip the first render — the rail
+// starts closed on /chat, so an unguarded mount fire steals the composer
+// autofocus.
+test("sidebar focus restore fires only after the drawer was open (M1)", () => {
+  assert.doesNotMatch(
+    src,
+    /if \(!sidebarOpen\) \{\s*\n\s*sidebarToggleRef\.current\?\.focus\(\);/,
+    "unguarded mount-time focus is gone",
+  );
+  assert.match(
+    src,
+    /if \(sidebarOpen\) \{\s*\n\s*sidebarWasOpenRef\.current = true;\s*\n\s*return;\s*\n\s*\}\s*\n\s*if \(sidebarWasOpenRef\.current\) sidebarToggleRef\.current\?\.focus\(\);/,
+    "focus returns to the toggle only after an actual open",
+  );
+});
+
+// M2: the 50ms token flush must not sit inside an aria-live region; the live
+// region is the phase label only.
+test("streaming token flush is aria-hidden, live region on the phase label (M2)", () => {
+  assert.doesNotMatch(
+    src,
+    /turn--live"\s*\n\s*role="status"/,
+    "no aria-live wrapper around the streaming turn",
+  );
+  assert.match(
+    src,
+    /<div className="chat-msg chat-msg-wrap" aria-hidden="true">/,
+    "token stream renders aria-hidden",
+  );
+  assert.match(
+    src,
+    /<span role="status" aria-live="polite">\s*\n\s*\{phaseLabel\(/,
+    "phase label keeps the live region",
+  );
+});
+
 // L1-L8: active-thread resume must survive a closed tab — the resume cache
 // (axiom:chat-messages + axiom:chat-thread) persists in localStorage, not
 // sessionStorage, and honors the MAX_RESUME_THREADS budget.
