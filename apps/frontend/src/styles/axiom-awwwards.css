@@ -564,10 +564,12 @@
 
 /* ─── Public hubs ───────────────────────────────────────────────── */
 
+/* Background is owned by axiom-seo-public.css (.seo-public → --canvas, the
+   L3-B9/L3-B10 dark lock): pinning var(--aw-ink) here won on chunk order and
+   went light under body.light. This rule keeps only the stacking contract. */
 .seo-public {
   position: relative;
   overflow-x: clip;
-  background: var(--aw-ink);
 }
 
 .seo-public-nav {
