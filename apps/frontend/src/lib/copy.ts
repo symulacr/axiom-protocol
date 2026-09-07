@@ -116,71 +116,15 @@ export type Copy = {
     titleLead: string;
     titleEmphasis: string;
     description: string;
-    nextSafeAction: string;
-    consoleAccess: string;
     menuGuideHint: string;
     menuDevelopers: string;
     menuDevelopersHint: string;
-    /** U21: signed-out escape hatch straight into the public /chat surface. */
-    tryAssistant: string;
-    stripOperateSmall: string;
-    /** R10: proof-field caption — small mono caption + Fraunces italic body. */
-    proofCaptionSmall: string;
-    proofPlateA11y: string;
-    proofCaptionBody: string;
-    /** T4: real product preview inside the hero plate (self-demonstrating). */
-    previewAgentDesc: string;
-    previewReceiptTitle: string;
     nav: {
       overview: string;
       principles: string;
       howItWorks: string;
       start: string;
       connect: string;
-    };
-    /** L2-N2: hero meta strip — live chain + on-chain agent count. */
-    meta: {
-      /** Placeholders: `{chainName}`, `{chainId}`. */
-      network: string;
-      /** Placeholder: `{count}`. */
-      agentsOnline: string;
-    };
-    /** L2-N3: hero trust-line chips. */
-    trust: {
-      nonCustodial: string;
-      signedIn: string;
-      receipt: string;
-    };
-    /** L2-N4: proof plate chrome — live label + floating receipt. */
-    proof: {
-      label: string;
-      caption: string;
-      receipt: {
-        kind: string;
-        state: string;
-        title: string;
-        agent: string;
-        block: string;
-        gas: string;
-        outcome: string;
-        outcomeValue: string;
-        meta: string;
-      };
-    };
-    /** L2-N5: live activity ticker under the hero. */
-    ticker: {
-      /** Placeholder: `{chainId}`. */
-      label: string;
-      items: ReadonlyArray<{
-        dot: "default" | "warning";
-        agent: string;
-        action: string;
-        ago: string;
-      }>;
-      /** L2-N5-LIVE: localized action label for every queryable event name.
-       * Used by useLandingTicker to render recent events. The fallback
-       * ("tx mined") is applied by the hook when an eventName is missing. */
-      actionLabels: Readonly<Record<string, string>>;
     };
     /** L2-N6: principles section — 3 cards. */
     principles: {
@@ -199,18 +143,6 @@ export type Copy = {
       /** Placeholders: `{emphasis}` opens <em>, `{endEmphasis}` closes it. */
       title: string;
       steps: ReadonlyArray<{ title: string; body: string }>;
-    };
-    /** L2-N7: journey section — 2 cards (replaces the strip). */
-    journey: {
-      /** Placeholders: `{emphasis}` opens <em>, `{endEmphasis}` closes it. */
-      title: string;
-      items: ReadonlyArray<{
-        title: string;
-        body: string;
-        meta: string;
-        cta: string;
-        onClick: "onGuide" | "goToApp";
-      }>;
     };
     /** L2-N8: landing footer. */
     footer: {
@@ -1072,113 +1004,15 @@ const english: Copy = {
     titleEmphasis: "Keep every action accountable.",
     description:
       "Mint an agent with a bounded vault. It works inside rules you set.",
-    nextSafeAction: "Next safe action",
-    consoleAccess: "Console access",
     menuGuideHint: "How signing and receipts work",
     menuDevelopers: "Developers",
     menuDevelopersHint: "APIs and developer tools",
-    tryAssistant: "Try the assistant",
-    stripOperateSmall: "Receipts beside action",
-    proofCaptionSmall: "Sealed transfer",
-    proofPlateA11y: "Open the proofs hub",
-    proofCaptionBody: "Every payload is re-keyed to its new owner.",
-    previewAgentDesc: "Oracle attestations, every 10 minutes",
-    previewReceiptTitle: "Tick receipt",
     nav: {
       overview: "Overview",
       principles: "Principles",
       howItWorks: "How it works",
       start: "Start",
       connect: "Connect",
-    },
-    meta: {
-      network: "{chainName} · chain {chainId}",
-      agentsOnline: "{count} agents online",
-    },
-    trust: {
-      nonCustodial: "Non-custodial",
-      signedIn: "Signed in < 30s",
-      receipt: "Every action → receipt",
-    },
-    proof: {
-      label: "Agent #7 · live",
-      caption: "Receipts beside every action.",
-      receipt: {
-        kind: "Tick receipt",
-        state: "Just now",
-        title: "Oracle attestations",
-        agent: "Agent",
-        block: "Block",
-        gas: "Gas",
-        outcome: "Outcome",
-        outcomeValue: "Held (idle)",
-        meta: "agent 7 · tx mined",
-      },
-    },
-    ticker: {
-      label: "Live · chain {chainId}",
-      items: [
-        {
-          dot: "default",
-          agent: "agent #3",
-          action: "vault topped",
-          ago: "22s ago",
-        },
-        {
-          dot: "default",
-          agent: "agent #11",
-          action: "receipt indexed",
-          ago: "38s ago",
-        },
-        {
-          dot: "warning",
-          agent: "agent #88",
-          action: "oracle attestation",
-          ago: "51s ago",
-        },
-      ],
-      actionLabels: {
-        Transfer: "ownership changed",
-        Updated: "metadata updated",
-        Authorization: "access authorized",
-        AuthorizationRevoked: "authorization revoked",
-        VerifierUpdated: "verifier updated",
-        CreatorSet: "creator set",
-        MintFeeUpdated: "mint fee updated",
-        StorageInfoUpdated: "storage info updated",
-        PublishedSealedKey: "sealed key published",
-        DelegateAccess: "delegate access granted",
-        Deposited: "vault topped",
-        Withdrawn: "vault withdrew",
-        StrategySet: "strategy set",
-        Executed: "tick ran",
-        PaymentProcessed: "payment settled",
-        ComputeProviderPaid: "compute provider paid",
-        EarningsWithdrawn: "earnings paid",
-        RoyaltySet: "royalty set",
-        ProtocolTreasuryProposed: "treasury change proposed",
-        ProtocolTreasuryUpdated: "treasury updated",
-        ProtocolTreasuryProposalCancelled: "treasury proposal cancelled",
-        ProtocolFeeBpsUpdated: "protocol fee updated",
-        PaymentTokenUpdated: "payment token updated",
-        Paused: "contract paused",
-        Unpaused: "contract unpaused",
-        MetadataJsonDecisionDocumented: "metadata decision logged",
-        Cloned: "proxy cloned",
-        Upgraded: "implementation upgraded",
-        Initialized: "contract initialized",
-        SignerProposed: "signer proposed",
-        SignerExecuted: "oracle attestation",
-        SignerProposalCancelled: "signer proposal cancelled",
-        ProofUsed: "oracle attestation",
-        DelegationInstalled: "delegation installed",
-        DelegationRevoked: "delegation revoked",
-        DelegatedExecuted: "delegated execution",
-        AdminChanged: "admin changed",
-        BeaconUpgraded: "beacon upgraded",
-        Tick: "receipt indexed",
-        Unknown: "tx mined",
-      },
     },
     principles: {
       title: "What makes Axiom {emphasis}different.{endEmphasis}",
@@ -1209,25 +1043,6 @@ const english: Copy = {
         { title: "Mint.", body: "One transaction creates the agent and its vault." },
         { title: "Fund.", body: "Top up the vault. Set the daily limit." },
         { title: "Run.", body: "Ticks execute inside your rules. Receipts index on-chain." },
-      ],
-    },
-    journey: {
-      title: "Two paths {emphasis}to start.{endEmphasis}",
-      items: [
-        {
-          title: "Learn the boundary before you sign.",
-          body: "How signing splits from custody, and which wallets keep your keys yours. No wallet needed to read.",
-          meta: "Read time · 3 min",
-          cta: "How signing works",
-          onClick: "onGuide",
-        },
-        {
-          title: "Open the console and operate receipts.",
-          body: "Connect once to mint, fund and run. The console tracks each step.",
-          meta: "Live · {count} agents online",
-          cta: "Console access",
-          onClick: "goToApp",
-        },
       ],
     },
     footer: {
@@ -2191,114 +2006,15 @@ const french: Copy = {
     titleEmphasis: "qui travaillent pour vous.",
     description:
       "Mintez un agent sur 0G, mettez vos fonds au travail et gardez le contrôle.",
-    nextSafeAction: "Prochaine action sûre",
-    consoleAccess: "Accès console",
-    tryAssistant: "Essayer l’assistant",
     menuGuideHint: "Comment fonctionnent signatures et reçus",
     menuDevelopers: "Développeurs",
     menuDevelopersHint: "APIs et outils pour développeurs",
-    stripOperateSmall: "Reçus à côté de l’action",
-    proofCaptionSmall: "Transfert scellé",
-    proofPlateA11y: "Ouvrir le hub des preuves",
-    proofCaptionBody:
-      "Chaque payload est recréé pour son nouveau propriétaire.",
-    previewAgentDesc: "Attestations oracle, toutes les 10 minutes",
-    previewReceiptTitle: "Reçu de tick",
     nav: {
       overview: "Aperçu",
       principles: "Principes",
       howItWorks: "Comment ça marche",
       start: "Démarrer",
       connect: "Connecter",
-    },
-    meta: {
-      network: "{chainName} · chaîne {chainId}",
-      agentsOnline: "{count} agents en ligne",
-    },
-    trust: {
-      nonCustodial: "Non-dépositaire",
-      signedIn: "Signé en < 30s",
-      receipt: "Chaque action → reçu",
-    },
-    proof: {
-      label: "Agent n°7 · en direct",
-      caption: "Reçus à côté de chaque action.",
-      receipt: {
-        kind: "Reçu de tick",
-        state: "À l'instant",
-        title: "Attestations oracle",
-        agent: "Agent",
-        block: "Bloc",
-        gas: "Gas",
-        outcome: "Résultat",
-        outcomeValue: "Maintenu (inactif)",
-        meta: "agent 7 · tx minée",
-      },
-    },
-    ticker: {
-      label: "En direct · chaîne {chainId}",
-      items: [
-        {
-          dot: "default",
-          agent: "agent #3",
-          action: "coffre approvisionné",
-          ago: "il y a 22s",
-        },
-        {
-          dot: "default",
-          agent: "agent #11",
-          action: "reçu indexé",
-          ago: "il y a 38s",
-        },
-        {
-          dot: "warning",
-          agent: "agent #88",
-          action: "attestation oracle",
-          ago: "il y a 51s",
-        },
-      ],
-      actionLabels: {
-        Transfer: "propriété transférée",
-        Updated: "métadonnées mises à jour",
-        Authorization: "accès autorisé",
-        AuthorizationRevoked: "autorisation révoquée",
-        VerifierUpdated: "vérificateur mis à jour",
-        CreatorSet: "créateur défini",
-        MintFeeUpdated: "frais de mint mis à jour",
-        StorageInfoUpdated: "infos stockage mises à jour",
-        PublishedSealedKey: "clé scellée publiée",
-        DelegateAccess: "accès délégué accordé",
-        Deposited: "coffre approvisionné",
-        Withdrawn: "coffre retiré",
-        StrategySet: "stratégie définie",
-        Executed: "tick exécuté",
-        PaymentProcessed: "paiement réglé",
-        ComputeProviderPaid: "fournisseur payé",
-        EarningsWithdrawn: "gains versés",
-        RoyaltySet: "redevance définie",
-        ProtocolTreasuryProposed: "changement trésorerie proposé",
-        ProtocolTreasuryUpdated: "trésorerie mise à jour",
-        ProtocolTreasuryProposalCancelled: "proposition annulée",
-        ProtocolFeeBpsUpdated: "frais protocole mis à jour",
-        PaymentTokenUpdated: "token paiement mis à jour",
-        Paused: "contrat en pause",
-        Unpaused: "contrat réactivé",
-        MetadataJsonDecisionDocumented: "décision métadonnées enregistrée",
-        Cloned: "proxy cloné",
-        Upgraded: "implémentation mise à jour",
-        Initialized: "contrat initialisé",
-        SignerProposed: "signataire proposé",
-        SignerExecuted: "attestation oracle",
-        SignerProposalCancelled: "proposition signataire annulée",
-        ProofUsed: "attestation oracle",
-        DelegationInstalled: "délégation installée",
-        DelegationRevoked: "délégation révoquée",
-        DelegatedExecuted: "exécution déléguée",
-        AdminChanged: "admin modifié",
-        BeaconUpgraded: "beacon mis à jour",
-        Tick: "reçu indexé",
-        Unknown: "tx minée",
-      },
     },
     principles: {
       title: "Ce qui rend Axiom {emphasis}différent.{endEmphasis}",
@@ -2329,25 +2045,6 @@ const french: Copy = {
         { title: "Mintez.", body: "Une transaction crée l'agent et son coffre." },
         { title: "Financez.", body: "Approvisionnez le coffre. Fixez la limite quotidienne." },
         { title: "Opérez.", body: "Les ticks s'exécutent dans vos règles. Les reçus s'indexent on-chain." },
-      ],
-    },
-    journey: {
-      title: "Deux chemins {emphasis}pour commencer.{endEmphasis}",
-      items: [
-        {
-          title: "Apprenez la limite avant de signer.",
-          body: "Comment la signature se sépare de la garde et quels wallets gardent vos clés. Pas de wallet pour lire.",
-          meta: "Temps de lecture · 3 min",
-          cta: "Comment fonctionne la signature",
-          onClick: "onGuide",
-        },
-        {
-          title: "Ouvrir la console et opérer les reçus.",
-          body: "Connectez-vous une fois pour minter, financer et opérer. La console suit chaque étape.",
-          meta: "En direct · {count} agents en ligne",
-          cta: "Accès console",
-          onClick: "goToApp",
-        },
       ],
     },
     footer: {
@@ -3294,114 +2991,15 @@ const german: Copy = {
     titleEmphasis: "die für dich arbeiten.",
     description:
       "Minte einen Agent auf 0G, lass deine Mittel arbeiten und behalte die Kontrolle.",
-    nextSafeAction: "Nächste sichere Aktion",
-    consoleAccess: "Konsolenzugriff",
-    tryAssistant: "Assistent testen",
     menuGuideHint: "Wie Signatur und Beleg funktionieren",
     menuDevelopers: "Entwickler",
     menuDevelopersHint: "APIs und Entwickler-Tools",
-    stripOperateSmall: "Belege neben der Aktion",
-    proofCaptionSmall: "Versiegelte Übertragung",
-    proofPlateA11y: "Proofs-Hub öffnen",
-    proofCaptionBody:
-      "Jede Nutzlast wird neu für ihren neuen Eigentümer verschlüsselt.",
-    previewAgentDesc: "Oracle-Attestierungen, alle 10 Minuten",
-    previewReceiptTitle: "Tick-Beleg",
     nav: {
       overview: "Überblick",
       principles: "Prinzipien",
       howItWorks: "So funktioniert es",
       start: "Starten",
       connect: "Verbinden",
-    },
-    meta: {
-      network: "{chainName} · Kette {chainId}",
-      agentsOnline: "{count} Agents online",
-    },
-    trust: {
-      nonCustodial: "Nicht-verwahrend",
-      signedIn: "In < 30s signiert",
-      receipt: "Jede Aktion → Beleg",
-    },
-    proof: {
-      label: "Agent Nr. 7 · live",
-      caption: "Belege neben jeder Aktion.",
-      receipt: {
-        kind: "Tick-Beleg",
-        state: "Gerade eben",
-        title: "Oracle-Attestierungen",
-        agent: "Agent",
-        block: "Block",
-        gas: "Gas",
-        outcome: "Ergebnis",
-        outcomeValue: "Gehalten (inaktiv)",
-        meta: "Agent 7 · tx gemined",
-      },
-    },
-    ticker: {
-      label: "Live · Kette {chainId}",
-      items: [
-        {
-          dot: "default",
-          agent: "agent #3",
-          action: "Tresor aufgefüllt",
-          ago: "vor 22s",
-        },
-        {
-          dot: "default",
-          agent: "agent #11",
-          action: "Beleg indexiert",
-          ago: "vor 38s",
-        },
-        {
-          dot: "warning",
-          agent: "agent #88",
-          action: "Oracle-Attestierung",
-          ago: "vor 51s",
-        },
-      ],
-      actionLabels: {
-        Transfer: "Eigentümer gewechselt",
-        Updated: "Metadaten aktualisiert",
-        Authorization: "Zugriff autorisiert",
-        AuthorizationRevoked: "Autorisierung widerrufen",
-        VerifierUpdated: "Verifier aktualisiert",
-        CreatorSet: "Ersteller gesetzt",
-        MintFeeUpdated: "Mint-Gebühr aktualisiert",
-        StorageInfoUpdated: "Speicherinfo aktualisiert",
-        PublishedSealedKey: "Versiegelter Schlüssel veröffentlicht",
-        DelegateAccess: "Delegierter Zugriff gewährt",
-        Deposited: "Tresor aufgefüllt",
-        Withdrawn: "Tresor abgehoben",
-        StrategySet: "Strategie gesetzt",
-        Executed: "Tick ausgeführt",
-        PaymentProcessed: "Zahlung abgewickelt",
-        ComputeProviderPaid: "Compute-Anbieter bezahlt",
-        EarningsWithdrawn: "Einnahmen ausgezahlt",
-        RoyaltySet: "Lizenzgebühr gesetzt",
-        ProtocolTreasuryProposed: "Tresor-Änderung vorgeschlagen",
-        ProtocolTreasuryUpdated: "Tresor aktualisiert",
-        ProtocolTreasuryProposalCancelled: "Vorschlag abgebrochen",
-        ProtocolFeeBpsUpdated: "Protokollgebühr aktualisiert",
-        PaymentTokenUpdated: "Zahlungs-Token aktualisiert",
-        Paused: "Vertrag pausiert",
-        Unpaused: "Vertrag reaktiviert",
-        MetadataJsonDecisionDocumented: "Metadaten-Entscheidung protokolliert",
-        Cloned: "Proxy geklont",
-        Upgraded: "Implementierung aktualisiert",
-        Initialized: "Vertrag initialisiert",
-        SignerProposed: "Signer vorgeschlagen",
-        SignerExecuted: "Oracle-Attestierung",
-        SignerProposalCancelled: "Signer-Vorschlag abgebrochen",
-        ProofUsed: "Oracle-Attestierung",
-        DelegationInstalled: "Delegation installiert",
-        DelegationRevoked: "Delegation widerrufen",
-        DelegatedExecuted: "Delegierte Ausführung",
-        AdminChanged: "Admin geändert",
-        BeaconUpgraded: "Beacon aktualisiert",
-        Tick: "Beleg indexiert",
-        Unknown: "tx gemined",
-      },
     },
     principles: {
       title: "Was Axiom {emphasis}anders macht.{endEmphasis}",
@@ -3432,25 +3030,6 @@ const german: Copy = {
         { title: "Minten.", body: "Eine Transaktion erstellt Agent und Tresor." },
         { title: "Finanzieren.", body: "Tresor aufladen. Tageslimit setzen." },
         { title: "Ausführen.", body: "Ticks laufen in deinen Regeln. Belege indexieren on-chain." },
-      ],
-    },
-    journey: {
-      title: "Zwei Wege {emphasis}zum Start.{endEmphasis}",
-      items: [
-        {
-          title: "Lerne die Grenze, bevor du unterschreibst.",
-          body: "Wie Signieren und Verwahrung getrennt werden und welche Wallets deine Schlüssel behalten. Kein Wallet zum Lesen nötig.",
-          meta: "Lesezeit · 3 min",
-          cta: "Wie die Signatur funktioniert",
-          onClick: "onGuide",
-        },
-        {
-          title: "Öffne die Konsole und bediene Belege.",
-          body: "Verbinde dich einmal zum Minten, Finanzieren und Ausführen. Die Konsole verfolgt jeden Schritt.",
-          meta: "Live · {count} Agents online",
-          cta: "Konsolenzugriff",
-          onClick: "goToApp",
-        },
       ],
     },
     footer: {

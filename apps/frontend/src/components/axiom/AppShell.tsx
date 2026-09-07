@@ -854,7 +854,7 @@ function PriorityActionStrip({
   return (
     <section
       className={`priority-action-strip priority-${action.priority}`}
-      aria-label={copy.landing.nextSafeAction}
+      aria-label={action.title}
     >
       <div className="priority-rail" aria-hidden="true">
         <i />
