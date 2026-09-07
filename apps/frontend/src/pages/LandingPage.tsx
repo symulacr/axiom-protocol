@@ -23,6 +23,7 @@ import { ThemeToggle } from "../components/axiom/ThemeToggle.js";
 import { useModalDismiss } from "../hooks/useModalDismiss.js";
 import { routePath, PUBLIC_HUB_PATHS } from "../lib/routeRegistry.js";
 import { getCopy, interpolate, type Copy, type Locale } from "../lib/copy.js";
+import type { LandingFooterLinkId } from "../lib/copy.js";
 import {
   GrainOverlay,
   Reveal,
@@ -40,23 +41,24 @@ function PrincipleIcon({ name }: { name: "shield" | "receipt" | "wallet" }) {
   return <CreditCard {...common} />;
 }
 
-/** Wave 5: footer + principle links are locale-keyed labels with no href in
- *  copy.ts, so the destinations are wired by the (locale-stable) index order
- *  — Agents/Receipts/Storage/Developers map onto the canonical hub paths. */
-const FOOTER_HREFS = [
-  PUBLIC_HUB_PATHS.agents,
-  PUBLIC_HUB_PATHS.proofs,
-  PUBLIC_HUB_PATHS.storage,
-  PUBLIC_HUB_PATHS.developers,
-] as const;
+/** Wave 5/F2b: footer links carry a stable id in copy.ts; the destinations
+ *  key off that id, so a copy reorder can never point a label at the wrong
+ *  hub path. */
+const FOOTER_HREFS: Record<LandingFooterLinkId, string> = {
+  agents: PUBLIC_HUB_PATHS.agents,
+  receipts: PUBLIC_HUB_PATHS.proofs,
+  storage: PUBLIC_HUB_PATHS.storage,
+  developers: PUBLIC_HUB_PATHS.developers,
+};
 
-/** Wave 5: principle cards (spec / receipts / wallet) get real destinations
- *  too — the audit flagged every `href="#"` on the landing as a dead link. */
-const PRINCIPLE_HREFS = [
-  PUBLIC_HUB_PATHS.developers,
-  PUBLIC_HUB_PATHS.proofs,
-  PUBLIC_HUB_PATHS.payments,
-] as const;
+/** Wave 5/F2b: principle cards (spec / receipts / wallet) keyed by their
+ *  copy.ts icon id — the audit flagged every `href="#"` on the landing as a
+ *  dead link, and the index wiring drifted on reorder. */
+const PRINCIPLE_HREFS: Record<"shield" | "receipt" | "wallet", string> = {
+  shield: PUBLIC_HUB_PATHS.developers,
+  receipt: PUBLIC_HUB_PATHS.proofs,
+  wallet: PUBLIC_HUB_PATHS.payments,
+};
 
 /** Mobile menu: same dismiss contract as the console overlays — Esc + Tab
  *  trap + initial focus + focus restore via useModalDismiss; the transparent
@@ -232,7 +234,7 @@ export function Landing({
                 <h3 dangerouslySetInnerHTML={{ __html: p.title }} />
                 <p dangerouslySetInnerHTML={{ __html: p.body }} />
                 {p.link !== "" && (
-                  <a href={PRINCIPLE_HREFS[i]} className="p-link">
+                  <a href={PRINCIPLE_HREFS[p.icon]} className="p-link">
                     {p.link}{" "}
                     <ArrowRight
                       size={14}
@@ -288,8 +290,8 @@ export function Landing({
         <footer className="landing-footer" id="footer">
           <small>{copy.landing.footer.credit}</small>
           <div className="footer-meta">
-            {copy.landing.footer.links.map((l, i) => (
-              <a key={i} href={FOOTER_HREFS[i]}>
+            {copy.landing.footer.links.map((l) => (
+              <a key={l.id} href={FOOTER_HREFS[l.id]}>
                 {l.label}
               </a>
             ))}

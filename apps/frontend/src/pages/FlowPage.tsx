@@ -486,6 +486,9 @@ export function FlowPage({
   const payment = usePayment();
   const transfer = useTransfer();
   const tickHook = useOrchestratorTick();
+  // Set only when tickStream resolves — a cancel keeps streamedTokens, so the
+  // status node must not announce "complete" for a user-aborted stream.
+  const [tickDone, setTickDone] = useState(false);
 
   const requestedAgent = search.get("agent");
   const intent = search.get("intent");
@@ -990,8 +993,7 @@ export function FlowPage({
       } else if (kind === "deposit" || kind === "withdraw") {
         // Vault write via shared encode relay; receipt row + receipt phase ride the pipeline below.
         const txHash = await vaultWrite.handleSubmit(draft.value.trim());
-        if (!txHash)
-          throw new Error("Connect a wallet to submit this operation.");
+        if (!txHash) throw new Error(f.connectToSubmit);
         settleFlowTx(
           txHash,
           {
@@ -1007,6 +1009,7 @@ export function FlowPage({
           interpolate(flow.notice, { agent: selectedTokenId }),
         );
       } else {
+        setTickDone(false);
         const result = await tickHook.tickStream(
           {
             vault: getAxiomStrategyVaultAddress(chainId),
@@ -1015,6 +1018,7 @@ export function FlowPage({
           },
           {},
         );
+        setTickDone(true);
         const hash = result.execution?.txHash ?? result.storage.rootHash;
         const outcome =
           result.recommendation.action === "act" ? f.tickActed : f.tickHeld;
@@ -1044,6 +1048,7 @@ export function FlowPage({
   };
 
   const simulateFailure = (reason: "rejected" | "timeout") => {
+    setTickDone(false);
     tickHook.cancelTick();
     const error =
       reason === "timeout" ? f.simulateTimeoutError : f.simulateRejectedError;
@@ -1053,6 +1058,7 @@ export function FlowPage({
 
   const restart = () => {
     tickHook.resetStream();
+    setTickDone(false);
     setSubmitError(null);
     resetHandoff();
     dispatch({ type: "clear-draft", flow: kind });
@@ -1395,7 +1401,11 @@ export function FlowPage({
                     every chunk. Errors announce via role=alert below,
                     completion via the receipt StatePill. */}
                 <span className="visually-hidden" role="status">
-                  {tickHook.isStreaming ? f.streamLabel : ""}
+                  {tickHook.isStreaming
+                    ? f.streamStarted
+                    : tickDone && !tickHook.streamingError
+                      ? f.streamComplete
+                      : ""}
                 </span>
                 <pre className="mono" aria-hidden="true">
                   {tickHook.streamedTokens || "…"}
@@ -1565,7 +1575,7 @@ export function FlowPage({
               draft={draft}
               agentName={
                 kind === "mint"
-                  ? draft.value.trim() || "Axiom agent"
+                  ? draft.value.trim() || f.mintAgentFallback
                   : selectedAgentName
               }
               busy={isBusy}
@@ -1937,7 +1947,7 @@ function OperationReviewSheet({
             {draft.error}
           </div>
         )}
-        <div className="review-actions" aria-label="Operation actions">
+        <div className="review-actions" aria-label={f.operationActions}>
           <button
             className="button button-primary"
             onClick={onPrimary}

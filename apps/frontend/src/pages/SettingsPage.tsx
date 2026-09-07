@@ -468,7 +468,7 @@ export function SettingsPage({
                 <dd>{labels.shortcutPalette}</dd>
               </div>
               <div>
-                <dt>Alt 1 / 3–5</dt>
+                <dt>Alt 1 / 3–4</dt>
                 <dd>{labels.shortcutSurfaces}</dd>
               </div>
               <div>

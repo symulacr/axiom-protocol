@@ -637,7 +637,9 @@ export function AgentPage({
       <PageHead title={agentName}>
         <div className="page-head-actions">
           <Status
-            label={strategyBound ? "online" : "attention"}
+            label={
+              strategyBound ? agentCopy.statusOnline : agentCopy.statusAttention
+            }
             tone={strategyBound ? "success" : "warning"}
           />
           <Button
