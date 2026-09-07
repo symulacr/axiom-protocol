@@ -14,7 +14,7 @@ export function StatePill({ state }: { state: TxState }) {
   // stale the moment the user switched language without a reload.
   const { state: uiState } = useUiStore();
   const labels = getCopy(uiState.settings.locale).status;
-  const statusLabel = uiState.settings.locale === "fr" ? "Statut" : "Status";
+  const statusLabel = labels.label;
   return (
     <span
       className={`state-pill state-${state}${state === "confirmed" ? " is-quiet" : ""}`}

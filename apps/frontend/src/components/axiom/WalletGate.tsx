@@ -337,7 +337,7 @@ export function WalletGate({
                 <span>{copy.wallet.networkMismatch}</span>
                 <strong>
                   {interpolate(copy.wallet.connectedChain, {
-                    chainId: String(chainId ?? "unknown"),
+                    chainId: String(chainId ?? copy.wallet.unknownChain),
                   })}
                 </strong>
                 <small>

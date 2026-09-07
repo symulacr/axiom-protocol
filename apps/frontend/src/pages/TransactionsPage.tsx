@@ -62,7 +62,10 @@ function eventKindIcon(eventName: string) {
   return <Zap size={16} />;
 }
 
-function eventToTransaction(event: AxiomEvent): Transaction {
+function eventToTransaction(
+  event: AxiomEvent,
+  time: ReturnType<typeof getCopy>["time"],
+): Transaction {
   const tokenId = eventTokenId(event);
   return {
     id: `${event.txHash}:${event.logIndex}`,
@@ -72,8 +75,13 @@ function eventToTransaction(event: AxiomEvent): Transaction {
       : `block ${event.blockNumber}`,
     hash: event.txHash || "—",
     age: event.timestamp
-      ? `${Math.max(0, Math.round((Date.now() - event.timestamp * 1000) / 60000))}m ago`
-      : "indexed",
+      ? time.minutesAgo(
+          Math.max(
+            0,
+            Math.round((Date.now() - event.timestamp * 1000) / 60000),
+          ),
+        )
+      : time.indexed,
     state: "confirmed",
     route: tokenId ? `/agents/${tokenId}` : routePath("transactions"),
     agent: tokenId ?? "chain",
@@ -83,9 +91,14 @@ function eventToTransaction(event: AxiomEvent): Transaction {
 
 /** local receipts persist across reload — derive their age from the
  * persisted creation time instead of resurrecting a frozen "now". */
-function transactionAge(tx: Transaction): string {
+function transactionAge(
+  tx: Transaction,
+  time: ReturnType<typeof getCopy>["time"],
+): string {
   if (typeof tx.createdAt === "number") {
-    return `${Math.max(0, Math.round((Date.now() - tx.createdAt) / 60000))}m ago`;
+    return time.minutesAgo(
+      Math.max(0, Math.round((Date.now() - tx.createdAt) / 60000)),
+    );
   }
   return tx.age;
 }
@@ -186,7 +199,7 @@ function ReceiptDrawer({
     if (!clipboard?.writeText) return;
     try {
       await clipboard.writeText(tx.hash);
-      dispatch({ type: "notice", notice: "Receipt hash copied." });
+      dispatch({ type: "notice", notice: txCopy.receiptCopied });
     } catch {
       // clipboard denied — hash stays selectable in the drawer
     }
@@ -216,12 +229,12 @@ function ReceiptDrawer({
           rel="noreferrer"
         >
           <ArrowRight size={16} />
-          View on explorer
+          {txCopy.viewOnExplorer}
         </a>
       ) : (
         <span className="button button-primary" aria-disabled="true">
           <ArrowRight size={16} />
-          View on explorer
+          {txCopy.viewOnExplorer}
         </span>
       )}
       <Button
@@ -268,7 +281,7 @@ function ReceiptDrawer({
                 <button
                   className="inline-copy"
                   onClick={() => void copyHash()}
-                  aria-label="Copy receipt hash"
+                  aria-label={txCopy.copyReceiptHash}
                 >
                   <Copy size={14} />
                 </button>
@@ -284,10 +297,10 @@ function ReceiptDrawer({
                     target="_blank"
                     rel="noreferrer"
                   >
-                    View on explorer <ArrowRight size={14} />
+                    {txCopy.viewOnExplorer} <ArrowRight size={14} />
                   </a>
                 ) : (
-                  <span>View on explorer</span>
+                  <span>{txCopy.viewOnExplorer}</span>
                 )}
               </dd>
             </div>
@@ -388,12 +401,12 @@ export function TransactionsPage({
       merged.set(eventDedupeKey(event), event);
     }
     const chainEvents = [...merged.values()].map((event) =>
-      eventToTransaction(event),
+      eventToTransaction(event, copy.time),
     );
     const seen = new Set(chainEvents.map((tx) => tx.id));
     const local = state.transactions.filter((tx) => !seen.has(tx.id));
     return [...local, ...chainEvents];
-  }, [events, wsEvents, eventScope, state.transactions]);
+  }, [events, wsEvents, eventScope, state.transactions, copy.time]);
 
   const filtered =
     filter === "all"
@@ -526,12 +539,12 @@ export function TransactionsPage({
         >
           <div className="transaction-filter-controls">
             <span className="result-count num" aria-live="polite">
-              {filtered.length} of {transactions.length} receipts
+              {txCopy.receiptsCount(filtered.length, transactions.length)}
             </span>
             <div
               className="filters"
               role="group"
-              aria-label="Receipt state filter"
+              aria-label={txCopy.filterA11y}
             >
               {(["all", "review", "confirmed"] as const).map((value) => (
                 <button
@@ -593,7 +606,7 @@ export function TransactionsPage({
                 {truncateHex(tx.hash, 8, 4)}
               </span>
               <span className="mono num transaction-age">
-                {transactionAge(tx)}
+                {transactionAge(tx, copy.time)}
               </span>
               <StatePill state={tx.state} />
               <ChevronRight size={16} />
@@ -628,7 +641,7 @@ export function TransactionsPage({
               <p>{txCopy.emptyState}</p>
               {/* U15 icon order: this is an action, so the icon leads. */}
               <button className="text-link" onClick={() => chooseFilter("all")}>
-                <RotateCcw size={14} /> Clear filter
+                <RotateCcw size={14} /> {txCopy.clearFilter}
               </button>
             </div>
           )}

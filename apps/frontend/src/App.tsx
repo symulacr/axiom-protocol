@@ -608,7 +608,7 @@ export function App(): ReactElement {
     const copy = getCopy(locale);
     const clean = location.pathname;
     if (clean === "/") {
-      document.title = "Axiom: Own an AI Agent On-Chain";
+      document.title = copy.landing.docTitle;
       return;
     }
     const agentMatch = clean.match(/^\/agents\/(\d+)/);
@@ -628,7 +628,7 @@ export function App(): ReactElement {
             "/deposit": copy.nav.deposit,
             "/withdraw": copy.nav.withdraw,
             "/settings": copy.settings.pageTitle,
-            "/staking": "0G Stake",
+            "/staking": copy.staking.pageTitle,
             "/transfer/co-sign": copy.flowUi.receiveTitle,
           }[clean];
     if (name) document.title = `${name} — Axiom`;
@@ -828,7 +828,7 @@ function WrongNetworkNotice({
     }
   };
   return (
-    <LockedShell statusLabel="network mismatch">
+    <LockedShell statusLabel={copy.gate.statusNetwork}>
       <section className="locked-route-copy" role="alert">
         <h1>{interpolate(copy.wallet.wrongNetworkTitle, chainVars)}</h1>
         <p>{copy.wallet.wrongNetworkDescription}</p>
@@ -873,7 +873,7 @@ function LockedRoute({
 
   return (
     <LockedShell
-      statusLabel="wallet not connected"
+      statusLabel={copy.gate.statusWallet}
       shellClass={`locked-${gate.slug}`}
     >
       <section className="locked-route-copy">
@@ -894,12 +894,12 @@ function LockedRoute({
         <div className="locked-preview">
           <img
             src={gate.media}
-            alt={`${gate.label} preview`}
+            alt={copy.gate.previewAlt(gate.label)}
             loading="lazy"
             decoding="async"
           />
           <div>
-            <small>Preview — connect a wallet for live data.</small>
+            <small>{copy.gate.previewNote}</small>
           </div>
         </div>
         {/* Schematic mock, not data: masked values only (the gate never fakes

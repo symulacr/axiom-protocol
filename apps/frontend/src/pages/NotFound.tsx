@@ -14,16 +14,15 @@ import { getCopy, type Locale } from "../lib/copy.js";
 
 export default function Recovery404({ locale }: { locale: Locale }) {
   const copy = getCopy(locale).notFound;
-  // Wave-12B: same index-order wiring as LandingPage's FOOTER_HREFS —
-  // labels are locale keys, destinations come from the registry-derived
-  // PUBLIC_HUB_PATHS (agents/payments/proofs/storage/developers), so the
-  // two can never drift from the canonical hub paths.
+  // Wave-12B/F2b: labels are keyed by the same slug union the registry
+  // derives PUBLIC_HUB_PATHS from — a copy reorder can no longer point a
+  // label at the wrong hub path.
   return (
     <div className="recovery-404">
       <div className="recovery-404-art">
         <img
           src={MEDIA.recovery404}
-          alt="Abstract recoverable Axiom route"
+          alt={copy.heroAlt}
           loading="lazy"
           decoding="async"
         />
@@ -55,9 +54,9 @@ export default function Recovery404({ locale }: { locale: Locale }) {
         <nav className="recovery-404-explore" aria-label={copy.exploreA11y}>
           {(
             ["agents", "payments", "proofs", "storage", "developers"] as const
-          ).map((slug, i) => (
+          ).map((slug) => (
             <a key={slug} href={PUBLIC_HUB_PATHS[slug]}>
-              {copy.hubLabels[i]}
+              {copy.hubLabels[slug]}
             </a>
           ))}
         </nav>

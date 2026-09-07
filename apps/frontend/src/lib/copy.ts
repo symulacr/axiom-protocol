@@ -4,10 +4,16 @@
  * phosphor states factual, and avoid implying a live wallet or contract call.
  */
 
+import type { PublicSeoSlug } from "./routeRegistry";
+
 export type Locale = "en" | "fr" | "de";
 /** Sidebar rail group-header keys (h1 §1) — indexable subset of Copy["nav"]. */
 export type NavGroupKey =
   "groupOverview" | "groupOperations" | "groupResources";
+/** Landing footer link ids — key the FOOTER_HREFS map in LandingPage, so
+ * label↔href pairs survive copy reorders (F2b). */
+export type LandingFooterLinkId =
+  "agents" | "receipts" | "storage" | "developers";
 type CopyFlow =
   "mint" | "payment" | "transfer" | "tick" | "deposit" | "withdraw";
 
@@ -111,10 +117,18 @@ export type Copy = {
     switchToDark: string;
     /** U27: skip-to-content link in AppShell. */
     skipToContent: string;
+    /** I5: ui.tsx shared primitives (CopyButton + Spinner) read these via
+     * useUiStore, so every consumer localizes without prop threading. */
+    copyLabel: string;
+    copyA11y: string;
+    copiedA11y: string;
+    loading: string;
   };
   landing: {
     title: string;
     description: string;
+    /** document.title for the landing route (App.tsx route table). */
+    docTitle: string;
     /** Closing CTA before the footer; empty locales fall back to English. */
     closingCta: string;
     menuGuideHint: string;
@@ -148,7 +162,9 @@ export type Copy = {
     /** L2-N8: landing footer. */
     footer: {
       credit: string;
-      links: ReadonlyArray<{ label: string }>;
+      /** F2b: links carry a stable id that keys LandingPage's FOOTER_HREFS
+       * map — the old index wiring drifted if copy reordered. */
+      links: ReadonlyArray<{ id: LandingFooterLinkId; label: string }>;
     };
   };
   wallet: {
@@ -174,6 +190,8 @@ export type Copy = {
     pairingHint: string;
     /** Shown when no injected provider announced via EIP-6963. */
     noWalletDetected: string;
+    /** Interpolated as the chain id when the wallet reports none. */
+    unknownChain: string;
   };
   guide: {
     nextStep: string;
@@ -190,6 +208,8 @@ export type Copy = {
     openSettings: string;
   };
   staking: {
+    /** PageHead title + document.title (the App route table reuses it). */
+    pageTitle: string;
     lede: string;
     body: string;
     openVault: string;
@@ -213,13 +233,14 @@ export type Copy = {
     openConsole: string;
     /** document.title for unknown routes. */
     title: string;
+    /** Alt text for the recovery illustration. */
+    heroAlt: string;
     /** Wave-12B: accessible name for the recovery explore row. */
     exploreA11y: string;
-    /** Wave-12B: public hub labels for the recovery explore row — the
-     * destinations are wired by the locale-stable PUBLIC_HUB_PATHS order
-     * (agents/payments/proofs/storage/developers, mirrors LandingPage's
-     * FOOTER_HREFS index contract). */
-    hubLabels: [string, string, string, string, string];
+    /** Wave-12B/F2b: public hub labels for the recovery explore row, keyed by
+     * the same slug union the registry derives PUBLIC_HUB_PATHS from — labels
+     * and destinations can no longer drift apart on reorder. */
+    hubLabels: Record<PublicSeoSlug, string>;
   };
   /** Pre-auth locked-gate hero copy for every gated route — one locale owner
    * per surface. The visual slots (slug/label/media/schematic) live in
@@ -497,6 +518,23 @@ export type Copy = {
     footHint: string;
     storedOn0G: string;
     historyClose: string;
+    /** I1: the run-loop strings that were hardcoded English. */
+    /** Terminal turn-limit message; {max} is MAX_TOOL_LOOPS. */
+    turnLimit: (max: number) => string;
+    /** 429 toast. */
+    rateLimited: string;
+    /** Empty terminal answer from the model. */
+    noResponse: string;
+    /** The model named an unregistered tool (run card + tool result). */
+    unknownTool: (name: string) => string;
+    /** openTransfer rejects a non-numeric id. */
+    invalidTokenId: (tokenId: string) => string;
+    /** TransferModal closed without submitting. */
+    transferCancelled: string;
+    /** Stream start/end announcements on the persistent visually-hidden
+     * status node; the token flush itself stays aria-hidden (M2). */
+    streamStarted: string;
+    streamComplete: string;
   };
   /** GasTank card (V3 W5-B). Placeholders: {used}/{cap} grant counters. */
   gasTank: {
@@ -642,8 +680,6 @@ export type Copy = {
     intentBounded: string;
     intentRecovery: string;
     intentReceipt: string;
-    /** Visually hidden label for the tick token stream. */
-    streamLabel: string;
     cancelStream: string;
     /** proto-subpages-a mint trims: cost row replaces Network+Limit on the
      * mint sheet. */
@@ -774,11 +810,70 @@ export type Copy = {
     claimRawToggle: string;
     /** Plain-language ghost exit used by CoSignPage back buttons. */
     goHome: string;
+    /** I3: vault-write guard when no wallet is connected at submit time. */
+    connectToSubmit: string;
+    /** I3: mint review fallback when the name field is blank. */
+    mintAgentFallback: string;
+    /** I3: aria-label for the review-sheet action row. */
+    operationActions: string;
+    /** Tick stream start/end announcements on the visually-hidden status
+     * node; the token flush itself is aria-hidden (M4). */
+    streamStarted: string;
+    streamComplete: string;
+    /** CoSignPage hint shown when the Clipboard API is unavailable. */
+    receiveCopyManual: string;
+    /** One-word actions shared by flow overlays. */
+    cancel: string;
+    edit: string;
+    /** I4: TransferModal body — phases, fields, validation, actions, toasts. */
+    transferPhases: Record<
+      "idle" | "challenge" | "signing" | "finalizing" | "confirming",
+      string
+    >;
+    transferRetryHint: string;
+    transferErrChallenge: string;
+    transferErrSubmit: string;
+    transferErrGeneric: string;
+    closeTransferA11y: string;
+    transferLede: string;
+    transferReceiverLabel: string;
+    transferPubkeyLabel: string;
+    transferPubkeyPlaceholder: string;
+    transferRekeySummary: string;
+    transferRekeyHint: string;
+    transferOldKeyLabel: string;
+    transferOldKeyPlaceholder: string;
+    transferOldUriLabel: string;
+    transferOldUriPlaceholder: string;
+    transferErrKeyRequired: string;
+    transferErrKeyPrefix: string;
+    transferErrKeyLength: (length: number) => string;
+    transferErrRekeyPair: string;
+    transferSigning: string;
+    transferSignAction: string;
+    transferConfirmLede: string;
+    transferAuthorizedTitle: string;
+    transferAuthorizedBody: string;
+    transferProofDetails: string;
+    /** Sealed-proof labels render inline after a mono value; the second one
+     * carries its "; " separator so locales keep their own punctuation. */
+    transferNewHashLabel: string;
+    transferSealedKeyLabel: string;
+    transferOwnershipProof: string;
+    transferValidUntil: string;
+    transferAcceptedBy: string;
+    transferSubmitting: string;
+    transferConfirmAction: string;
+    /** Success toast; {hash} arrives pre-truncated. */
+    transferConfirmedToast: (hash: string) => string;
   };
   agentDetail: {
     /** Balance caption: `{amount}` — formatted balance + symbol from chain config. */
     balanceToSpend: string;
     needsSetup: string;
+    /** Head status pill pair: strategy bound → online, otherwise attention. */
+    statusOnline: string;
+    statusAttention: string;
     dataHash: string;
     overview: string;
     execute: string;
@@ -906,8 +1001,29 @@ export type Copy = {
      * the row's kind/detail/pill — it leads with its own title. */
     drawerTitle: string;
     proofTitle: string;
+    /** I2: receipt-surface strings that were hardcoded English. */
+    viewOnExplorer: string;
+    copyReceiptHash: string;
+    receiptCopied: string;
+    receiptsCount: (shown: number, total: number) => string;
+    filterA11y: string;
+    clearFilter: string;
   };
   status: Record<string, string>;
+  /** I6: relative-age strings shared by receipt surfaces. */
+  time: {
+    minutesAgo: (minutes: number) => string;
+    /** Age cell for chain rows the indexer returned without a timestamp. */
+    indexed: string;
+  };
+  /** Locked-route shell chrome (App.tsx LockedShell pill + gate preview). */
+  gate: {
+    statusWallet: string;
+    statusNetwork: string;
+    /** Gate preview alt text; the label is the consoleCatalog gate label. */
+    previewAlt: (label: string) => string;
+    previewNote: string;
+  };
   /** T1 guided first success: the dismissible Dashboard activation card. */
   checklist: {
     title: string;
@@ -999,11 +1115,16 @@ const english: Copy = {
     walletAccess: "Axiom wallet access",
     closeWalletAccess: "Close wallet access",
     skipToContent: "Skip to content",
+    copyLabel: "Copy",
+    copyA11y: "Copy to clipboard",
+    copiedA11y: "Copied to clipboard",
+    loading: "Loading",
   },
   landing: {
     title: "Ownable AI agents, on 0G.",
     description:
       "Mint an agent with a bounded vault. It runs only inside rules you set, and every action leaves an on-chain receipt.",
+    docTitle: "Axiom: Own an AI Agent On-Chain",
     closingCta: "Mint your first agent.",
     menuGuideHint: "How signing and receipts work",
     menuDevelopers: "Developers",
@@ -1041,18 +1162,24 @@ const english: Copy = {
     how: {
       title: "Three steps to {emphasis}a running agent.{endEmphasis}",
       steps: [
-        { title: "Mint.", body: "One transaction creates the agent and its vault." },
+        {
+          title: "Mint.",
+          body: "One transaction creates the agent and its vault.",
+        },
         { title: "Fund.", body: "Top up the vault. Set the daily limit." },
-        { title: "Run.", body: "Ticks execute inside your rules. Receipts index on-chain." },
+        {
+          title: "Run.",
+          body: "Ticks execute inside your rules. Receipts index on-chain.",
+        },
       ],
     },
     footer: {
       credit: "Built on 0G · Mainnet beta",
       links: [
-        { label: "Agents" },
-        { label: "Receipts" },
-        { label: "Storage" },
-        { label: "Developers" },
+        { id: "agents", label: "Agents" },
+        { id: "receipts", label: "Receipts" },
+        { id: "storage", label: "Storage" },
+        { id: "developers", label: "Developers" },
       ],
     },
   },
@@ -1074,6 +1201,7 @@ const english: Copy = {
     pairingHint: "Copy the code into your wallet app's WalletConnect screen.",
     noWalletDetected:
       "No browser wallet detected. Install one, or use a mobile wallet.",
+    unknownChain: "unknown",
   },
   guide: {
     nextStep: "Next step",
@@ -1092,6 +1220,7 @@ const english: Copy = {
     openSettings: "Open settings",
   },
   staking: {
+    pageTitle: "0G Stake",
     lede: "Staking isn\u0027t part of Axiom.",
     body: "Staking lives in the official 0G app : agents, vaults and receipts stay here.",
     openVault: "Go to my agents",
@@ -1108,15 +1237,16 @@ const english: Copy = {
     returnToLanding: "Return to landing",
     openConsole: "Open the app",
     title: "Page not found",
+    heroAlt: "Abstract recoverable Axiom route",
     // Wave-12B: recovery explore row (accessible name + hub labels).
     exploreA11y: "Explore public paths",
-    hubLabels: [
-      "Agents",
-      "Payments",
-      "Proofs",
-      "Storage",
-      "Developers",
-    ],
+    hubLabels: {
+      agents: "Agents",
+      payments: "Payments",
+      proofs: "Proofs",
+      storage: "Storage",
+      developers: "Developers",
+    },
   },
   errorBoundary: {
     networkTitle: "Connection problem",
@@ -1377,6 +1507,15 @@ const english: Copy = {
     footHint: "Shift+Enter for a new line",
     storedOn0G: "Stored on 0G",
     historyClose: "Close history",
+    turnLimit: (max) =>
+      `Turn limit hit after ${max} steps — send "continue" to keep going.`,
+    rateLimited: "Rate limited: wait a moment and try again.",
+    noResponse: "No response: try again.",
+    unknownTool: (name) => `Unknown tool: ${name}`,
+    invalidTokenId: (tokenId) => `invalid tokenId: ${tokenId}`,
+    transferCancelled: "Transfer cancelled: no transaction was submitted.",
+    streamStarted: "Response started.",
+    streamComplete: "Response complete.",
   },
   gasTank: {
     title: "Gas Tank",
@@ -1577,7 +1716,6 @@ const english: Copy = {
     intentBounded: "Instruction selected. Streaming stays cancellable.",
     intentRecovery: "Recovering an existing receipt. No duplicate operation.",
     intentReceipt: "Linked to an indexed receipt.",
-    streamLabel: "Streamed tokens",
     cancelStream: "Cancel stream",
     factCost: "Cost",
     confirmMint: "1 click in your wallet, usual network fee",
@@ -1697,10 +1835,68 @@ const english: Copy = {
     claimUrlLabel: "Approval link",
     claimRawToggle: "Advanced, raw signature",
     goHome: "Home",
+    connectToSubmit: "Connect a wallet to submit this operation.",
+    mintAgentFallback: "Axiom agent",
+    operationActions: "Operation actions",
+    streamStarted: "Stream started.",
+    streamComplete: "Stream complete.",
+    receiveCopyManual:
+      "Clipboard unavailable: select the link above and copy it manually.",
+    cancel: "Cancel",
+    edit: "Edit",
+    transferPhases: {
+      idle: "Ready",
+      challenge: "Preparing transfer…",
+      signing: "Waiting for signature…",
+      finalizing: "Securing data for the receiver…",
+      confirming: "Confirming on-chain…",
+    },
+    transferRetryHint: "Failed. Tap Edit to retry.",
+    transferErrChallenge: "The request failed. Please try again.",
+    transferErrSubmit:
+      "Submission failed. Nothing was sent. Tap Edit to retry.",
+    transferErrGeneric: "Something went wrong. Tap Edit to start over.",
+    closeTransferA11y: "Close transfer",
+    transferLede:
+      "You'll sign once to authorize, then confirm the on-chain transfer.",
+    transferReceiverLabel: "Receiver address",
+    transferPubkeyLabel: "Receiver public key",
+    transferPubkeyPlaceholder: "0x…  (128 hex chars)",
+    transferRekeySummary: "Re-encrypt for receiver (optional)",
+    transferRekeyHint:
+      "Optional: AES key + storage URI so only the receiver can read the data after the transfer. Blank = sign-only.",
+    transferOldKeyLabel: "Old data encryption key (base64)",
+    transferOldKeyPlaceholder: "base64 32-byte AES key",
+    transferOldUriLabel: "Old data URI (0x…)",
+    transferOldUriPlaceholder: "0x… storage root hash",
+    transferErrKeyRequired: "required",
+    transferErrKeyPrefix: "must be 0x-prefixed",
+    transferErrKeyLength: (length) =>
+      `must be ${length} chars (64 raw bytes, no 0x04 prefix)`,
+    transferErrRekeyPair:
+      "supply both old data key and old data URI to re-encrypt, or leave both blank",
+    transferSigning: "Signing…",
+    transferSignAction: "Sign transfer authorization",
+    transferConfirmLede:
+      "Confirm. Your wallet will ask for the final signature.",
+    transferAuthorizedTitle: "Transfer authorized",
+    transferAuthorizedBody:
+      "the agent's data was re-encrypted so only the new owner can read it.",
+    transferProofDetails: "Proof details",
+    transferNewHashLabel: "New metadata hash:",
+    transferSealedKeyLabel: "; new sealed key:",
+    transferOwnershipProof: "Ownership proof",
+    transferValidUntil: "Valid until",
+    transferAcceptedBy: "Accepted by",
+    transferSubmitting: "Submitting…",
+    transferConfirmAction: "Confirm on-chain transfer",
+    transferConfirmedToast: (hash) => `Transfer ${hash}… confirmed`,
   },
   agentDetail: {
     balanceToSpend: "Has {amount} to spend, ready",
     needsSetup: "Needs setup",
+    statusOnline: "online",
+    statusAttention: "attention",
     dataHash: "Metadata hash",
     overview: "About",
     execute: "Run",
@@ -1830,8 +2026,15 @@ const english: Copy = {
     runAnother: "Run another like this",
     drawerTitle: "Receipt detail",
     proofTitle: "Technical details",
+    viewOnExplorer: "View on explorer",
+    copyReceiptHash: "Copy receipt hash",
+    receiptCopied: "Receipt hash copied.",
+    receiptsCount: (shown, total) => `${shown} of ${total} receipts`,
+    filterA11y: "Receipt state filter",
+    clearFilter: "Clear filter",
   },
   status: {
+    label: "Status",
     ready: "Ready to start",
     approval: "Approval requested",
     signing: "Signature requested",
@@ -1841,6 +2044,16 @@ const english: Copy = {
     reverted: "Reverted",
     rejected: "Rejected",
     stale: "Needs review",
+  },
+  time: {
+    minutesAgo: (minutes) => `${minutes}m ago`,
+    indexed: "indexed",
+  },
+  gate: {
+    statusWallet: "wallet not connected",
+    statusNetwork: "network mismatch",
+    previewAlt: (label) => `${label} preview`,
+    previewNote: "Preview — connect a wallet for live data.",
   },
   // Locked-gate heroes — every gated route in one table (was: English strings
   // in consoleCatalog.lockedRouteMeta + a lockedHero override for the three
@@ -2000,6 +2213,10 @@ const french: Copy = {
     walletAccess: "Accès wallet Axiom",
     closeWalletAccess: "Fermer l’accès wallet",
     skipToContent: "Aller au contenu",
+    copyLabel: "Copier",
+    copyA11y: "Copier dans le presse-papiers",
+    copiedA11y: "Copié dans le presse-papiers",
+    loading: "Chargement",
   },
   landing: {
     ...english.landing,
@@ -2007,6 +2224,7 @@ const french: Copy = {
     description:
       "Mintez un agent avec un coffre plafonné. Il ne s'exécute que dans les règles que vous fixez, et chaque action laisse un reçu on-chain.",
     closingCta: "Mintez votre premier agent.",
+    docTitle: "Axiom : possédez vos agents IA on-chain",
     menuGuideHint: "Comment fonctionnent signatures et reçus",
     menuDevelopers: "Développeurs",
     menuDevelopersHint: "APIs et outils pour développeurs",
@@ -2043,18 +2261,27 @@ const french: Copy = {
     how: {
       title: "Trois étapes vers {emphasis}un agent actif.{endEmphasis}",
       steps: [
-        { title: "Mintez.", body: "Une transaction crée l'agent et son coffre." },
-        { title: "Financez.", body: "Approvisionnez le coffre. Fixez la limite quotidienne." },
-        { title: "Opérez.", body: "Les ticks s'exécutent dans vos règles. Les reçus s'indexent on-chain." },
+        {
+          title: "Mintez.",
+          body: "Une transaction crée l'agent et son coffre.",
+        },
+        {
+          title: "Financez.",
+          body: "Approvisionnez le coffre. Fixez la limite quotidienne.",
+        },
+        {
+          title: "Opérez.",
+          body: "Les ticks s'exécutent dans vos règles. Les reçus s'indexent on-chain.",
+        },
       ],
     },
     footer: {
       credit: "Construit sur 0G · Mainnet beta",
       links: [
-        { label: "Agents" },
-        { label: "Reçus" },
-        { label: "Stockage" },
-        { label: "Développeurs" },
+        { id: "agents", label: "Agents" },
+        { id: "receipts", label: "Reçus" },
+        { id: "storage", label: "Stockage" },
+        { id: "developers", label: "Développeurs" },
       ],
     },
   },
@@ -2074,9 +2301,11 @@ const french: Copy = {
     walletConnectLabel: "WalletConnect",
     walletConnectHint: "Scannez le QR code ou ouvrez votre app wallet",
     pairingTitle: "Appairez votre wallet",
-    pairingHint: "Copiez le code dans l'écran WalletConnect de votre app wallet.",
+    pairingHint:
+      "Copiez le code dans l'écran WalletConnect de votre app wallet.",
     noWalletDetected:
       "Aucun wallet de navigateur détecté. Installez-en un ou utilisez un wallet mobile.",
+    unknownChain: "inconnue",
   },
   guide: {
     nextStep: "Étape suivante",
@@ -2096,6 +2325,7 @@ const french: Copy = {
     openSettings: "Ouvrir les réglages",
   },
   staking: {
+    pageTitle: "0G Stake",
     lede: "Le staking ne fait pas partie d’Axiom.",
     body: "Le staking passe par l’app officielle 0G : agents, coffres et reçus restent ici.",
     openVault: "Aller à mes agents",
@@ -2112,15 +2342,16 @@ const french: Copy = {
     returnToLanding: "Retour à l’accueil",
     openConsole: "Ouvrir l’app",
     title: "Page introuvable",
+    heroAlt: "Route Axiom abstraite récupérable",
     // Wave-12B : rangée d’exploration de secours (nom accessible + libellés hubs).
     exploreA11y: "Explorer les parcours publics",
-    hubLabels: [
-      "Agents",
-      "Paiements",
-      "Preuves",
-      "Stockage",
-      "Développeurs",
-    ],
+    hubLabels: {
+      agents: "Agents",
+      payments: "Paiements",
+      proofs: "Preuves",
+      storage: "Stockage",
+      developers: "Développeurs",
+    },
   },
   errorBoundary: {
     networkTitle: "Problème de connexion",
@@ -2382,6 +2613,15 @@ const french: Copy = {
     footHint: "Maj+Entrée pour un saut de ligne",
     storedOn0G: "Stocké sur 0G",
     historyClose: "Fermer l'historique",
+    turnLimit: (max) =>
+      `Limite de tours atteinte après ${max} étapes : envoyez « continue » pour poursuivre.`,
+    rateLimited: "Trop de requêtes : patientez un instant, puis réessayez.",
+    noResponse: "Aucune réponse : réessayez.",
+    unknownTool: (name) => `Outil inconnu : ${name}`,
+    invalidTokenId: (tokenId) => `tokenId invalide : ${tokenId}`,
+    transferCancelled: "Transfert annulé : aucune transaction n’a été soumise.",
+    streamStarted: "Début de la réponse.",
+    streamComplete: "Réponse terminée.",
   },
   gasTank: {
     ...english.gasTank,
@@ -2402,8 +2642,7 @@ const french: Copy = {
     faucetEligibleBadge: "robinet disponible",
     faucetIneligibleBadge: "robinet réclamé",
     faucetClaimAction: "Réclamer les jetons de test",
-    depositQueued:
-      "Dépôt en file : suivez-le dans le centre des transactions.",
+    depositQueued: "Dépôt en file : suivez-le dans le centre des transactions.",
     refillDone: "Subvention de gaz réclamée. Solde du réservoir actualisé.",
     refillFailed:
       "Échec de la réclamation de gaz : vérifiez votre connexion et réessayez.",
@@ -2589,7 +2828,6 @@ const french: Copy = {
     intentRecovery:
       "Récupération d’un reçu existant. Aucune opération en double.",
     intentReceipt: "Lié à un reçu indexé.",
-    streamLabel: "Flux de tokens",
     cancelStream: "Annuler le flux",
     factCost: "Coût",
     confirmMint: "Un clic dans votre wallet, frais de réseau habituels",
@@ -2716,11 +2954,70 @@ const french: Copy = {
     claimUrlLabel: "Lien d’approbation",
     claimRawToggle: "Avancé, signature brute",
     goHome: "Accueil",
+    connectToSubmit: "Connectez un wallet pour soumettre cette opération.",
+    mintAgentFallback: "Agent Axiom",
+    operationActions: "Actions de l’opération",
+    streamStarted: "Flux lancé.",
+    streamComplete: "Flux terminé.",
+    receiveCopyManual:
+      "Presse-papiers indisponible : sélectionnez le lien ci-dessus et copiez-le manuellement.",
+    cancel: "Annuler",
+    edit: "Modifier",
+    transferPhases: {
+      idle: "Prêt",
+      challenge: "Préparation du transfert…",
+      signing: "En attente de la signature…",
+      finalizing: "Sécurisation des données pour le destinataire…",
+      confirming: "Confirmation on-chain…",
+    },
+    transferRetryHint: "Échec. Touchez Modifier pour réessayer.",
+    transferErrChallenge: "La demande a échoué. Réessayez.",
+    transferErrSubmit:
+      "Échec de la soumission. Rien n’a été envoyé. Touchez Modifier pour réessayer.",
+    transferErrGeneric:
+      "Une erreur est survenue. Touchez Modifier pour recommencer.",
+    closeTransferA11y: "Fermer le transfert",
+    transferLede:
+      "Vous signez une fois pour autoriser, puis vous confirmez le transfert on-chain.",
+    transferReceiverLabel: "Adresse du destinataire",
+    transferPubkeyLabel: "Clé publique du destinataire",
+    transferPubkeyPlaceholder: "0x…  (128 caractères hex)",
+    transferRekeySummary: "Rechiffrer pour le destinataire (optionnel)",
+    transferRekeyHint:
+      "Optionnel : clé AES + URI de stockage pour que seul le destinataire puisse lire les données après le transfert. Vide = signature seule.",
+    transferOldKeyLabel: "Ancienne clé de chiffrement des données (base64)",
+    transferOldKeyPlaceholder: "clé AES 32 octets en base64",
+    transferOldUriLabel: "Ancienne URI des données (0x…)",
+    transferOldUriPlaceholder: "hash racine de stockage 0x…",
+    transferErrKeyRequired: "requis",
+    transferErrKeyPrefix: "doit être préfixée de 0x",
+    transferErrKeyLength: (length) =>
+      `doit faire ${length} caractères (64 octets bruts, sans préfixe 0x04)`,
+    transferErrRekeyPair:
+      "fournissez l’ancienne clé et l’ancienne URI des données pour rechiffrer, ou laissez les deux vides",
+    transferSigning: "Signature…",
+    transferSignAction: "Signer l’autorisation de transfert",
+    transferConfirmLede:
+      "Confirmez. Votre wallet demandera la signature finale.",
+    transferAuthorizedTitle: "Transfert autorisé",
+    transferAuthorizedBody:
+      "les données de l’agent ont été rechiffrées pour que seul le nouveau propriétaire puisse les lire.",
+    transferProofDetails: "Détails de la preuve",
+    transferNewHashLabel: "Nouveau hash de métadonnées :",
+    transferSealedKeyLabel: "; nouvelle clé scellée :",
+    transferOwnershipProof: "Preuve de propriété",
+    transferValidUntil: "Valide jusqu’au",
+    transferAcceptedBy: "Accepté par",
+    transferSubmitting: "Soumission…",
+    transferConfirmAction: "Confirmer le transfert on-chain",
+    transferConfirmedToast: (hash) => `Transfert ${hash}… confirmé`,
   },
   agentDetail: {
     ...english.agentDetail,
     balanceToSpend: "Dispose de {amount} à dépenser, prêt",
     needsSetup: "À configurer",
+    statusOnline: "en ligne",
+    statusAttention: "attention",
     dataHash: "Hash de métadonnées",
     overview: "À propos",
     execute: "Lancer",
@@ -2817,8 +3114,15 @@ const french: Copy = {
     runAnother: "Relancer une opération similaire",
     drawerTitle: "Détail du reçu",
     proofTitle: "Détails techniques",
+    viewOnExplorer: "Voir sur l’explorateur",
+    copyReceiptHash: "Copier le hash du reçu",
+    receiptCopied: "Hash du reçu copié.",
+    receiptsCount: (shown, total) => `${shown} sur ${total} reçus`,
+    filterA11y: "Filtre d’état des reçus",
+    clearFilter: "Effacer le filtre",
   },
   status: {
+    label: "Statut",
     ready: "Prêt à démarrer",
     approval: "Approbation demandée",
     signing: "Signature demandée",
@@ -2828,6 +3132,16 @@ const french: Copy = {
     reverted: "Annulée",
     rejected: "Refusée",
     stale: "À vérifier",
+  },
+  time: {
+    minutesAgo: (minutes) => `il y a ${minutes} min`,
+    indexed: "indexé",
+  },
+  gate: {
+    statusWallet: "wallet non connecté",
+    statusNetwork: "mauvais réseau",
+    previewAlt: (label) => `Aperçu ${label}`,
+    previewNote: "Aperçu : connectez un wallet pour les données réelles.",
   },
   lockedHero: {
     app: {
@@ -2985,6 +3299,10 @@ const german: Copy = {
     walletAccess: "Axiom-Wallet-Zugang",
     closeWalletAccess: "Wallet-Zugang schließen",
     skipToContent: "Zum Inhalt springen",
+    copyLabel: "Kopieren",
+    copyA11y: "In die Zwischenablage kopieren",
+    copiedA11y: "In die Zwischenablage kopiert",
+    loading: "Laden",
   },
   landing: {
     ...english.landing,
@@ -2992,6 +3310,7 @@ const german: Copy = {
     description:
       "Mint einen Agenten mit einem begrenzten Tresor. Er läuft nur innerhalb deiner Regeln, und jede Aktion hinterlässt einen On-Chain-Beleg.",
     closingCta: "Minte deinen ersten Agenten.",
+    docTitle: "Axiom: Eigene KI-Agenten on-chain",
     menuGuideHint: "Wie Signatur und Beleg funktionieren",
     menuDevelopers: "Entwickler",
     menuDevelopersHint: "APIs und Entwickler-Tools",
@@ -3028,18 +3347,24 @@ const german: Copy = {
     how: {
       title: "Drei Schritte zu {emphasis}einem laufenden Agent.{endEmphasis}",
       steps: [
-        { title: "Minten.", body: "Eine Transaktion erstellt Agent und Tresor." },
+        {
+          title: "Minten.",
+          body: "Eine Transaktion erstellt Agent und Tresor.",
+        },
         { title: "Finanzieren.", body: "Tresor aufladen. Tageslimit setzen." },
-        { title: "Ausführen.", body: "Ticks laufen in deinen Regeln. Belege indexieren on-chain." },
+        {
+          title: "Ausführen.",
+          body: "Ticks laufen in deinen Regeln. Belege indexieren on-chain.",
+        },
       ],
     },
     footer: {
       credit: "Gebaut auf 0G · Mainnet beta",
       links: [
-        { label: "Agents" },
-        { label: "Belege" },
-        { label: "Speicher" },
-        { label: "Entwickler" },
+        { id: "agents", label: "Agents" },
+        { id: "receipts", label: "Belege" },
+        { id: "storage", label: "Speicher" },
+        { id: "developers", label: "Entwickler" },
       ],
     },
   },
@@ -3059,9 +3384,11 @@ const german: Copy = {
     walletConnectLabel: "WalletConnect",
     walletConnectHint: "QR-Code scannen oder Wallet-App öffnen",
     pairingTitle: "Wallet koppeln",
-    pairingHint: "Kopiere den Code in den WalletConnect-Bildschirm deiner Wallet-App.",
+    pairingHint:
+      "Kopiere den Code in den WalletConnect-Bildschirm deiner Wallet-App.",
     noWalletDetected:
       "Keine Browser-Wallet erkannt. Installiere eine oder nutze eine mobile Wallet.",
+    unknownChain: "unbekannt",
   },
   guide: {
     nextStep: "Nächster Schritt",
@@ -3080,6 +3407,7 @@ const german: Copy = {
     openSettings: "Einstellungen öffnen",
   },
   staking: {
+    pageTitle: "0G Stake",
     lede: "Staking ist nicht Teil von Axiom.",
     body: "Staking läuft über die offizielle 0G-App : Agents, Vaults und Receipts bleiben hier.",
     openVault: "Zu meinen Agents",
@@ -3096,15 +3424,16 @@ const german: Copy = {
     returnToLanding: "Zurück zur Startseite",
     openConsole: "App öffnen",
     title: "Seite nicht gefunden",
+    heroAlt: "Abstrakte wiederherstellbare Axiom-Route",
     // Wave-12B: Erkennungsreihe (barrierefreier Name + Hub-Beschriftungen).
     exploreA11y: "Öffentliche Pfade erkunden",
-    hubLabels: [
-      "Agents",
-      "Zahlungen",
-      "Nachweise",
-      "Storage",
-      "Developers",
-    ],
+    hubLabels: {
+      agents: "Agents",
+      payments: "Zahlungen",
+      proofs: "Nachweise",
+      storage: "Storage",
+      developers: "Developers",
+    },
   },
   errorBoundary: {
     networkTitle: "Verbindungsproblem",
@@ -3362,6 +3691,17 @@ const german: Copy = {
     footHint: "Umschalt+Eingabe für eine neue Zeile",
     storedOn0G: "Auf 0G gespeichert",
     historyClose: "Verlauf schließen",
+    turnLimit: (max) =>
+      `Rundenlimit nach ${max} Schritten erreicht — sende „continue“, um fortzufahren.`,
+    rateLimited:
+      "Zu viele Anfragen: einen Moment warten, dann erneut versuchen.",
+    noResponse: "Keine Antwort: erneut versuchen.",
+    unknownTool: (name) => `Unbekanntes Tool: ${name}`,
+    invalidTokenId: (tokenId) => `Ungültige tokenId: ${tokenId}`,
+    transferCancelled:
+      "Transfer abgebrochen: es wurde keine Transaktion übermittelt.",
+    streamStarted: "Antwort begonnen.",
+    streamComplete: "Antwort abgeschlossen.",
   },
   gasTank: {
     ...english.gasTank,
@@ -3382,10 +3722,8 @@ const german: Copy = {
     faucetEligibleBadge: "Hahn verfügbar",
     faucetIneligibleBadge: "Hahn abgerufen",
     faucetClaimAction: "Gratis Test-Token anfordern",
-    depositQueued:
-      "Einzahlung eingereicht : im Transaktionscenter verfolgen.",
-    refillDone:
-      "Gas-Zuschuss angefordert. Tankkonto aktualisiert.",
+    depositQueued: "Einzahlung eingereicht : im Transaktionscenter verfolgen.",
+    refillDone: "Gas-Zuschuss angefordert. Tankkonto aktualisiert.",
     refillFailed:
       "Gas-Zuschuss fehlgeschlagen : Verbindung prüfen und erneut versuchen.",
     faucetDone: "Test-Token gemintet.",
@@ -3572,7 +3910,6 @@ const german: Copy = {
     intentRecovery:
       "Ein bestehender Beleg wird wiederaufgenommen. Kein doppelter Vorgang.",
     intentReceipt: "Mit einem indexierten Beleg verknüpft.",
-    streamLabel: "Token-Stream",
     cancelStream: "Stream abbrechen",
     factCost: "Kosten",
     confirmMint: "Ein Klick im Wallet, übliche Netzwerkgebühr",
@@ -3699,11 +4036,71 @@ const german: Copy = {
     claimUrlLabel: "Zustimmungs-Link",
     claimRawToggle: "Erweitert, rohe Signatur",
     goHome: "Startseite",
+    connectToSubmit: "Verbinde ein Wallet, um diesen Vorgang zu übermitteln.",
+    mintAgentFallback: "Axiom-Agent",
+    operationActions: "Aktionen des Vorgangs",
+    streamStarted: "Stream gestartet.",
+    streamComplete: "Stream abgeschlossen.",
+    receiveCopyManual:
+      "Zwischenablage nicht verfügbar: Link oben auswählen und manuell kopieren.",
+    cancel: "Abbrechen",
+    edit: "Bearbeiten",
+    transferPhases: {
+      idle: "Bereit",
+      challenge: "Transfer wird vorbereitet…",
+      signing: "Warten auf Signatur…",
+      finalizing: "Daten werden für den Empfänger gesichert…",
+      confirming: "On-Chain-Bestätigung…",
+    },
+    transferRetryHint: "Fehlgeschlagen. Zum Wiederholen auf Bearbeiten tippen.",
+    transferErrChallenge:
+      "Die Anfrage ist fehlgeschlagen. Bitte erneut versuchen.",
+    transferErrSubmit:
+      "Übermittlung fehlgeschlagen. Nichts wurde gesendet. Zum Wiederholen auf Bearbeiten tippen.",
+    transferErrGeneric:
+      "Etwas ist schiefgelaufen. Zum Neustart auf Bearbeiten tippen.",
+    closeTransferA11y: "Transfer schließen",
+    transferLede:
+      "Du signierst einmal zur Autorisierung und bestätigst dann den On-Chain-Transfer.",
+    transferReceiverLabel: "Empfängeradresse",
+    transferPubkeyLabel: "Öffentlicher Schlüssel des Empfängers",
+    transferPubkeyPlaceholder: "0x…  (128 Hex-Zeichen)",
+    transferRekeySummary: "Für Empfänger neu verschlüsseln (optional)",
+    transferRekeyHint:
+      "Optional: AES-Schlüssel + Speicher-URI, damit nur der Empfänger die Daten nach dem Transfer lesen kann. Leer = nur signieren.",
+    transferOldKeyLabel: "Alter Daten-Verschlüsselungsschlüssel (base64)",
+    transferOldKeyPlaceholder: "base64 32-Byte-AES-Schlüssel",
+    transferOldUriLabel: "Alte Daten-URI (0x…)",
+    transferOldUriPlaceholder: "0x… Speicher-Root-Hash",
+    transferErrKeyRequired: "erforderlich",
+    transferErrKeyPrefix: "muss mit 0x beginnen",
+    transferErrKeyLength: (length) =>
+      `muss ${length} Zeichen haben (64 Roh-Bytes, ohne 0x04-Präfix)`,
+    transferErrRekeyPair:
+      "alten Datenschlüssel und alte Daten-URI angeben, um neu zu verschlüsseln, oder beide leer lassen",
+    transferSigning: "Signierung…",
+    transferSignAction: "Transfer-Autorisierung signieren",
+    transferConfirmLede:
+      "Bestätigen. Dein Wallet fragt die finale Signatur ab.",
+    transferAuthorizedTitle: "Transfer autorisiert",
+    transferAuthorizedBody:
+      "die Daten des Agents wurden neu verschlüsselt, sodass nur der neue Inhaber sie lesen kann.",
+    transferProofDetails: "Nachweisdetails",
+    transferNewHashLabel: "Neuer Metadaten-Hash:",
+    transferSealedKeyLabel: "; neuer versiegelter Schlüssel:",
+    transferOwnershipProof: "Eigentumsnachweis",
+    transferValidUntil: "Gültig bis",
+    transferAcceptedBy: "Akzeptiert von",
+    transferSubmitting: "Übermittlung…",
+    transferConfirmAction: "On-Chain-Transfer bestätigen",
+    transferConfirmedToast: (hash) => `Transfer ${hash}… bestätigt`,
   },
   agentDetail: {
     ...english.agentDetail,
     balanceToSpend: "Hat {amount} zum Ausgeben, bereit",
     needsSetup: "Einrichtung nötig",
+    statusOnline: "online",
+    statusAttention: "Achtung",
     dataHash: "Metadaten-Hash",
     overview: "Über",
     execute: "Starten",
@@ -3799,8 +4196,15 @@ const german: Copy = {
     runAnother: "Ähnliche Operation erneut ausführen",
     drawerTitle: "Belegdetail",
     proofTitle: "Technische Details",
+    viewOnExplorer: "Im Explorer ansehen",
+    copyReceiptHash: "Beleg-Hash kopieren",
+    receiptCopied: "Beleg-Hash kopiert.",
+    receiptsCount: (shown, total) => `${shown} von ${total} Belegen`,
+    filterA11y: "Belegstatus-Filter",
+    clearFilter: "Filter zurücksetzen",
   },
   status: {
+    label: "Status",
     ready: "Bereit zum Start",
     approval: "Freigabe angefordert",
     signing: "Signatur angefordert",
@@ -3810,6 +4214,16 @@ const german: Copy = {
     reverted: "Zurückgesetzt",
     rejected: "Abgelehnt",
     stale: "Prüfung nötig",
+  },
+  time: {
+    minutesAgo: (minutes) => `vor ${minutes} Min.`,
+    indexed: "indexiert",
+  },
+  gate: {
+    statusWallet: "Wallet nicht verbunden",
+    statusNetwork: "falsches Netzwerk",
+    previewAlt: (label) => `${label}-Vorschau`,
+    previewNote: "Vorschau: Wallet verbinden für Live-Daten.",
   },
   lockedHero: {
     app: {

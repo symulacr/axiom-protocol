@@ -49,7 +49,7 @@
   min-height: var(--hit-area, 44px);
   gap: var(--space-2);
   color: var(--completion-bright);
-  font-family: Syne, sans-serif;
+  font-family: var(--font-display);
   font-weight: 800;
   letter-spacing: 0.16em;
   text-decoration: none;
@@ -66,7 +66,7 @@
   align-items: center;
   min-height: var(--hit-area, 44px);
   color: var(--aw-text-dim);
-  font: 500 var(--fs-mono)/1 "JetBrains Mono", monospace;
+  font: 500 var(--fs-mono)/1 var(--font-mono);
   letter-spacing: 0.05em;
   text-decoration: none;
 }
@@ -115,7 +115,7 @@
   padding: 0;
   border-left: 2px solid var(--copper);
   color: var(--copper);
-  font-family: "JetBrains Mono", monospace;
+  font-family: var(--font-mono);
 }
 
 .seo-hero-copy {
@@ -128,7 +128,7 @@
 	max-inline-size: 11.5ch;
 	margin: var(--space-4) 0 var(--space-5);
 	color: var(--aw-text);
-	font: 800 clamp(48px, 5.25vw, 78px) / 0.94 Syne, sans-serif;
+	font: 800 clamp(48px, 5.25vw, 78px) / 0.94 var(--font-display);
 	letter-spacing: -0.055em;
 	text-wrap: balance;
 }
@@ -170,7 +170,7 @@
   min-height: var(--hit-area, 44px);
   gap: var(--space-2);
   padding: var(--space-3) var(--space-4);
-  font: 500 var(--fs-mono)/1 "JetBrains Mono", monospace;
+  font: 500 var(--fs-mono)/1 var(--font-mono);
   letter-spacing: 0.04em;
   text-decoration: none;
 }
@@ -201,14 +201,14 @@
   align-items: center;
   gap: var(--space-2);
   color: var(--phosphor);
-  font: 500 var(--fs-mono)/1 "JetBrains Mono", monospace;
+  font: 500 var(--fs-mono)/1 var(--font-mono);
   letter-spacing: 0.12em;
 }
 
 .seo-proof-card > strong {
   display: block;
   margin: 20px 0 var(--space-3);
-  font: 600 var(--fs-title)/1.1 Syne, sans-serif;
+  font: 600 var(--fs-title)/1.1 var(--font-display);
 }
 
 .seo-proof-card ul {
@@ -252,7 +252,7 @@
 
 .seo-link-field h2 {
   margin: var(--space-3) 0;
-  font: 700 clamp(30px, 4vw, 56px) / 0.96 Syne, sans-serif;
+  font: 700 clamp(30px, 4vw, 56px) / 0.96 var(--font-display);
   letter-spacing: -0.045em;
 }
 
@@ -300,11 +300,11 @@
 
 .seo-link-grid span {
   color: var(--copper);
-  font: 500 var(--fs-mono)/1 "JetBrains Mono", monospace;
+  font: 500 var(--fs-mono)/1 var(--font-mono);
 }
 
 .seo-link-grid strong {
-  font: var(--fw-title) var(--fs-title)/1.1 Syne, sans-serif;
+  font: var(--fw-title) var(--fs-title)/1.1 var(--font-display);
 }
 
 .seo-link-grid svg {
@@ -318,7 +318,7 @@
   padding: var(--space-4) 0 var(--space-5);
   border-top: 1px solid rgba(233, 226, 217, 0.16);
   color: #86817b;
-  font: var(--fs-mono)/1.4 "JetBrains Mono", monospace;
+  font: var(--fs-mono)/1.4 var(--font-mono);
   letter-spacing: 0.05em;
 }
 

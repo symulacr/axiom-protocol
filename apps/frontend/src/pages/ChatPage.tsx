@@ -600,6 +600,7 @@ function ChatPageInner(): ReactElement {
     reset: flushAndClearStreamText,
   } = useThrottledStreamText();
   const [streamError, setStreamError] = useState<string | null>(null);
+  const [streamNote, setStreamNote] = useState<"" | "started" | "complete">("");
   const [hasUsedChat, setHasUsedChat] = useState(() => {
     try {
       return localStorage.getItem("axiom:hasUsedChat") === "true";
@@ -751,16 +752,19 @@ function ChatPageInner(): ReactElement {
   const signTypedDataAsyncRef = useRef(signTypedDataAsync);
 
   // Opens the shared TransferModal (same flow as AgentDetail) and resolves when the user completes or cancels it.
-  const openTransfer = useCallback((tokenId: string): Promise<string> => {
-    const id = String(tokenId ?? "").trim();
-    if (!/^\d+$/.test(id)) {
-      return Promise.reject(new Error("invalid tokenId: " + tokenId));
-    }
-    return new Promise<string>((resolve, reject) => {
-      transferResolveRef.current = { resolve, reject };
-      setTransferTokenId(id);
-    });
-  }, []);
+  const openTransfer = useCallback(
+    (tokenId: string): Promise<string> => {
+      const id = String(tokenId ?? "").trim();
+      if (!/^\d+$/.test(id)) {
+        return Promise.reject(new Error(chatCopy.invalidTokenId(tokenId)));
+      }
+      return new Promise<string>((resolve, reject) => {
+        transferResolveRef.current = { resolve, reject };
+        setTransferTokenId(id);
+      });
+    },
+    [chatCopy],
+  );
 
   const toolCtx: ToolContext = useMemo(
     () => ({
@@ -966,6 +970,26 @@ function ChatPageInner(): ReactElement {
       setElapsed(0);
     }
   }, [isStreaming, streamStartTime]);
+
+  // Stream start/completion announce once on ONE persistent visually-hidden
+  // status node; the token flush stays aria-hidden (M2), and errors speak
+  // through their own role=alert, so an errored stream clears the note.
+  // Completion keys off the committed assistant message — an aborted run
+  // trims it, so Stop never announces "complete".
+  useEffect(() => {
+    if (isStreaming) {
+      setStreamNote("started");
+      return;
+    }
+    setStreamNote((note) => {
+      if (note !== "started") return note;
+      if (streamError !== null) return "";
+      const last = messagesRef.current[messagesRef.current.length - 1];
+      return last && last.role === "assistant" && !last.meta?.error
+        ? "complete"
+        : "";
+    });
+  }, [isStreaming, streamError]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1203,7 +1227,7 @@ function ChatPageInner(): ReactElement {
             // loop after surfacing the same error card.
             const failMsg =
               streamErrorRef.current ??
-              (assistantContent ? null : "No response: try again.");
+              (assistantContent ? null : chatCopy.noResponse);
             if (failMsg !== null) {
               if (!isStale()) {
                 lastStreamErrorRef.current = failMsg;
@@ -1266,7 +1290,7 @@ function ChatPageInner(): ReactElement {
                 };
                 const handler = handlers[tc.function.name];
                 if (!handler) {
-                  return failTool(`Unknown tool: ${tc.function.name}`);
+                  return failTool(chatCopy.unknownTool(tc.function.name));
                 }
                 try {
                   const args = parseToolArguments(tc.function.arguments);
@@ -1327,7 +1351,7 @@ function ChatPageInner(): ReactElement {
             ...currentMessages,
             createMessage({
               role: "assistant",
-              content: `Turn limit hit after ${MAX_TOOL_LOOPS} steps — send "continue" to keep going.`,
+              content: chatCopy.turnLimit(MAX_TOOL_LOOPS),
               meta: { error: true },
             }),
           ];
@@ -1363,10 +1387,7 @@ function ChatPageInner(): ReactElement {
             ...(refDesc ? { description: refDesc } : {}),
           };
           if (msg.includes("429") || msg.toLowerCase().includes("rate limit")) {
-            toast.error(
-              "Rate limited: wait a moment and try again.",
-              toastOpts,
-            );
+            toast.error(chatCopy.rateLimited, toastOpts);
           } else {
             toast.error(msg, toastOpts);
           }
@@ -1396,6 +1417,7 @@ function ChatPageInner(): ReactElement {
       flushAndClearStreamText,
       scheduleStreamTextUpdate,
       buildLiveToolCtx,
+      chatCopy,
     ],
   );
 
@@ -1860,6 +1882,14 @@ function ChatPageInner(): ReactElement {
                 </div>
               )}
 
+              <span className="visually-hidden" role="status">
+                {streamNote === "started"
+                  ? chatCopy.streamStarted
+                  : streamNote === "complete"
+                    ? chatCopy.streamComplete
+                    : ""}
+              </span>
+
               {streamError !== null && (
                 <div role="alert" className="fade-enter turn__notice is-danger">
                   <span>{streamError}</span>
@@ -2118,9 +2148,7 @@ function ChatPageInner(): ReactElement {
               onClose={() => {
                 setTransferTokenId(null);
                 transferResolveRef.current?.reject(
-                  new Error(
-                    "Transfer cancelled: no transaction was submitted.",
-                  ),
+                  new Error(chatCopy.transferCancelled),
                 );
                 transferResolveRef.current = null;
               }}

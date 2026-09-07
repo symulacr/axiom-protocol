@@ -288,6 +288,9 @@ export function CoSignPage({ go }: { go: (path: string) => void }) {
                     {copied ? f.receiveCodeCopied : f.receiveCopyCode}
                   </Button>
                 </div>
+                {!navigator.clipboard?.writeText && (
+                  <small>{f.receiveCopyManual}</small>
+                )}
                 <small>{f.receiveDoneSameBrowser}</small>
               </div>
             </div>

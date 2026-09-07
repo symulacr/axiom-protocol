@@ -317,7 +317,7 @@
 }
 
 .landing-copy h1 {
-  font-family: Syne, sans-serif;
+  font-family: var(--font-display);
   font-weight: 800;
   font-size: clamp(2.9rem, 7vw, 5.6rem);
   line-height: 0.98;
@@ -342,7 +342,7 @@
 
 /* Hero meta + trust line stay quiet so the type leads. */
 .landing-copy .hero-meta {
-  font-family: "JetBrains Mono", monospace;
+  font-family: var(--font-mono);
   font-size: 0.78rem;
   letter-spacing: 0.04em;
   color: var(--aw-text-soft);
@@ -366,16 +366,6 @@
 }
 .landing-copy .trust-line .trust-item:hover {
   color: var(--aw-mist);
-}
-
-.floating-receipt {
-  background: color-mix(in srgb, var(--aw-ink-2) 78%, transparent);
-  backdrop-filter: var(--aw-blur-card);
-  -webkit-backdrop-filter: var(--aw-blur-card);
-  border: 1px solid var(--aw-line);
-  box-shadow:
-    var(--aw-shadow-float),
-    var(--aw-hairline);
 }
 
 /* Marquee ticker: the JSX renders one aria-hidden track duplicated for the
@@ -514,7 +504,7 @@
   position: absolute;
   inset-inline: 0;
   bottom: -0.24em;
-  font-family: Syne, sans-serif;
+  font-family: var(--font-display);
   font-weight: 800;
   font-size: clamp(7rem, 22vw, 20rem);
   line-height: 1;
@@ -598,7 +588,7 @@
 }
 
 .seo-hero-copy h1 {
-  font-family: Syne, sans-serif;
+  font-family: var(--font-display);
   font-weight: 800;
   font-size: clamp(2.5rem, 5.6vw, 4.4rem);
   line-height: 1.02;
@@ -686,7 +676,7 @@
 }
 
 .page-head h1 {
-  font-family: Syne, sans-serif;
+  font-family: var(--font-display);
   letter-spacing: -0.02em;
 }
 

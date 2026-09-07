@@ -42,7 +42,7 @@ test("M8: copied notice fires only after a resolved clipboard write", () => {
     "missing clipboard API must not raise the notice",
   );
   const write = src.indexOf("await clipboard.writeText(tx.hash);");
-  const notice = src.indexOf('"Receipt hash copied."');
+  const notice = src.indexOf("notice: txCopy.receiptCopied");
   assert.ok(write >= 0 && notice > write, "notice follows the resolved write");
 });
 

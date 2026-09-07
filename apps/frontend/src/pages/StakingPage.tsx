@@ -25,7 +25,7 @@ export function StakingPage({
           no rail item and is reachable by deep link — the header itself carries
           the return path so the page never floats parentless. */}
       <PageHead
-        title="0G Stake"
+        title={copy.pageTitle}
         lede={copy.lede}
         actions={
           <Button variant="ghost" onClick={() => go(routePath("dashboard"))}>

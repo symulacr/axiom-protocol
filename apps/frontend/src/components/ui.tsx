@@ -5,6 +5,8 @@ import type {
   ReactNode,
   TextareaHTMLAttributes,
 } from "react";
+import { getCopy } from "../lib/copy.js";
+import { useUiStore } from "../lib/uiStore.js";
 
 const formFieldBase: CSSProperties = {
   padding: "0.625rem 0.875rem",
@@ -56,13 +58,12 @@ export function SectionTitle({
   );
 }
 
-export function CopyButton({
-  text,
-}: {
-  text: string;
-}): ReactElement {
+export function CopyButton({ text }: { text: string }): ReactElement {
   const [copied, setCopied] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  // I5: labels come from copy.a11y so every consumer localizes (StatePill pattern).
+  const { state: uiState } = useUiStore();
+  const a11y = getCopy(uiState.settings.locale).a11y;
 
   useEffect(() => {
     return () => {
@@ -97,7 +98,7 @@ export function CopyButton({
     <button
       type="button"
       onClick={copy}
-      aria-label={copied ? "Copied to clipboard" : "Copy to clipboard"}
+      aria-label={copied ? a11y.copiedA11y : a11y.copyA11y}
       style={{
         background: "transparent",
         color: "var(--copper-bright)",
@@ -113,7 +114,7 @@ export function CopyButton({
       }}
     >
       {/* Single node with label swap (a11y: one announcement). */}
-      {copied ? "✓" : "Copy"}
+      {copied ? "✓" : a11y.copyLabel}
     </button>
   );
 }
@@ -178,12 +179,14 @@ export function Spinner({
   size?: number;
   variant?: "spin" | "churn";
 }): ReactElement {
+  const { state: uiState } = useUiStore();
+  const loadingLabel = getCopy(uiState.settings.locale).a11y.loading;
   if (variant === "churn") {
     // One aria-live node (was 9 spans per instance); CSS paints the dots, so reduced-motion overrides apply.
     return (
       <span
         role="status"
-        aria-label="Loading"
+        aria-label={loadingLabel}
         className="spinner--churn"
       />
     );
@@ -200,7 +203,7 @@ export function Spinner({
         borderRadius: "50%",
         animation: "axiom-spin var(--dur-spin) linear infinite",
       }}
-      aria-label="Loading"
+      aria-label={loadingLabel}
     />
   );
 }
