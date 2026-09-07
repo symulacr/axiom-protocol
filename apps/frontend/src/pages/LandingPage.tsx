@@ -32,7 +32,6 @@ import {
   SpotlightCard,
 } from "../components/fx/fx.js";
 import { ThreeBackground } from "../components/fx/ThreeBackground.js";
-import { SignalArcField } from "../components/fx/SignalArcField.js";
 
 /** L2-N6: principle-card icon dispatch. */
 function PrincipleIcon({ name }: { name: "shield" | "receipt" | "wallet" }) {
@@ -218,9 +217,6 @@ export function Landing({
       {/* R12: how-it-works — the operating loop; the nav's "How it works"
           anchor points here. */}
       <section className="scroll-section how-section" id="how">
-        {/* R23: canvas2D data-arc band (ThreeUI Predictive Arc adaptation) —
-            atmosphere behind the steps, clipped and pointer-inert. */}
-        <SignalArcField />
         <header className="section-head">
           <h2
             dangerouslySetInnerHTML={{
