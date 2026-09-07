@@ -56,9 +56,15 @@ describe("T3b rail slim-down guards (registry/AppShell/copy level)", () => {
       appShellSrc.indexOf("const resizeWithKeyboard"),
     );
     expect(navBlock.match(/path: "\//g)?.length).toBe(6);
+    // One click-handler call site; nav items are anchors (href + SPA
+    // intercept + aria-current on the active item).
     expect(
-      appShellSrc.match(/onClick=\{\(\) => go\(item\.path\)\}/g)?.length,
+      appShellSrc.match(/onClick=\{navClick\(go, item\.path\)\}/g)?.length,
     ).toBe(1);
+    expect(appShellSrc).toMatch(/href=\{item\.path\}/);
+    expect(appShellSrc).toMatch(
+      /aria-current=\{item\.active \? "page" : undefined\}/,
+    );
     // The old flat [...items, ...flows] render is gone.
     expect(appShellSrc).not.toMatch(/\[\.\.\.items, \.\.\.flows\]/);
     // Demoted verbs never appear as rail paths.

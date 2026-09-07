@@ -49,6 +49,22 @@ import { truncateAddress, trapTabFocus } from "../../utils/format.js";
 import { APP_CHAIN, APP_CHAIN_ID } from "../../config/wagmi.js";
 import { getCopy, type Copy, type NavGroupKey } from "../../lib/copy.js";
 
+/** Nav anchors wear button-era classes whose rules carry no text-decoration
+ *  reset (buttons never needed one) — strip the UA underline inline. */
+const ANCHOR_RESET: React.CSSProperties = { textDecoration: "none" };
+
+/** Primary-nav anchors: href restores middle-click / open-in-new-tab /
+ *  copy-link; the plain-click leg stays client-side through go() (SPA nav +
+ *  scroll-to-top); modified clicks keep native browser behavior. */
+const navClick =
+  (go: (path: string) => void, path: string) =>
+  (event: React.MouseEvent<HTMLAnchorElement>) => {
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)
+      return;
+    event.preventDefault();
+    go(path);
+  };
+
 export function Logo({
   compact = false,
   glyph = false,
@@ -260,15 +276,18 @@ function Sidebar({
               {copy.nav[group.labelKey]}
             </span>
             {group.items.map((item) => (
-              <button
+              <a
                 key={item.path}
                 className={`nav-item ${item.active ? "active" : ""}`}
-                onClick={() => go(item.path)}
+                href={item.path}
+                onClick={navClick(go, item.path)}
+                aria-current={item.active ? "page" : undefined}
                 data-label={item.label}
+                style={ANCHOR_RESET}
               >
                 {item.icon}
                 <span>{item.label}</span>
-              </button>
+              </a>
             ))}
           </div>
         ))}
@@ -292,7 +311,13 @@ function Sidebar({
       {/* 03: identity renders only for an authenticated session —
           a stored profile/address from a previous operator never shows after
           disconnect. */}
-      <button className="account" onClick={() => go("/settings")}>
+      <a
+        className="account"
+        href="/settings"
+        onClick={navClick(go, "/settings")}
+        aria-current={route === "settings" ? "page" : undefined}
+        style={ANCHOR_RESET}
+      >
         <span className="avatar">
           {(identified
             ? session.profile || copy.topbar.operator
@@ -316,7 +341,7 @@ function Sidebar({
           {identified && <small>{truncateAddress(session.address)}</small>}
         </div>
         <Settings2 size={14} />
-      </button>
+      </a>
       <div
         className="rail-resize"
         role="separator"
@@ -741,6 +766,7 @@ function CommandCenter({
 function Topbar({
   state,
   session,
+  route,
   go,
   onLock,
   onOpenMobileNav,
@@ -749,6 +775,7 @@ function Topbar({
 }: {
   state: AppState;
   session: Session;
+  route: Route;
   go: (path: string) => void;
   onLock: () => void;
   onOpenMobileNav: () => void;
@@ -786,7 +813,13 @@ function Topbar({
       <div className="topbar-actions">
         <CommandCenter state={state} go={go} />
         <ThemeToggle locale={state.settings.locale} />
-        <button className="session-top" onClick={() => go("/settings")}>
+        <a
+          className="session-top"
+          href="/settings"
+          onClick={navClick(go, "/settings")}
+          aria-current={route === "settings" ? "page" : undefined}
+          style={ANCHOR_RESET}
+        >
           <Wallet size={14} />
           {/* W5-B (browser-2 Fix 2): one connection indicator per chip. The
               Status pill is the semantic owner; the identity span renders only
@@ -801,7 +834,7 @@ function Topbar({
             }
             tone={identified ? "success" : "muted"}
           />
-        </button>
+        </a>
         <button
           className="icon-button"
           onClick={onLock}
@@ -1002,6 +1035,7 @@ export function AppShell({
           <Topbar
             state={state}
             session={state.session}
+            route={route}
             go={go}
             onLock={onLock}
             onOpenMobileNav={() => setMobileNavOpen(true)}

@@ -24,7 +24,12 @@ import {
   X,
   Zap,
 } from "../components/axiom/icons.js";
-import { Button, PageHead, PanelHead, Status } from "../components/axiom/Controls.js";
+import {
+  Button,
+  PageHead,
+  PanelHead,
+  Status,
+} from "../components/axiom/Controls.js";
 import { SkeletonRows } from "../components/ui.js";
 import { StatePill } from "../components/StatePill.js";
 import { MobileDisclosure } from "../components/MobileDisclosure.js";
@@ -170,9 +175,21 @@ function ReceiptDrawer({
   // U5: chain rows without a txHash synthesize "—" — no explorer link for those.
   const explorerHref = explorerTx(tx.hash);
   const recover = isRecoverableTx(tx.state);
-  const copyHash = () => {
-    navigator.clipboard?.writeText(tx.hash);
-    dispatch({ type: "notice", notice: "Receipt hash copied." });
+  // intent params are consumed by the flow pages only — AgentPage reads no
+  // intent, so /agents/ routes go without it instead of carrying a dead param.
+  const withIntent = (route: string, intentValue: string) =>
+    route.startsWith("/agents/") ? route : `${route}?intent=${intentValue}`;
+  const copyHash = async () => {
+    // Guarded write (ui.tsx CopyButton pattern): no clipboard API or a denied
+    // write must not raise the copied notice for a copy that never happened.
+    const clipboard = navigator.clipboard;
+    if (!clipboard?.writeText) return;
+    try {
+      await clipboard.writeText(tx.hash);
+      dispatch({ type: "notice", notice: "Receipt hash copied." });
+    } catch {
+      // clipboard denied — hash stays selectable in the drawer
+    }
   };
   const primaryAction = recover ? (
     <Button
@@ -180,7 +197,7 @@ function ReceiptDrawer({
         dispatch({ type: "tx-state", txId: tx.id, txState: "ready" });
         dispatch({ type: "notice", notice: txCopy.recoveryNotice });
         onClose();
-        go(`${tx.route}?intent=recovery`);
+        go(withIntent(tx.route, "recovery"));
       }}
       icon={<RotateCcw size={16} />}
     >
@@ -209,7 +226,7 @@ function ReceiptDrawer({
       )}
       <Button
         variant="ghost"
-        onClick={() => go(`${tx.route}?intent=receipt`)}
+        onClick={() => go(withIntent(tx.route, "receipt"))}
         icon={<RotateCcw size={16} />}
       >
         {txCopy.runAnother}
@@ -250,7 +267,7 @@ function ReceiptDrawer({
                 {tx.hash}{" "}
                 <button
                   className="inline-copy"
-                  onClick={copyHash}
+                  onClick={() => void copyHash()}
                   aria-label="Copy receipt hash"
                 >
                   <Copy size={14} />
@@ -428,6 +445,19 @@ export function TransactionsPage({
     }
   };
 
+  // The popover position is computed once from the trigger rect and portaled
+  // to body; scroll/resize would leave it floating detached, so it closes.
+  useEffect(() => {
+    if (!filtersPos) return;
+    const close = () => setFiltersPos(null);
+    window.addEventListener("scroll", close, true);
+    window.addEventListener("resize", close);
+    return () => {
+      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("resize", close);
+    };
+  }, [filtersPos]);
+
   return (
     <div className="ops-page">
       <PageHead title={txCopy.title} lede={txCopy.description}>
@@ -472,6 +502,7 @@ export function TransactionsPage({
         </div>
         <button
           className="ops-summary-recovery"
+          aria-disabled={demo || undefined}
           onClick={() => chooseFilter("review")}
         >
           <h2 className="ops-summary-value num">

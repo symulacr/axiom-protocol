@@ -5,13 +5,11 @@
   middle-click, no crawl path — and the page had no hub escape hatch).
   Copy owns what happened + the next step, localized via copy.notFound.
 */
+import { Link } from "react-router-dom";
 import { ArrowLeft, LayoutDashboard } from "../components/axiom/icons.js";
 import { Logo } from "../components/axiom/AppShell.js";
 import { MEDIA } from "../lib/media.js";
-import {
-  routePath,
-  PUBLIC_HUB_PATHS,
-} from "../lib/routeRegistry.js";
+import { routePath, PUBLIC_HUB_PATHS } from "../lib/routeRegistry.js";
 import { getCopy, type Locale } from "../lib/copy.js";
 
 export default function Recovery404({ locale }: { locale: Locale }) {
@@ -39,29 +37,24 @@ export default function Recovery404({ locale }: { locale: Locale }) {
         </h1>
         <p>{copy.body}</p>
         {/* Wave-12B: real anchors now — href on every CTA (middle-click,
-            crawl path, keyboard focus preserved by :focus-visible styles). */}
+            crawl path, keyboard focus preserved by :focus-visible styles).
+            Link keeps the href but routes client-side (no full reload). */}
         <div className="button-row">
-          <a className="button button-primary" href="/">
+          <Link className="button button-primary" to="/">
             <ArrowLeft size={14} />
             {copy.returnToLanding}
-          </a>
-          <a className="button button-secondary" href={routePath("dashboard")}>
+          </Link>
+          <Link className="button button-secondary" to={routePath("dashboard")}>
             <LayoutDashboard size={16} />
             {copy.openConsole}
-          </a>
+          </Link>
         </div>
         {/* Wave-12B: shared hub explore row — the five public discovery
             surfaces stay reachable from a drifted route. 44px hit targets,
             keyboard focusable, hidden from SC duplication via nav labelling. */}
         <nav className="recovery-404-explore" aria-label={copy.exploreA11y}>
           {(
-            [
-              "agents",
-              "payments",
-              "proofs",
-              "storage",
-              "developers",
-            ] as const
+            ["agents", "payments", "proofs", "storage", "developers"] as const
           ).map((slug, i) => (
             <a key={slug} href={PUBLIC_HUB_PATHS[slug]}>
               {copy.hubLabels[i]}

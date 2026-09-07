@@ -35,6 +35,7 @@ import { AppShell, Logo } from "./components/axiom/AppShell.js";
 import { WalletGate, isSessionFresh } from "./components/axiom/WalletGate.js";
 import { Button, Status } from "./components/axiom/Controls.js";
 import {
+  AlertTriangle,
   ArrowLeft,
   ArrowRight,
   CircleCheck,
@@ -183,10 +184,11 @@ function Notice({
 }) {
   if (!text) return null;
   // U24: errors persist (manual ✕ only, role=alert); successes keep the timed toast.
+  // Icon + modifier class carry severity — an error must not wear the success check.
   const isError = severity === "error";
   return (
     <div
-      className="notice-toast"
+      className={`notice-toast${isError ? " notice-toast--error" : ""}`}
       role={isError ? "alert" : "status"}
       aria-live={isError ? "assertive" : "polite"}
       onMouseEnter={onPause}
@@ -194,7 +196,7 @@ function Notice({
       onFocusCapture={onPause}
       onBlurCapture={onResume}
     >
-      <CircleCheck size={16} />
+      {isError ? <AlertTriangle size={16} /> : <CircleCheck size={16} />}
       <span>{text}</span>
       <button
         onClick={onClose}
