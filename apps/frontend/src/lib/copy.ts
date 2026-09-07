@@ -113,9 +113,10 @@ export type Copy = {
     skipToContent: string;
   };
   landing: {
-    titleLead: string;
-    titleEmphasis: string;
+    title: string;
     description: string;
+    /** Closing CTA before the footer; empty locales fall back to English. */
+    closingCta: string;
     menuGuideHint: string;
     menuDevelopers: string;
     menuDevelopersHint: string;
@@ -1000,10 +1001,10 @@ const english: Copy = {
     skipToContent: "Skip to content",
   },
   landing: {
-    titleLead: "Own an AI agent.",
-    titleEmphasis: "Keep every action accountable.",
+    title: "Ownable AI agents, on 0G.",
     description:
-      "Mint an agent with a bounded vault. It works inside rules you set.",
+      "Mint an agent with a bounded vault. It runs only inside rules you set, and every action leaves an on-chain receipt.",
+    closingCta: "Mint your first agent.",
     menuGuideHint: "How signing and receipts work",
     menuDevelopers: "Developers",
     menuDevelopersHint: "APIs and developer tools",
@@ -1020,20 +1021,20 @@ const english: Copy = {
         {
           icon: "shield",
           title: "Bounded by design.",
-          body: "An on-chain vault with a daily limit. No off-chain guardrails.",
+          body: "An on-chain vault with a daily limit. Nothing can spend past it — not even us.",
           link: "Read the spec",
         },
         {
           icon: "receipt",
           title: "Receipts, not promises.",
-          body: "Every signature indexes as a receipt: agent, block, outcome.",
+          body: "Every signature is indexed as a receipt: which agent, which block, what happened.",
           link: "How receipts work",
         },
         {
           icon: "wallet",
           title: "Your wallet, your keys.",
-          body: "Connect the wallet you already use. No accounts, no emails.",
-          link: "Wallet options",
+          body: "Connect the wallet you already have. No accounts, no emails, no passwords.",
+          link: "",
         },
       ],
     },
@@ -2002,10 +2003,10 @@ const french: Copy = {
   },
   landing: {
     ...english.landing,
-    titleLead: "Possédez des agents IA",
-    titleEmphasis: "qui travaillent pour vous.",
+    title: "Des agents IA que vous possédez, sur 0G.",
     description:
-      "Mintez un agent sur 0G, mettez vos fonds au travail et gardez le contrôle.",
+      "Mintez un agent avec un coffre plafonné. Il ne s'exécute que dans les règles que vous fixez, et chaque action laisse un reçu on-chain.",
+    closingCta: "Mintez votre premier agent.",
     menuGuideHint: "Comment fonctionnent signatures et reçus",
     menuDevelopers: "Développeurs",
     menuDevelopersHint: "APIs et outils pour développeurs",
@@ -2022,20 +2023,20 @@ const french: Copy = {
         {
           icon: "shield",
           title: "Délimité par conception.",
-          body: "Un coffre on-chain avec une limite quotidienne. Rien hors chaîne.",
+          body: "Un coffre on-chain avec une limite quotidienne. Rien ne peut dépenser au-delà — nous non plus.",
           link: "Lire la spec",
         },
         {
           icon: "receipt",
           title: "Reçus, pas promesses.",
-          body: "Chaque signature devient un reçu indexé : agent, bloc, résultat.",
+          body: "Chaque signature est indexée en reçu : quel agent, quel bloc, que s'est-il passé.",
           link: "Comment fonctionnent les reçus",
         },
         {
           icon: "wallet",
           title: "Votre wallet, vos clés.",
-          body: "Connectez le wallet que vous utilisez déjà. Pas de comptes, pas d'emails.",
-          link: "Options de wallet",
+          body: "Connectez le wallet que vous avez déjà. Pas de comptes, pas d'emails, pas de mots de passe.",
+          link: "",
         },
       ],
     },
@@ -2987,10 +2988,10 @@ const german: Copy = {
   },
   landing: {
     ...english.landing,
-    titleLead: "Eigene KI-Agents,",
-    titleEmphasis: "die für dich arbeiten.",
+    title: "Eigene KI-Agenten, auf 0G.",
     description:
-      "Minte einen Agent auf 0G, lass deine Mittel arbeiten und behalte die Kontrolle.",
+      "Mint einen Agenten mit einem begrenzten Tresor. Er läuft nur innerhalb deiner Regeln, und jede Aktion hinterlässt einen On-Chain-Beleg.",
+    closingCta: "Minte deinen ersten Agenten.",
     menuGuideHint: "Wie Signatur und Beleg funktionieren",
     menuDevelopers: "Entwickler",
     menuDevelopersHint: "APIs und Entwickler-Tools",
@@ -3007,20 +3008,20 @@ const german: Copy = {
         {
           icon: "shield",
           title: "Grenzen durch Design.",
-          body: "Ein on-chain Tresor mit täglichem Limit. Keine Off-Chain-Absicherungen.",
+          body: "Ein on-chain Tresor mit täglichem Limit. Nichts kann darüber hinaus ausgeben — wir auch nicht.",
           link: "Spec lesen",
         },
         {
           icon: "receipt",
           title: "Belege, keine Versprechen.",
-          body: "Jede Signatur wird ein indexierter Beleg: Agent, Block, Ergebnis.",
+          body: "Jede Signatur wird als Beleg indexiert: welcher Agent, welcher Block, was passiert ist.",
           link: "Wie Belege funktionieren",
         },
         {
           icon: "wallet",
           title: "Dein Wallet, deine Schlüssel.",
-          body: "Verbinde das Wallet, das du bereits nutzt. Keine Accounts, keine E-Mails.",
-          link: "Wallet-Optionen",
+          body: "Verbinde das Wallet, das du schon hast. Keine Accounts, keine E-Mails, keine Passwörter.",
+          link: "",
         },
       ],
     },

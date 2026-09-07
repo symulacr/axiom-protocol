@@ -158,11 +158,7 @@ export function Landing({
       <main className="landing-main" id="hero" tabIndex={-1}>
         <Reveal>
         <section className="landing-copy">
-          <h1>
-            <span>{copy.landing.titleLead}</span>
-            <br />
-            <i>{copy.landing.titleEmphasis}</i>
-          </h1>
+          <h1>{copy.landing.title}</h1>
           <p>{copy.landing.description}</p>
           <div className="button-row">
             <Button
@@ -205,9 +201,11 @@ export function Landing({
               </span>
               <h3 dangerouslySetInnerHTML={{ __html: p.title }} />
               <p dangerouslySetInnerHTML={{ __html: p.body }} />
-              <a href={PRINCIPLE_HREFS[i]} className="p-link">
-                {p.link} <ArrowRight size={14} aria-hidden="true" />
-              </a>
+              {p.link !== "" && (
+                <a href={PRINCIPLE_HREFS[i]} className="p-link">
+                  {p.link} <ArrowRight size={14} aria-hidden="true" />
+                </a>
+              )}
             </SpotlightCard>
           ))}
         </div>
@@ -237,6 +235,17 @@ export function Landing({
           ))}
         </div>
         </Reveal>
+      </section>
+
+      {/* Closing CTA — single primary action before the footer. */}
+      <section className="scroll-section closing-cta">
+        <Button
+          className="wallet-cta wallet-cta-hero"
+          onClick={onConnect}
+          icon={<Wallet size={16} />}
+        >
+          {copy.landing.closingCta}
+        </Button>
       </section>
 
       {/* L2-N8: footer. */}
