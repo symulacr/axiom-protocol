@@ -59,9 +59,11 @@ test("GasTankCard deposit enforces the 0.01 minimum", () => {
   );
   const minDeposit = 'const minDeposit = "0.01";';
   assert.ok(src.includes(minDeposit));
-  assert.ok(
-    src.includes('parseEther(depositValue || "0") < parseEther(minDeposit)'),
-  );
+  // F1 H1: the gate safe-parses — a bare parseEther(userInput) here threw
+  // mid-render on malformed input and tripped the ErrorBoundary.
+  assert.ok(src.includes("depositWei === null ||"));
+  assert.ok(src.includes("depositWei < parseEther(minDeposit)"));
+  assert.ok(!src.includes('parseEther(depositValue || "0")'));
 });
 
 test("transport-browser wires the sponsor capability via signTypedDataAsync + GasTank domain", () => {

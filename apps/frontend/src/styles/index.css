@@ -103,7 +103,6 @@
 .wallet-gate-head { margin-bottom:var(--space-6); }
 .guide-card { grid-template-columns:1fr; max-height:calc(100dvh - 28px); overflow:auto; }
 .guide-media { min-height:210px; }
-.rail-toggle { display:none; }
 
 /* === from axiom-refinement === */
 .context-cell.context-action { border-inline-start:2px solid var(--copper); }
@@ -375,7 +374,7 @@
   --layer-modal: 90;
   --layer-review: 110;
   --layer-mobile-nav: 130;
-  --layer-notice: 100;
+  --layer-notice: 115;
 }
 
 .main { overflow:visible; min-width:0; }
@@ -903,7 +902,10 @@ body.light .guide-media img {
 /* Additive sparks wash out on paper — keep them faint in light mode. */
 body.light .three-bg { opacity: .35; }
 .three-bg canvas { display: block; width: 100%; height: 100%; }
-.landing-page > *:not(.three-bg) { position: relative; z-index: 1; }
+/* The skip link stays excluded: position:relative here would keep the <a>
+   inline, and transforms do not apply to inline boxes — its translateY(-200%)
+   hide would no-op and the link would paint at rest. */
+.landing-page > *:not(.three-bg):not(.skip-link) { position: relative; z-index: 1; }
 
 .landing-nav {
   min-block-size: 68px;
@@ -1216,6 +1218,10 @@ body.light .three-bg { opacity: .35; }
 .review-handoff-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
 /* P4 receiver page (/transfer/co-sign): rides the ops-page/panel/review-* kit;
    only the standalone bad-link panel and the code block need their own geometry. */
+/* The page renders outside .app-shell with no wrapper background: html keeps
+   the dark :root --bg under body.light, so the wrapper must fill the viewport
+   for the body canvas to cover it (same contract as .public-locked). */
+.cosign-page { min-height: 100dvh; }
 .cosign-panel { display: grid; gap: .8rem; max-width: 560px; margin: 2rem auto; padding: 1.1rem; }
 .cosign-panel .review-error { display: grid; gap: .28rem; }
 .cosign-code { margin: .45rem 0; padding: .55rem; overflow-wrap: anywhere; white-space: pre-wrap; color: var(--copper-bright); background: rgba(10,9,8,.5); border: 1px solid color-mix(in srgb, var(--copper) 35%, transparent); }

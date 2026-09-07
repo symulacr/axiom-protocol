@@ -15,7 +15,6 @@ import type { Locale } from "../../lib/copy.js";
 const FAUCET_RETIRED = false;
 /** Testnet-only faucet retired with the Galileo chain (2026-09-05). */
 
-
 const nativeSymbol = APP_CHAIN.nativeCurrency.symbol;
 
 /** Ops-left rendering: 0 → "0"; sponsored-lazy state surfaces the grant note. */
@@ -27,6 +26,15 @@ function opsLeftLabel(
   if (opsLeft > 0) return String(opsLeft);
   const copy = getCopy(locale);
   return sponsored ? copy.gasTank.lazyGrantNote : "0";
+}
+
+/** viem's parseEther throws on malformed input ("1.2.3") — render-time gates need null, never a throw. */
+export function tryParseEther(value: string): bigint | null {
+  try {
+    return parseEther(value);
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -141,6 +149,8 @@ export function GasTankCard({
       ? Math.min(100, Number((tank.grantsUsed * 100n) / tank.grantsCap))
       : 0;
 
+  const depositWei = tryParseEther(depositValue);
+
   return (
     <div className="gas-tank-card" data-testid="gas-tank-card">
       <h3>{copy.title}</h3>
@@ -192,8 +202,8 @@ export function GasTankCard({
               disabled={
                 busy ||
                 !walletClient ||
-                !depositValue ||
-                parseEther(depositValue || "0") < parseEther(minDeposit)
+                depositWei === null ||
+                depositWei < parseEther(minDeposit)
               }
               onClick={() => void onDeposit()}
               icon={undefined}
@@ -217,30 +227,30 @@ export function GasTankCard({
           {/* Testnet retired: the faucet was a Galileo-only feature; mainnet
               builds never render a claim that cannot succeed. */}
           {FAUCET_RETIRED && (
-          <div
-            className="gas-tank-card__faucet"
-            data-testid="gas-tank-faucet-row"
-          >
-            <small className="num" style={{ color: "var(--dim)" }}>
-              {copy.faucetBalanceLabel}: {faucet.balance ?? "0"}
-            </small>
-            {faucet.eligible ? (
-              <>
-                <small>{copy.faucetEligibleBadge}</small>
-                <Button
-                  variant="ghost"
-                  onClick={() => void onClaim()}
-                  disabled={faucet.claiming}
-                >
-                  {copy.faucetClaimAction}
-                </Button>
-              </>
-            ) : (
-              <small style={{ color: "var(--dim)" }}>
-                {copy.faucetIneligibleBadge}
+            <div
+              className="gas-tank-card__faucet"
+              data-testid="gas-tank-faucet-row"
+            >
+              <small className="num" style={{ color: "var(--dim)" }}>
+                {copy.faucetBalanceLabel}: {faucet.balance ?? "0"}
               </small>
-            )}
-          </div>
+              {faucet.eligible ? (
+                <>
+                  <small>{copy.faucetEligibleBadge}</small>
+                  <Button
+                    variant="ghost"
+                    onClick={() => void onClaim()}
+                    disabled={faucet.claiming}
+                  >
+                    {copy.faucetClaimAction}
+                  </Button>
+                </>
+              ) : (
+                <small style={{ color: "var(--dim)" }}>
+                  {copy.faucetIneligibleBadge}
+                </small>
+              )}
+            </div>
           )}
         </>
       )}

@@ -351,8 +351,6 @@ export function AgentPage({
     // hooks: one navigation per concluded-missing id
   }, [agentMissing, go]);
 
-  if (agentMissing) return null;
-
   const [moreOpen, setMoreOpen] = useState(false);
   const primaryActions: {
     path: string;
@@ -620,6 +618,10 @@ export function AgentPage({
       setDelegationSubmitting(false);
     }
   };
+
+  // hooks: this early return stays below every hook call — agentMissing
+  // flipping after the agents read settles must not change the hook count.
+  if (agentMissing) return null;
 
   return (
     <div className="ops-page agent-page">

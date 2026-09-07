@@ -9,6 +9,29 @@
   color: var(--aw-text);
   /* V14: #0b0e0f ≡ --canvas (exact token match; rendered output unchanged). */
   background: var(--canvas);
+  /* Dark-lock enforcement: body.light (index.css) remaps these tokens for the
+     landing, and the remaps inherit into the hub. Re-pin the consumed set to
+     the dark :root values so the hub stays dark in both themes. The awwwards
+     copper ramp (--aw-copper-*) is never remapped, so it resolves dark here. */
+  --aw-text: oklch(91.6% 0.014 74.4);
+  --aw-text-dim: oklch(77.9% 0.015 74.4);
+  --aw-mist: oklch(96.2% 0.007 164.9);
+  --aw-text-soft: color-mix(in srgb, var(--aw-mist) 72%, transparent);
+  --aw-accent: var(--aw-copper-400);
+  --aw-accent-strong: var(--aw-copper-500);
+  --aw-phosphor: oklch(84.4% 0.137 164.1);
+  --aw-line: color-mix(in srgb, var(--aw-copper-500) 16%, transparent);
+  --aw-line-soft: color-mix(in srgb, white 7%, transparent);
+  --aw-glass: color-mix(in srgb, oklch(16.1% 0.005 219.8) 72%, transparent);
+  --aw-card-grad: linear-gradient(
+    170deg,
+    color-mix(in srgb, oklch(21.7% 0.014 239.4) 88%, transparent),
+    color-mix(in srgb, oklch(16.1% 0.005 219.8) 92%, transparent)
+  );
+  --copper: #d28b52;
+  --copper-bright: #efae6b;
+  --phosphor: #67e8b4;
+  --completion-bright: var(--copper-bright);
 }
 
 .seo-public-nav {
