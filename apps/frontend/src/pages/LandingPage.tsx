@@ -33,11 +33,13 @@ import {
 } from "../components/fx/fx.js";
 import { ThreeBackground } from "../components/fx/ThreeBackground.js";
 
-/** L2-N6: principle-card icon dispatch. */
+/** L2-N6: principle-card icon dispatch. 1.5 stroke is set here once so the
+ *  three cards share a consistent glyph weight. */
 function PrincipleIcon({ name }: { name: "shield" | "receipt" | "wallet" }) {
-  if (name === "shield") return <ShieldCheck size={18} aria-hidden="true" />;
-  if (name === "receipt") return <FileCheck2 size={18} aria-hidden="true" />;
-  return <CreditCard size={18} aria-hidden="true" />;
+  const common = { size: 18, strokeWidth: 1.5, "aria-hidden": true } as const;
+  if (name === "shield") return <ShieldCheck {...common} />;
+  if (name === "receipt") return <FileCheck2 {...common} />;
+  return <CreditCard {...common} />;
 }
 
 /** Wave 5: footer + principle links are locale-keyed labels with no href in
@@ -104,7 +106,7 @@ export function Landing({
         <div className="nav-right">
           <ThemeToggle locale={locale} />
           <button type="button" className="nav-connect" onClick={onConnect}>
-            <Wallet size={14} aria-hidden="true" />
+            <Wallet size={14} strokeWidth={1.5} aria-hidden="true" />
             {copy.landing.nav.connect}
           </button>
           <button
@@ -114,7 +116,7 @@ export function Landing({
             aria-expanded={menuOpen}
             aria-controls="landing-mobile-menu"
           >
-            <Menu size={18} />
+            <Menu size={18} strokeWidth={1.5} />
           </button>
           {menuOpen && (
             <nav
@@ -142,7 +144,7 @@ export function Landing({
                 ] as const
               ).map(({ Icon, title, hint, onClick }) => (
                 <button key={title} onClick={onClick}>
-                  <Icon size={16} />
+                  <Icon size={16} strokeWidth={1.5} />
                   <span>
                     <strong>{title}</strong>
                     <small>{hint}</small>
@@ -164,14 +166,14 @@ export function Landing({
             <Button
               className="wallet-cta wallet-cta-hero"
               onClick={onConnect}
-              icon={<Wallet size={16} />}
+              icon={<Wallet size={16} strokeWidth={1.5} />}
             >
               {copy.nav.connectWallet}
             </Button>
             <Button
               variant="ghost"
               onClick={onGuide}
-              icon={<CircleHelp size={16} />}
+              icon={<CircleHelp size={16} strokeWidth={1.5} />}
             >
               {copy.nav.howItWorks}
             </Button>
@@ -203,7 +205,7 @@ export function Landing({
               <p dangerouslySetInnerHTML={{ __html: p.body }} />
               {p.link !== "" && (
                 <a href={PRINCIPLE_HREFS[i]} className="p-link">
-                  {p.link} <ArrowRight size={14} aria-hidden="true" />
+                  {p.link} <ArrowRight size={14} strokeWidth={1.5} aria-hidden="true" />
                 </a>
               )}
             </SpotlightCard>
@@ -242,7 +244,7 @@ export function Landing({
         <Button
           className="wallet-cta wallet-cta-hero"
           onClick={onConnect}
-          icon={<Wallet size={16} />}
+          icon={<Wallet size={16} strokeWidth={1.5} />}
         >
           {copy.landing.closingCta}
         </Button>
