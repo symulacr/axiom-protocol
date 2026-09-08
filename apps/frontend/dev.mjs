@@ -27,18 +27,22 @@ const noBackendResponse = () =>
   );
 
 // VITE_* from the repo-root .env (single source of truth, same as build.mjs)
-// with shell-exported VITE_* taking precedence for one-off overrides. Without
-// this the dev build silently fell back to wagmi's mainnet default while the
+// with the gitignored .env.secrets-local layering over it (VITE_* values are
+// public by design — they ship in the browser bundle) and shell-exported
+// VITE_* taking final precedence for one-off overrides. Without this the dev
+// build silently fell back to wagmi's mainnet default while the
 // backend/contracts target the env-selected chain.
-let rootViteVars = {};
-try {
-  const envSrc = await readFile(resolve(frontendDir, "../../.env"), "utf8");
-  for (const line of envSrc.split("\n")) {
-    const key = /^VITE_[A-Z_]+(?==)/.exec(line)?.[0];
-    if (key) rootViteVars[key] = line.slice(key.length + 1);
+const rootViteVars = {};
+for (const rel of ["../../.env", "../../.env.secrets-local"]) {
+  try {
+    const envSrc = await readFile(resolve(frontendDir, rel), "utf8");
+    for (const line of envSrc.split("\n")) {
+      const key = /^VITE_[A-Z_]+(?==)/.exec(line)?.[0];
+      if (key) rootViteVars[key] = line.slice(key.length + 1);
+    }
+  } catch {
+    // missing env file — dev runs on whatever layers exist
   }
-} catch {
-  // no root .env — dev runs on explicit process.env only
 }
 const viteDefines = Object.fromEntries(
   Object.entries({ ...rootViteVars, ...process.env })
