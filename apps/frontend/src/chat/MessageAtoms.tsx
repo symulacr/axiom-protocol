@@ -158,6 +158,9 @@ export function AskUserCard({
 }): ReactElement | null {
   const [selected, setSelected] = useState<string[]>([]);
   const [freeText, setFreeText] = useState("");
+  // An answered card goes inert: re-clicking a live card re-sends the same
+  // option as a new user message, duplicating the block in the thread.
+  const [answered, setAnswered] = useState<string | null>(null);
   let data: {
     ask?: boolean;
     question?: string;
@@ -177,6 +180,7 @@ export function AskUserCard({
   const submit = (answer: string): void => {
     setSelected([]);
     setFreeText("");
+    setAnswered(answer);
     onAnswer(answer);
   };
 
@@ -218,6 +222,7 @@ export function AskUserCard({
                   <input
                     type="checkbox"
                     checked={checked}
+                    disabled={answered !== null}
                     onChange={() =>
                       setSelected((prev) =>
                         checked ? prev.filter((x) => x !== o) : [...prev, o],
@@ -230,7 +235,7 @@ export function AskUserCard({
             })}
             <Button
               variant="primary"
-              disabled={selected.length === 0}
+              disabled={answered !== null || selected.length === 0}
               onClick={() => submit(selected.join(", "))}
             >
               {copy.send}
@@ -241,7 +246,12 @@ export function AskUserCard({
             style={{ display: "flex", flexWrap: "wrap", gap: "var(--space-2)" }}
           >
             {options.map((o, i) => (
-              <Button key={i} variant="secondary" onClick={() => submit(o)}>
+              <Button
+                key={i}
+                variant="secondary"
+                disabled={answered !== null}
+                onClick={() => submit(o)}
+              >
                 {o}
               </Button>
             ))}
@@ -253,6 +263,7 @@ export function AskUserCard({
             aria-label={copy.answerPlaceholder}
             value={freeText}
             rows={1}
+            disabled={answered !== null}
             onChange={(e) => setFreeText(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey && freeText.trim()) {
@@ -265,7 +276,7 @@ export function AskUserCard({
           />
           <Button
             variant="primary"
-            disabled={!freeText.trim()}
+            disabled={answered !== null || !freeText.trim()}
             onClick={() => submit(freeText.trim())}
           >
             {copy.send}

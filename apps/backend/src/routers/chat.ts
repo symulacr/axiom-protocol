@@ -380,6 +380,20 @@ export function registerChatRoutes(
           );
           return;
         }
+        // Upstream 400 = the request itself was rejected (e.g. a malformed
+        // message array). Pass it through as a 400 with the provider's reason
+        // instead of masking it as a 502 compute outage — the UI's "compute
+        // unavailable" copy only fits real upstream/auth/balance failures.
+        if (status === 400 || code === "400001") {
+          jsonFail(
+            400,
+            msg
+              ? `Compute provider rejected the request: ${trimErrorMessage(e)}`
+              : "Compute provider rejected the request as invalid",
+            "invalid_request",
+          );
+          return;
+        }
         jsonFail(
           502,
           msg
