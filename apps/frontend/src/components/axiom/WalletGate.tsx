@@ -204,6 +204,17 @@ export function WalletGate({
     return () => mobileConnector.emitter.off("message", onMessage);
   }, [mobileConnector]);
 
+  // A hung connector (unreachable WalletConnect relay, dead extension) must
+  // not spin "Connecting…" forever — settle into the honest timeout error.
+  useEffect(() => {
+    if (!connecting) return;
+    const timeout = setTimeout(() => {
+      setConnecting(false);
+      setError((prev) => prev ?? copy.errors.timeout);
+    }, 15000);
+    return () => clearTimeout(timeout);
+  }, [connecting, copy.errors.timeout]);
+
   const connectMobile = async () => {
     if (!mobileConnector) return;
     setError(null);
@@ -258,7 +269,7 @@ export function WalletGate({
 
           {view === "connect" && (
             <>
-              {!showOptions && !pairingUri && !error && (
+              {connecting && !showOptions && !pairingUri && !error && (
                 <p className="wallet-gate-status" role="status">
                   {copy.wallet.connectingStatus}
                 </p>
