@@ -871,8 +871,8 @@ function WrongNetworkNotice({
 /*
   LockedRoute — THE one pre-auth gate for every internal route (console pages,
   agent detail, flow routes, /agents/list): one shell, one copy owner
-  (copy.lockedHero), one visual-slot table (consoleCatalog.lockedGates that
-  also carries the per-route schematic rows under the preview card). The CTA
+  (copy.lockedHero + copy.gate), one visual-slot table
+  (consoleCatalog.lockedGates: slug class, preview media, row icons). The CTA
   opens the live WalletGate.
 */
 function LockedRoute({
@@ -894,6 +894,10 @@ function LockedRoute({
   const gate = lockedGateFor(pathname) ?? lockedGates["/app"];
   if (!gate) return null;
   const hero = copy.lockedHero[gate.hero];
+  // B-M4: gate chrome (label + schematic rows) is localized in copy.gate;
+  // the catalog carries only the row icons, paired by index.
+  const gateLabel = copy.gate.labels[gate.slug];
+  const gateRows = copy.gate.rows[gate.slug];
 
   return (
     <LockedShell
@@ -918,7 +922,7 @@ function LockedRoute({
         <div className="locked-preview">
           <img
             src={gate.media}
-            alt={copy.gate.previewAlt(gate.label)}
+            alt={copy.gate.previewAlt(gateLabel)}
             loading="lazy"
             decoding="async"
           />
@@ -929,9 +933,9 @@ function LockedRoute({
         {/* Schematic mock, not data: masked values only (the gate never fakes
             live state) — per-route rows give every gate its own product shape. */}
         <div className="locked-schematic" aria-hidden="true">
-          {gate.rows.map((row) => (
+          {gateRows.map((row, index) => (
             <div className="locked-schematic-row" key={row.label}>
-              {row.icon}
+              {gate.rowIcons[index]}
               <span>{row.label}</span>
               <em>{row.value}</em>
             </div>

@@ -90,6 +90,24 @@ test("isClientPathAllowed: chat and agents ok; vault execute and forensics denie
   );
 });
 
+test("client key reaches the registry pubkey lookup (GET only)", () => {
+  assert.equal(
+    isClientPathAllowed(
+      "GET",
+      "/v1/registry/pubkey/0x845016B204fb2db028Ff148990Fc75bb606EE239",
+    ),
+    true,
+  );
+  assert.equal(
+    isClientPathAllowed(
+      "POST",
+      "/v1/registry/pubkey/0x845016B204fb2db028Ff148990Fc75bb606EE239",
+    ),
+    false,
+  );
+  assert.equal(isClientPathAllowed("GET", "/v1/registry/other"), false);
+});
+
 test("enforceClientPathAllowlist blocks client on vault execute path", () => {
   const req = {
     authPrincipal: "client",
