@@ -983,6 +983,8 @@ export type Copy = {
     age: string;
     state: string;
     emptyState: string;
+    /** Zero-receipts first run (no filter active) — distinct from the filter-miss line. */
+    emptyAll: string;
     closeReceipt: string;
     transactionHash: string;
     network: string;
@@ -2009,6 +2011,7 @@ const english: Copy = {
     age: "Age",
     state: "State",
     emptyState: "No receipts match this filter.",
+    emptyAll: "No receipts yet. Mint an agent to create the first one.",
     closeReceipt: "Close receipt",
     transactionHash: "Transaction hash",
     network: "Network",
@@ -3095,6 +3098,7 @@ const french: Copy = {
     state: "État",
     emptyState:
       "Aucun reçu ne correspond à cet état. Le store partagé ne masque aucun élément.",
+    emptyAll: "Pas encore de reçu. Mintez un agent pour créer le premier.",
     closeReceipt: "Fermer le reçu",
     transactionHash: "Hash de transaction",
     network: "Réseau",
@@ -4174,6 +4178,7 @@ const german: Copy = {
     state: "Status",
     emptyState:
       "Keine Belege passen zu diesem Status. Der gemeinsame Store verbirgt keine Elemente.",
+    emptyAll: "Noch keine Belege. Minten Sie einen Agenten für den ersten.",
     closeReceipt: "Beleg schließen",
     transactionHash: "Transaktions-Hash",
     network: "Netzwerk",

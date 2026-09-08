@@ -650,11 +650,17 @@ export function TransactionsPage({
           ) : null}
           {!demo && !historyLoading && filtered.length === 0 && (
             <div className="empty-state transaction-empty-state">
-              <p>{txCopy.emptyState}</p>
-              {/* U15 icon order: this is an action, so the icon leads. */}
-              <button className="text-link" onClick={() => chooseFilter("all")}>
-                <RotateCcw size={14} /> {txCopy.clearFilter}
-              </button>
+              <p>{filter === "all" ? txCopy.emptyAll : txCopy.emptyState}</p>
+              {/* U15 icon order: this is an action, so the icon leads. Clear
+                  only renders when a filter is actually narrowing the list. */}
+              {filter !== "all" && (
+                <button
+                  className="text-link"
+                  onClick={() => chooseFilter("all")}
+                >
+                  <RotateCcw size={14} /> {txCopy.clearFilter}
+                </button>
+              )}
             </div>
           )}
         </div>
