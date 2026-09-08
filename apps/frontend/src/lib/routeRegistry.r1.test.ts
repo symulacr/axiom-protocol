@@ -107,16 +107,16 @@ describe("R1 route-surface guards (registry/config level)", () => {
       expect(catalogSrc).toMatch(new RegExp(`${path}: \\{`));
     }
     // The visual-slot table must point each route at its copy.lockedHero key…
+    // (/transactions and /storage are NOT gated — they render demo pages
+    // disconnected, so they own no hero copy; Q3 dead-gate cleanup.)
     const copySrc = read("copy.ts");
     for (const hero of [
       "app",
       "settings",
-      "transactions",
       "chat",
       "mint",
       "payment",
       "transfer",
-      "storage",
       "agent",
       "agentsList",
       "tick",

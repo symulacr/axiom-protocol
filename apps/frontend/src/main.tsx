@@ -6,7 +6,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "sonner";
 import { App } from "./App";
 import { WagmiConfigProvider } from "./config/wagmi";
-import { UiStoreProvider } from "./lib/uiStore";
+import { UiStoreProvider, useUiStore } from "./lib/uiStore";
+import { getCopy } from "./lib/copy";
 import { isIndexablePath } from "./lib/routeRegistry";
 import "./styles/index.css";
 import "./styles/axiom-awwwards.css";
@@ -47,6 +48,33 @@ window.history.pushState = ((...args: Parameters<History["pushState"]>) => {
 window.addEventListener("popstate", applyIndexingPolicy);
 applyIndexingPolicy();
 
+/* Sonner builds the region aria-label from containerAriaLabel + the hotkey
+ * suffix; without an override the label is English in every locale. Reading
+ * the store locale keeps it localized, so the Toaster mounts inside
+ * UiStoreProvider (sonner's imperative toast() works regardless of tree spot). */
+function LocalizedToaster() {
+  const { state } = useUiStore();
+  return (
+    <Toaster
+      position="bottom-right"
+      containerAriaLabel={
+        getCopy(state.settings.locale).a11y.notificationsRegion
+      }
+      // 5s floor for timed success/info toasts (motion-and-zoom); error and
+      // action toasts pass duration: Infinity per-call (toastError in
+      // pages/shared.ts, GasTankCard, ChatPage undo) per the U24 policy.
+      duration={5000}
+      toastOptions={{
+        style: {
+          background: "var(--panel)",
+          color: "var(--text)",
+          border: "1px solid var(--line)",
+        },
+      }}
+    />
+  );
+}
+
 // QueryClientProvider must wrap WagmiConfigProvider — wagmi's data hooks
 // resolve their react-query client internally.
 createRoot(rootEl).render(
@@ -57,22 +85,9 @@ createRoot(rootEl).render(
           <BrowserRouter>
             <App />
           </BrowserRouter>
+          <LocalizedToaster />
         </UiStoreProvider>
       </WagmiConfigProvider>
-      <Toaster
-        position="bottom-right"
-        // 5s floor for timed success/info toasts (motion-and-zoom); error and
-        // action toasts pass duration: Infinity per-call (toastError in
-        // pages/shared.ts, GasTankCard, ChatPage undo) per the U24 policy.
-        duration={5000}
-        toastOptions={{
-          style: {
-            background: "var(--panel)",
-            color: "var(--text)",
-            border: "1px solid var(--line)",
-          },
-        }}
-      />
     </QueryClientProvider>
   </StrictMode>,
 );
