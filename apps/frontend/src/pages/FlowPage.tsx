@@ -730,7 +730,9 @@ export function FlowPage({
     },
   ): void => {
     addReceipt({
-      id: txHash,
+      // The "—" marker (hold with no storage write) is not a real hash — give
+      // the row its own id so repeated holds never collide on the store key.
+      id: txHash === "—" ? `hold-${Date.now()}` : txHash,
       hash: txHash,
       age: "now",
       state: "confirming",
@@ -997,7 +999,12 @@ export function FlowPage({
           {},
         );
         setTickDone(true);
-        const hash = result.execution?.txHash ?? result.storage.rootHash;
+        const rawHash = result.execution?.txHash ?? result.storage.rootHash;
+        // A hold writes nothing to 0G storage: rootHash returns 0x000…0, which
+        // reads as a broken receipt row. Carry the "—" marker the drawer
+        // already handles instead.
+        const hash =
+          rawHash === undefined || /^0x0+$/.test(rawHash) ? "—" : rawHash;
         const outcome =
           result.recommendation.action === "act" ? f.tickActed : f.tickHeld;
         const reason = result.recommendation.reason;

@@ -352,7 +352,10 @@
 .account:focus-visible, .session-top:focus-visible
 { outline:2px solid var(--copper-bright); outline-offset:3px; }
 .transaction-table, .transaction-panel, .storage-stage, .provenance-panel { overflow-x:auto; }
-.empty-state { overflow-wrap:anywhere; }
+.empty-state { display:grid; gap:var(--space-2); justify-items:start; overflow-wrap:anywhere; }
+/* GasTankCard balance: the card ships no sheet rules — without grid the strong
+   and small run inline and concatenate ("0 0Gnext op sponsored"). */
+.gas-tank-card__balance { display:grid; gap:var(--space-1); justify-items:start; }
 [dir="rtl"] .brand, [dir="rtl"] .topbar, [dir="rtl"] .page-head, [dir="rtl"] .flow-stage-top, [dir="rtl"] .context-strip { direction:rtl; }
 [dir="rtl"] .flow-symbol { transform:scaleX(-1); }
 [dir="rtl"] .button svg, [dir="rtl"] .text-link svg, [dir="rtl"] .transaction-row > svg { transform:scaleX(-1); }
@@ -1168,19 +1171,21 @@ body.light .three-bg { opacity: .35; }
 .passive-proof-timeline li.is-ready > i, .passive-proof-timeline li.is-ready > svg { color: var(--phosphor); }
 /* Single-scrim contract: every fixed overlay scrim reads --completion-overlay (themed per app-shell). */
 .operation-review-layer { position: fixed; z-index: var(--layer-review, 110); inset: 0; display: grid; place-items: end; padding: clamp(1rem, 3vw, 2.25rem); background: var(--completion-overlay); backdrop-filter: blur(8px); }
-.operation-review-sheet { width: min(590px, 100%); display: grid; gap: 1rem; max-height: calc(100dvh - 2rem); overflow: auto; padding: clamp(1rem, 2.5vw, 1.55rem); color: var(--text); border: 1px solid color-mix(in srgb, var(--copper) 62%, transparent); background: linear-gradient(145deg, #24201d, #11100f 72%); box-shadow: var(--shadow-modal); }
+.operation-review-sheet { --sheet-ink: #f0eee9; --sheet-dim: #99a09f; width: min(590px, 100%); display: grid; gap: 1rem; max-height: calc(100dvh - 2rem); overflow: auto; padding: clamp(1rem, 2.5vw, 1.55rem); color: var(--sheet-ink); border: 1px solid color-mix(in srgb, var(--copper) 62%, transparent); background: linear-gradient(145deg, #24201d, #11100f 72%); box-shadow: var(--shadow-modal); }
 .operation-review-head { display: flex; justify-content: space-between; gap: 1rem; align-items: start; }
-.operation-review-head h2 { margin: .2rem 0 0; color: var(--text); font: var(--fw-strong) var(--fs-modal)/.98 var(--font-display, inherit); letter-spacing: -.03em; }
+/* The sheet bg is dark-locked in both themes, so its inks are constants — the
+   flipping --text/--muted tokens rendered dark-on-dark in the Paper theme. */
+.operation-review-head h2 { margin: .2rem 0 0; color: var(--sheet-ink); font: var(--fw-strong) var(--fs-modal)/.98 var(--font-display, inherit); letter-spacing: -.03em; }
 .operation-review-head h2 i { color: var(--copper-bright); font-style: normal; }
 .review-decision { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: .7rem; align-items: start; padding: .9rem; border-left: 3px solid var(--copper); background: color-mix(in srgb, var(--copper) 11%, transparent); }
 .review-seal { display: grid; place-items: center; width: 30px; height: 30px; color: var(--phosphor); border: 1px solid color-mix(in srgb, var(--phosphor) 40%, transparent); border-radius: 50%; }
 .review-decision div { display: grid; gap: .24rem; }
-.review-decision strong { color: var(--text); font-size: var(--fs-body); line-height: 1.42; }
+.review-decision strong { color: var(--sheet-ink); font-size: var(--fs-body); line-height: 1.42; }
 .review-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .7rem; margin: 0; }
 .review-facts div { min-width: 0; padding: .62rem .68rem; border: 1px solid var(--completion-line); background: color-mix(in srgb, var(--panel-2) 55%, transparent); }
 .review-facts dt { color: var(--dim); font: 500 var(--fs-mono)/1 var(--font-mono, monospace); }
 .review-facts dd { overflow-wrap: anywhere; margin: .3rem 0 0; color: var(--text); font-size: var(--fs-small); line-height: var(--support-leading); }
-.review-proof, .review-error { display: flex; gap: .45rem; align-items: flex-start; padding: .68rem; color: var(--muted); border: 1px solid color-mix(in srgb, var(--phosphor) 20%, transparent); font-size: var(--fs-small); line-height: 1.4; }
+.review-proof, .review-error { display: flex; gap: .45rem; align-items: flex-start; padding: .68rem; color: var(--sheet-dim); border: 1px solid color-mix(in srgb, var(--phosphor) 20%, transparent); font-size: var(--fs-small); line-height: 1.4; }
 .review-proof svg { flex: 0 0 auto; color: var(--phosphor); }
 .review-error { color: #ffd2bd; border-color: rgba(234,119,80,.45); background: rgba(234,119,80,.1); }
 /* F-01 receiver co-sign step: copper (action-required) panel inside the sheet —
