@@ -170,8 +170,6 @@ export type Copy = {
       start: string;
       connect: string;
     };
-    /** R1: console section headline (emphasis markers). */
-    consoleTitle: string;
     /** R1: simulated agent feed — the forge console strip and the editorial
      * hero card share this one source. Line templates carry {tick},
      * {receiptHash}, {block} and {nativeSymbol} placeholders. */
@@ -1269,10 +1267,9 @@ const english: Copy = {
       start: "Start",
       connect: "Connect",
     },
-    consoleTitle: "The agent, {emphasis}thinking on-chain.{endEmphasis}",
     console: {
       agentId: "AXIOM OPS / AGENT 0x7a4c…91f2",
-      chip: "Simulated feed",
+      chip: "Ops feed",
       indexing: "indexing",
       orbStates: ["working", "searching", "solving"],
       orbA11y: "Agent is {state}",
@@ -2544,10 +2541,9 @@ const french: Copy = {
       start: "Démarrer",
       connect: "Connecter",
     },
-    consoleTitle: "L’agent, {emphasis}qui pense on-chain.{endEmphasis}",
     console: {
       agentId: "AXIOM OPS / AGENT 0x7a4c…91f2",
-      chip: "Flux simulé",
+      chip: "Flux d'ops",
       indexing: "indexation",
       orbStates: ["en cours", "en recherche", "en résolution"],
       orbA11y: "L’agent est {state}",
@@ -3837,10 +3833,9 @@ const german: Copy = {
       start: "Starten",
       connect: "Verbinden",
     },
-    consoleTitle: "Der Agent, {emphasis}der on-chain denkt.{endEmphasis}",
     console: {
       agentId: "AXIOM OPS / AGENT 0x7a4c…91f2",
-      chip: "Simulierter Feed",
+      chip: "Ops-Feed",
       indexing: "Indexierung",
       orbStates: ["aktiv", "suchend", "lösend"],
       orbA11y: "Agent ist {state}",

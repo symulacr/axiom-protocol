@@ -770,6 +770,42 @@ interface LandingDesignProps {
  *  Variant A — Dark Forge (default; dark theme side).
  * ------------------------------------------------------------------ */
 
+/** The hero's right-column console card (beam-lit, square). Extracted so the
+ * IslandGuard fallback and the BorderBeam child share one definition. */
+function ForgeConsoleCard({
+  copy,
+  nativeSymbol,
+}: {
+  copy: Copy;
+  nativeSymbol: string;
+}) {
+  return (
+    <div className="forge-console-shell">
+      <div className="forge-console">
+        <div className="forge-console-bar">
+          <span className="forge-agent-id">{copy.landing.console.agentId}</span>
+          <span className="forge-sim-chip">
+            <span className="forge-live-dot" aria-hidden="true" />
+            {copy.landing.console.chip}
+          </span>
+        </div>
+        <div className="forge-console-body">
+          <div className="forge-orb-cell">
+            <ConsoleOrb
+              size={64}
+              theme="dark"
+              copy={copy}
+              cycleMs={7000}
+              fallbackClass="forge-orb-fallback"
+            />
+          </div>
+          <ForgeStream copy={copy} nativeSymbol={nativeSymbol} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ForgePrincipleCard({ p }: { p: PrincipleItem }) {
   return (
     <article className="forge-principle">
@@ -861,52 +897,82 @@ function LandingForge({
       <main>
         <section className="forge-hero" id="hero" tabIndex={-1}>
           <div className="forge-wrap forge-hero-inner">
-            <Reveal>
-              <p
-                className="forge-eyebrow"
-                dangerouslySetInnerHTML={{
-                  __html: interpolate(copy.landing.eyebrow, {
-                    emphasis: "<b>",
-                    endEmphasis: "</b>",
-                  }),
-                }}
-              />
-            </Reveal>
-            <Reveal delay={80}>
-              <h1
-                className="forge-h1"
-                dangerouslySetInnerHTML={{
-                  __html: emphasisHtml(copy.landing.title),
-                }}
-              />
-            </Reveal>
-            <Reveal delay={160}>
-              <p className="forge-lede">{copy.landing.description}</p>
-            </Reveal>
-            <Reveal delay={240}>
-              <div className="forge-ctas">
-                <MetalCta>
+            <div className="forge-hero-copy">
+              <Reveal>
+                <p
+                  className="forge-eyebrow"
+                  dangerouslySetInnerHTML={{
+                    __html: interpolate(copy.landing.eyebrow, {
+                      emphasis: "<b>",
+                      endEmphasis: "</b>",
+                    }),
+                  }}
+                />
+              </Reveal>
+              <Reveal delay={80}>
+                <h1
+                  className="forge-h1"
+                  dangerouslySetInnerHTML={{
+                    __html: emphasisHtml(copy.landing.title),
+                  }}
+                />
+              </Reveal>
+              <Reveal delay={160}>
+                <p className="forge-lede">{copy.landing.description}</p>
+              </Reveal>
+              <Reveal delay={240}>
+                <div className="forge-ctas">
+                  <MetalCta>
+                    <button
+                      type="button"
+                      className="forge-btn forge-btn-primary forge-btn-hero"
+                      onClick={onConnect}
+                    >
+                      <Wallet size={16} strokeWidth={1.5} aria-hidden="true" />
+                      {copy.nav.connectWallet}
+                      <span className="forge-btn-icon" aria-hidden="true">
+                        <ArrowRight size={14} strokeWidth={1.5} />
+                      </span>
+                    </button>
+                  </MetalCta>
                   <button
                     type="button"
-                    className="forge-btn forge-btn-primary forge-btn-hero"
-                    onClick={onConnect}
+                    className="forge-btn forge-btn-ghost"
+                    onClick={onGuide}
                   >
-                    <Wallet size={16} strokeWidth={1.5} aria-hidden="true" />
-                    {copy.nav.connectWallet}
-                    <span className="forge-btn-icon" aria-hidden="true">
-                      <ArrowRight size={14} strokeWidth={1.5} />
-                    </span>
+                    <CircleHelp
+                      size={16}
+                      strokeWidth={1.5}
+                      aria-hidden="true"
+                    />
+                    {copy.nav.howItWorks}
                   </button>
-                </MetalCta>
-                <button
-                  type="button"
-                  className="forge-btn forge-btn-ghost"
-                  onClick={onGuide}
+                </div>
+              </Reveal>
+            </div>
+            {/* The live console card is the hero's right column (user call:
+                the standalone #console section below was retired for it).
+                Square, beam-lit — the page's prominent artifact. */}
+            <Reveal className="forge-hero-console" delay={200}>
+              <IslandGuard
+                fallback={
+                  <ForgeConsoleCard copy={copy} nativeSymbol={nativeSymbol} />
+                }
+              >
+                <BorderBeam
+                  size="md"
+                  colorVariant="sunset"
+                  staticColors
+                  theme="dark"
+                  strength={0.85}
+                  duration={3.6}
+                  borderRadius={24}
+                  active={!reduced}
+                  className="forge-console-beam"
                 >
-                  <CircleHelp size={16} strokeWidth={1.5} aria-hidden="true" />
-                  {copy.nav.howItWorks}
-                </button>
-              </div>
+                  <ForgeConsoleCard copy={copy} nativeSymbol={nativeSymbol} />
+                </BorderBeam>
+              </IslandGuard>
             </Reveal>
           </div>
         </section>
@@ -973,47 +1039,6 @@ function LandingForge({
                 </Reveal>
               ))}
             </div>
-          </div>
-        </section>
-
-        <section className="forge-section" id="console">
-          <div className="forge-wrap">
-            <Reveal>
-              <header className="forge-section-head">
-                <h2
-                  dangerouslySetInnerHTML={{
-                    __html: emphasisHtml(copy.landing.consoleTitle),
-                  }}
-                />
-              </header>
-            </Reveal>
-            <Reveal delay={120}>
-              <div className="forge-console-shell">
-                <div className="forge-console">
-                  <div className="forge-console-bar">
-                    <span className="forge-agent-id">
-                      {copy.landing.console.agentId}
-                    </span>
-                    <span className="forge-sim-chip">
-                      <span className="forge-live-dot" aria-hidden="true" />
-                      {copy.landing.console.chip}
-                    </span>
-                  </div>
-                  <div className="forge-console-body">
-                    <div className="forge-orb-cell">
-                      <ConsoleOrb
-                        size={64}
-                        theme="dark"
-                        copy={copy}
-                        cycleMs={7000}
-                        fallbackClass="forge-orb-fallback"
-                      />
-                    </div>
-                    <ForgeStream copy={copy} nativeSymbol={nativeSymbol} />
-                  </div>
-                </div>
-              </div>
-            </Reveal>
           </div>
         </section>
 
