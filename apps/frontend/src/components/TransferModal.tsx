@@ -142,6 +142,7 @@ function TransferFormPhase({
   pubkeyFallbackSummary,
   pubkeyResolvePending,
   pubkeyResolveFailed,
+  pubkeyResolveResolved,
   oldDataEncryptionKey,
   onOldDataKeyChange,
   oldDataUri,
@@ -164,10 +165,11 @@ function TransferFormPhase({
   /** P3 §(b)#4: the Advanced paste field only appears when the address has
    * no on-chain key (NO_ONCHAIN_KEY) — the normal path never asks for hex. */
   pubkeyFallback: boolean;
-  pubkeyResolveStatus: "idle" | "pending" | "failed";
+  pubkeyResolveStatus: "idle" | "pending" | "failed" | "resolved";
   pubkeyFallbackSummary: string;
   pubkeyResolvePending: string;
   pubkeyResolveFailed: string;
+  pubkeyResolveResolved: string;
   oldDataEncryptionKey: string;
   onOldDataKeyChange: (value: string) => void;
   oldDataUri: string;
@@ -215,9 +217,11 @@ function TransferFormPhase({
             />
           </details>
         </>
+      ) : pubkeyResolveStatus === "pending" ? (
+        <p className="transfer-modal-lede">{pubkeyResolvePending}</p>
       ) : (
-        pubkeyResolveStatus === "pending" && (
-          <p className="transfer-modal-lede">{pubkeyResolvePending}</p>
+        pubkeyResolveStatus === "resolved" && (
+          <p className="transfer-modal-lede">{pubkeyResolveResolved}</p>
         )
       )}
 
@@ -487,7 +491,7 @@ export function TransferModal({
   // field (spec-mandated fallback) is revealed; reset whenever the address changes.
   const [pubkeyFallback, setPubkeyFallback] = useState(false);
   const [pubkeyResolveStatus, setPubkeyResolveStatus] = useState<
-    "idle" | "pending" | "failed"
+    "idle" | "pending" | "failed" | "resolved"
   >("idle");
   const [oldDataEncryptionKey, setOldDataEncryptionKey] = useState("");
   const [oldDataUri, setOldDataUri] = useState("");
@@ -514,7 +518,7 @@ export function TransferModal({
       `/v1/registry/pubkey/${receiverAddress}`,
     )
       .then(() => {
-        if (!cancelled) setPubkeyResolveStatus("idle");
+        if (!cancelled) setPubkeyResolveStatus("resolved");
       })
       .catch((err: unknown) => {
         if (cancelled) return;
@@ -694,6 +698,7 @@ export function TransferModal({
           pubkeyFallbackSummary={flowCopy.transferPubkeyFallbackSummary}
           pubkeyResolvePending={flowCopy.transferPubkeyResolvePending}
           pubkeyResolveFailed={flowCopy.transferPubkeyResolveFailed}
+          pubkeyResolveResolved={flowCopy.transferPubkeyResolveResolved}
           oldDataEncryptionKey={oldDataEncryptionKey}
           onOldDataKeyChange={setOldDataEncryptionKey}
           oldDataUri={oldDataUri}

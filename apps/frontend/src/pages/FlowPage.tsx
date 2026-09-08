@@ -93,7 +93,6 @@ import {
   truncateHex,
   validateNumericInput,
 } from "../utils/format.js";
-import { toastError, toastSuccess } from "./shared.js";
 import { apiFetch, STREAM_TIMEOUT } from "../utils/apiFetch.js";
 import { encodeRelayTransaction } from "../utils/encodeRelay.js";
 import { openStreamSocket } from "../config/env.js";
@@ -121,13 +120,11 @@ const DEV_TOOLS = import.meta.env.MODE !== "production";
 
 type VaultWriteKind = "deposit" | "withdraw";
 
-const VAULT_WRITE: Record<
-  VaultWriteKind,
-  { label: string; endpoint: string; verb: string }
-> = {
-  deposit: { label: "Deposit", endpoint: "deposit", verb: "Deposit" },
-  withdraw: { label: "Withdraw", endpoint: "withdraw", verb: "Withdraw" },
-};
+const VAULT_WRITE: Record<VaultWriteKind, { label: string; endpoint: string }> =
+  {
+    deposit: { label: "Deposit", endpoint: "deposit" },
+    withdraw: { label: "Withdraw", endpoint: "withdraw" },
+  };
 
 /** Shared numeric rules for the amount field (deposit + withdraw alike). */
 const amountRules = (label: string) => ({
@@ -138,24 +135,13 @@ const amountRules = (label: string) => ({
   max: 1e12,
 });
 
-function useVaultWrite(
-  kind: VaultWriteKind,
-  tokenId: bigint,
-  opts?: {
-    /** Default true: toast on submit/error and swallow errors. Flow pages pass
-     * false so the OperationReviewSheet machine (submitting →
-     * recoverable-error → receipt) owns the UX instead of toasts; in that
-     * mode handleSubmit rethrows and resolves to the tx hash. */
-    toasts?: boolean;
-  },
-) {
+function useVaultWrite(kind: VaultWriteKind, tokenId: bigint) {
   const vd = useVaultData(tokenId);
   const { data: walletClient } = useWalletClient();
   const [amount, setAmount] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { label, endpoint, verb } = VAULT_WRITE[kind];
-  const toasts = opts?.toasts !== false;
+  const { label, endpoint } = VAULT_WRITE[kind];
 
   const error = validateNumericInput(amount, amountRules(label));
 
@@ -175,21 +161,14 @@ function useVaultWrite(
           `/v1/agents/${tokenId.toString()}/${endpoint}`,
           { amount: value },
         );
-        if (toasts) toastSuccess(`${verb} submitted (${hash.slice(0, 10)}…)`);
         setAmount("");
         await vd.refetch();
         return hash;
-      } catch (err) {
-        if (toasts) {
-          toastError(err);
-          return null;
-        }
-        throw err;
       } finally {
         setIsSubmitting(false);
       }
     },
-    [amount, error, label, walletClient, tokenId, endpoint, verb, vd, toasts],
+    [amount, error, label, walletClient, tokenId, endpoint, vd],
   );
 
   const isValid = amount.trim() !== "" && !error && Number(amount) > 0;
@@ -527,7 +506,6 @@ export function FlowPage({
   const vaultWrite = useVaultWrite(
     kind === "withdraw" ? "withdraw" : "deposit",
     vaultTokenId,
-    { toasts: false },
   );
   const vaultBalanceWei = isVaultFlow
     ? vaultWrite.vaultData.depositsWei
@@ -1707,7 +1685,7 @@ function OperationReviewSheet({
   // below, explicit X/"Edit details"; dismissing never submits. The trap keeps Tab inside the
   // sheet — this is the confirm surface for irreversible wallet ops.
   const sheetRef = useRef<HTMLElement>(null);
-  useModalDismiss(onClose, sheetRef);
+  useModalDismiss(onClose, sheetRef, { scrollLock: true });
   const paymentNeedsApproval =
     kind === "payment" && draft.phase === "approval-required";
   const paymentReady = kind === "payment" && draft.phase === "payment-required";

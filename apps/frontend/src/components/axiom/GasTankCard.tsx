@@ -6,14 +6,11 @@ import { getAxiomGasTankAddress } from "../../abi/addresses.js";
 import { toViemAbi } from "../../abi/addresses.js";
 import { GAS_TANK_ABI } from "@axiom/config/abis";
 import { useGasTank } from "../../hooks/useGasTank.js";
-import { useFaucet } from "../../hooks/useFaucet.js";
 import { formatTokenAmount, humanizeError } from "../../utils/format.js";
 import { APP_CHAIN } from "../../config/wagmi.js";
 import { getCopy } from "../../lib/copy.js";
 import { toast } from "sonner";
 import type { Locale } from "../../lib/copy.js";
-const FAUCET_RETIRED = false;
-/** Testnet-only faucet retired with the Galileo chain (2026-09-05). */
 
 const nativeSymbol = APP_CHAIN.nativeCurrency.symbol;
 
@@ -60,7 +57,6 @@ export function GasTankCard({
   const gasTank = getAxiomGasTankAddress();
   const { tank, error, refetch } = useGasTank(address, publicClient);
   const copy = getCopy(locale).gasTank;
-  const faucet = useFaucet(address);
   const [depositValue, setDepositValue] = useState("");
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -118,20 +114,6 @@ export function GasTankCard({
     }
   };
 
-  /** Faucet claim: branch on the hook's boolean — silent success was the old bug. */
-  const onClaim = async (): Promise<void> => {
-    if (busy) return;
-    setBusy(true);
-    setActionError(null);
-    try {
-      const ok = await faucet.claim();
-      if (ok) toast.success(copy.faucetDone);
-      else toast.error(copy.faucetFailed, { duration: Infinity });
-    } finally {
-      setBusy(false);
-    }
-  };
-
   if (unset) {
     return (
       <div
@@ -139,7 +121,7 @@ export function GasTankCard({
         data-testid="gas-tank-card"
       >
         <h3>{copy.title}</h3>
-        <p style={{ color: "var(--dim)" }}>{copy.unsetNote}</p>
+        <p className="text-dim">{copy.unsetNote}</p>
       </div>
     );
   }
@@ -155,11 +137,9 @@ export function GasTankCard({
     <div className="gas-tank-card" data-testid="gas-tank-card">
       <h3>{copy.title}</h3>
       {error ? (
-        <p style={{ color: "var(--danger)" }}>
-          {humanizeError(new Error(error))}
-        </p>
+        <p className="wallet-gate-error">{humanizeError(new Error(error))}</p>
       ) : !tank ? (
-        <p style={{ color: "var(--dim)" }}>{copy.loading}</p>
+        <p className="text-dim">{copy.loading}</p>
       ) : (
         <>
           <div className="gas-tank-card__balance">
@@ -182,7 +162,7 @@ export function GasTankCard({
           >
             <div style={{ width: `${grantsPct}%` }} />
           </div>
-          <small className="num" style={{ color: "var(--dim)" }}>
+          <small className="num text-dim">
             {copy.grantsUsage
               .replace("{used}", tank.grantsUsed.toString())
               .replace("{cap}", tank.grantsCap.toString())}
@@ -224,34 +204,6 @@ export function GasTankCard({
               {actionError}
             </p>
           ) : null}
-          {/* Testnet retired: the faucet was a Galileo-only feature; mainnet
-              builds never render a claim that cannot succeed. */}
-          {FAUCET_RETIRED && (
-            <div
-              className="gas-tank-card__faucet"
-              data-testid="gas-tank-faucet-row"
-            >
-              <small className="num" style={{ color: "var(--dim)" }}>
-                {copy.faucetBalanceLabel}: {faucet.balance ?? "0"}
-              </small>
-              {faucet.eligible ? (
-                <>
-                  <small>{copy.faucetEligibleBadge}</small>
-                  <Button
-                    variant="ghost"
-                    onClick={() => void onClaim()}
-                    disabled={faucet.claiming}
-                  >
-                    {copy.faucetClaimAction}
-                  </Button>
-                </>
-              ) : (
-                <small style={{ color: "var(--dim)" }}>
-                  {copy.faucetIneligibleBadge}
-                </small>
-              )}
-            </div>
-          )}
         </>
       )}
     </div>

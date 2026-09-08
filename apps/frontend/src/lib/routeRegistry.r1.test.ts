@@ -87,7 +87,7 @@ describe("R1 route-surface guards (registry/config level)", () => {
     expect(agentSrc).toMatch(
       /const agentMissing = agentsSettled && agents\.length > 0 && !agentKnown;/,
     );
-    expect(agentSrc).toMatch(/if \(agentMissing\) go\("/);
+    expect(agentSrc).toMatch(/if \(agentMissing\) go\(NOT_FOUND_PATH\)/);
     expect(agentSrc).toMatch(/if \(agentMissing\) return null;/);
     // The hook exposes the settled flag the guard depends on.
     expect(read("../hooks/useAgents.ts")).toMatch(/settled: isSuccess/);
@@ -98,13 +98,34 @@ describe("R1 route-surface guards (registry/config level)", () => {
     // + a /app fallback) was deleted; copy.lockedHero is now the single
     // locale owner for every gate route — tick/deposit/withdraw included.
     const catalogSrc = read("consoleCatalog.tsx");
-    for (const path of ['"/tick"', '"/deposit"', '"/withdraw"', '"/agents/list"']) {
+    for (const path of [
+      '"/tick"',
+      '"/deposit"',
+      '"/withdraw"',
+      '"/agents/list"',
+    ]) {
       expect(catalogSrc).toMatch(new RegExp(`${path}: \\{`));
     }
     // The visual-slot table must point each route at its copy.lockedHero key…
     const copySrc = read("copy.ts");
-    for (const hero of ["app", "settings", "transactions", "chat", "mint", "payment", "transfer", "storage", "agent", "agentsList", "tick", "deposit", "withdraw"]) {
-      expect(copySrc).toMatch(new RegExp(`\\b${hero}: \\{\\s*\\n\\s*titleLead:`, "m"));
+    for (const hero of [
+      "app",
+      "settings",
+      "transactions",
+      "chat",
+      "mint",
+      "payment",
+      "transfer",
+      "storage",
+      "agent",
+      "agentsList",
+      "tick",
+      "deposit",
+      "withdraw",
+    ]) {
+      expect(copySrc).toMatch(
+        new RegExp(`\\b${hero}: \\{\\s*\\n\\s*titleLead:`, "m"),
+      );
     }
     // …App's gate resolves route → slot via lockedGateFor (one gate component).
     expect(appSrc).toMatch(/lockedGateFor\(/);

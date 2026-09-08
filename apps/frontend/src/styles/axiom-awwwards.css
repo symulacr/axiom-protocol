@@ -138,8 +138,7 @@
     transform var(--aw-dur) var(--aw-ease-out);
   /* R13 (baseline-ui): no standing will-change — this is a one-shot entrance;
      Chrome auto-promotes composited opacity/transform animations. The hint
-     would linger forever after the 500ms reveal. .aw-parallax keeps its
-     (continuously active while scrolling). */
+     would linger forever after the 500ms reveal. */
 }
 .aw-reveal.is-in {
   opacity: 1;
@@ -149,10 +148,6 @@
   opacity: 1;
   transform: none;
   transition: none;
-}
-
-.aw-parallax {
-  will-change: transform;
 }
 
 /* Orphan control on short-to-medium copy (headings already use balance). */
@@ -708,7 +703,6 @@
   transform: none;
 }
 .aw-reveal.is-in .principle:nth-child(2),
-.aw-reveal.is-in .aw-parallax:nth-child(2) .journey-card,
 .aw-reveal.is-in .seo-link-grid a:nth-child(2) {
   transition-delay: var(--aw-stagger);
 }

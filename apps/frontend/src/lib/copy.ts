@@ -69,6 +69,7 @@ export type Copy = {
     openRail: string;
     oracleLive: string;
     oracleDown: string;
+    chainLabel: (id: string) => string;
   };
   /** Priority action strip + next-safe-action engine (lib/nextSafeAction). */
   strip: {
@@ -467,7 +468,7 @@ export type Copy = {
     send: string;
     queue: string;
     stop: string;
-    removeQueued: string;
+    removeQueued: (message: string) => string;
     composerNearLimit: (remaining: number) => string;
     routing: string;
     routingHint: string;
@@ -551,17 +552,10 @@ export type Copy = {
     depositAction: string;
     refillAction: string;
     tankLowBanner: string;
-    /** V3 W6-B faucet row: balance + eligibility badge + claim button. */
-    faucetBalanceLabel: string;
-    faucetEligibleBadge: string;
-    faucetIneligibleBadge: string;
-    faucetClaimAction: string;
     /** Outcome toasts (audit critique-2 C2: refill/claim were silent). */
     depositQueued: string;
     refillDone: string;
     refillFailed: string;
-    faucetDone: string;
-    faucetFailed: string;
   };
   storage: {
     title: string;
@@ -736,6 +730,8 @@ export type Copy = {
     factBoundary: string;
     /** Placeholders: {chainName}, {chainId}. */
     networkFact: string;
+    /** Chain id alone, no name segment (receiver-page fact). */
+    networkFactId: string;
     primarySign: string;
     primaryApprove: string;
     primaryContinuePayment: string;
@@ -760,6 +756,7 @@ export type Copy = {
     transferPubkeyFallbackSummary: string;
     transferPubkeyResolvePending: string;
     transferPubkeyResolveFailed: string;
+    transferPubkeyResolveResolved: string;
     transferAgentTitle: (id: string) => string;
     /** cross-wallet handoff — sender side (review-sheet co-sign step). */
     handoffTitle: string;
@@ -1074,6 +1071,7 @@ const english: Copy = {
     openRail: "Show sidebar",
     oracleLive: "online",
     oracleDown: "services degraded",
+    chainLabel: (id) => `chain ${id}`,
   },
   strip: {
     reviewTitle: (kind) => `Review ${kind}`,
@@ -1455,7 +1453,7 @@ const english: Copy = {
     send: "Send",
     queue: "Queue",
     stop: "Stop",
-    removeQueued: "Remove queued message",
+    removeQueued: (message) => `Remove queued message: ${message}`,
     composerNearLimit: (remaining) =>
       `${remaining} characters left before the composer cuts off pastes`,
     routing: "Routing",
@@ -1531,16 +1529,10 @@ const english: Copy = {
     refillAction: "Claim free gas grant",
     tankLowBanner:
       "Your gas tank is nearly empty : ops keep running until your free grants run out.",
-    faucetBalanceLabel: "Test tokens",
-    faucetEligibleBadge: "faucet available",
-    faucetIneligibleBadge: "faucet claimed",
-    faucetClaimAction: "Claim free test tokens",
     depositQueued: "Deposit queued : track it in the transaction center.",
     refillDone: "Gas grant claimed. Tank balance refreshed.",
     refillFailed:
       "Gas grant claim failed : check your connection and try again.",
-    faucetDone: "Test tokens minted.",
-    faucetFailed: "Faucet claim failed : you may already have claimed.",
   },
   storage: {
     title: "Store the payload, then verify its proof.",
@@ -1768,6 +1760,7 @@ const english: Copy = {
     factNetwork: "Network",
     factBoundary: "Asks twice?",
     networkFact: "{chainName}, chain {chainId}",
+    networkFactId: "chain {chainId}",
     primarySign: "Sign & execute",
     primaryApprove: "Approve spending limit",
     primaryContinuePayment: "Continue to payment",
@@ -1789,6 +1782,8 @@ const english: Copy = {
     transferPubkeyResolvePending: "Looking up the key for this address…",
     transferPubkeyResolveFailed:
       "No public key found on-chain for this address yet. Paste it manually below.",
+    transferPubkeyResolveResolved:
+      "Key found on-chain. The receiver can decrypt the payload.",
     transferAgentTitle: (id) => `Transfer agent #${id}`,
     handoffTitle: "Receiver on another device?",
     handoffBody:
@@ -2170,6 +2165,7 @@ const french: Copy = {
     openRail: "Afficher la barre latérale",
     oracleLive: "en ligne",
     oracleDown: "services dégradés",
+    chainLabel: (id) => `chaîne ${id}`,
   },
   strip: {
     ...english.strip,
@@ -2558,7 +2554,7 @@ const french: Copy = {
     send: "Envoyer",
     stop: "Arrêter",
     queue: "En file",
-    removeQueued: "Retirer le message en file",
+    removeQueued: (message) => `Retirer le message en file : ${message}`,
     composerNearLimit: (remaining) =>
       `${remaining} caractères restants avant que le champ ne tronque les collages`,
     routing: "Routage",
@@ -2638,17 +2634,10 @@ const french: Copy = {
     refillAction: "Réclamer une subvention de gaz",
     tankLowBanner:
       "Votre réservoir de gaz est presque vide : les opérations continuent jusqu'à épuisement de vos subventions gratuites.",
-    faucetBalanceLabel: "Jetons de test",
-    faucetEligibleBadge: "robinet disponible",
-    faucetIneligibleBadge: "robinet réclamé",
-    faucetClaimAction: "Réclamer les jetons de test",
     depositQueued: "Dépôt en file : suivez-le dans le centre des transactions.",
     refillDone: "Subvention de gaz réclamée. Solde du réservoir actualisé.",
     refillFailed:
       "Échec de la réclamation de gaz : vérifiez votre connexion et réessayez.",
-    faucetDone: "Jetons de test mintés.",
-    faucetFailed:
-      "Échec de la réclamation du faucet : vous avez peut-être déjà réclamé.",
   },
   storage: {
     ...english.storage,
@@ -2882,6 +2871,7 @@ const french: Copy = {
     factNetwork: "Réseau",
     factBoundary: "Double demande ?",
     networkFact: "{chainName}, chaîne {chainId}",
+    networkFactId: "chaîne {chainId}",
     primarySign: "Signer et exécuter",
     primaryApprove: "Approuver la limite de dépense",
     primaryContinuePayment: "Continuer vers le paiement",
@@ -2905,6 +2895,8 @@ const french: Copy = {
     transferPubkeyResolvePending: "Recherche de la clé pour cette adresse…",
     transferPubkeyResolveFailed:
       "Aucune clé publique trouvée on-chain pour cette adresse. Collez-la manuellement ci-dessous.",
+    transferPubkeyResolveResolved:
+      "Clé trouvée on-chain. Le destinataire peut déchiffrer la charge.",
     transferAgentTitle: (id) => `Transférer l’agent #${id}`,
     handoffTitle: "Destinataire sur un autre appareil ?",
     handoffBody:
@@ -3255,6 +3247,7 @@ const german: Copy = {
     openRail: "Seitenleiste zeigen",
     oracleLive: "online",
     oracleDown: "Dienste beeinträchtigt",
+    chainLabel: (id) => `Chain ${id}`,
   },
   strip: {
     ...english.strip,
@@ -3639,7 +3632,7 @@ const german: Copy = {
     send: "Senden",
     queue: "Einreihen",
     stop: "Stopp",
-    removeQueued: "Wartende Nachricht entfernen",
+    removeQueued: (message) => `Wartende Nachricht entfernen: ${message}`,
     composerNearLimit: (remaining) =>
       `${remaining} Zeichen übrig, bevor der Editor Einfügungen kürzt`,
     routingHint: "Nur diese Unterhaltung",
@@ -3718,17 +3711,10 @@ const german: Copy = {
     refillAction: "Gratis-Gas-Zuschuss anfordern",
     tankLowBanner:
       "Dein Gas-Tank ist fast leer : Operationen laufen weiter, bis deine Gratis-Zuschüsse aufgebraucht sind.",
-    faucetBalanceLabel: "Test-Token",
-    faucetEligibleBadge: "Hahn verfügbar",
-    faucetIneligibleBadge: "Hahn abgerufen",
-    faucetClaimAction: "Gratis Test-Token anfordern",
     depositQueued: "Einzahlung eingereicht : im Transaktionscenter verfolgen.",
     refillDone: "Gas-Zuschuss angefordert. Tankkonto aktualisiert.",
     refillFailed:
       "Gas-Zuschuss fehlgeschlagen : Verbindung prüfen und erneut versuchen.",
-    faucetDone: "Test-Token gemintet.",
-    faucetFailed:
-      "Faucet-Anforderung fehlgeschlagen : möglicherweise bereits abgerufen.",
   },
   storage: {
     ...english.storage,
@@ -3966,6 +3952,7 @@ const german: Copy = {
     factNetwork: "Netzwerk",
     factBoundary: "Doppelt gefragt?",
     networkFact: "{chainName}, Chain {chainId}",
+    networkFactId: "Chain {chainId}",
     primarySign: "Signieren & ausführen",
     primaryApprove: "Ausgabenlimit genehmigen",
     primaryContinuePayment: "Zur Zahlung fortfahren",
@@ -3990,6 +3977,8 @@ const german: Copy = {
     transferPubkeyResolvePending: "Schlüssel für diese Adresse wird gesucht…",
     transferPubkeyResolveFailed:
       "Kein öffentlicher Schlüssel on-chain für diese Adresse gefunden. Fügen Sie ihn unten manuell ein.",
+    transferPubkeyResolveResolved:
+      "Schlüssel on-chain gefunden. Der Empfänger kann die Nutzlast entschlüsseln.",
     transferAgentTitle: (id) => `Agent #${id} übertragen`,
     handoffTitle: "Empfänger an einem anderen Gerät?",
     handoffBody:

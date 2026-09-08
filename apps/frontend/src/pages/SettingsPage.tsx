@@ -40,8 +40,13 @@ import type { AppState, UiSettings } from "../lib/models.js";
 import type { ConsoleAction } from "../lib/consoleStore.js";
 import { useHealth } from "../hooks/useHealth.js";
 import { useModalDismiss } from "../hooks/useModalDismiss.js";
-import { APP_CHAIN, APP_CHAIN_ID } from "../config/wagmi.js";
+import {
+  APP_CHAIN,
+  APP_CHAIN_DEFAULT_RPC,
+  APP_CHAIN_ID,
+} from "../config/wagmi.js";
 import { BACKEND_URL } from "../config/env.js";
+import { truncateAddress } from "../utils/format.js";
 
 function SettingsDisclosure({
   title,
@@ -116,10 +121,11 @@ function ResetConfirmDialog({
         role="dialog"
         aria-modal="true"
         aria-label={labels.resetConfirmTitle}
+        aria-describedby="settings-reset-confirm-body"
         onMouseDown={(event) => event.stopPropagation()}
       >
         <h2>{labels.resetConfirmTitle}</h2>
-        <p>{labels.resetConfirmBody}</p>
+        <p id="settings-reset-confirm-body">{labels.resetConfirmBody}</p>
         <div className="settings-confirm-actions">
           <Button variant="ghost" onClick={onCancel}>
             {labels.resetCancel}
@@ -162,7 +168,7 @@ export function SettingsPage({
   const { address, connector } = useAccount();
   const chainId = useChainId();
   const { data: health } = useHealth();
-  const rpc = APP_CHAIN.rpcUrls.default.http[0] ?? "https://evmrpc.0g.ai";
+  const rpc = APP_CHAIN_DEFAULT_RPC;
   // Rows carry their semantic kind so pill tone never derives from the
   // localized label string (a copy edit must never recolor a status).
   type WalletRowKind = "ok" | "fault" | "pending" | "ready";
@@ -175,7 +181,7 @@ export function SettingsPage({
     {
       label: labels.rowWallet,
       value: address
-        ? `${state.session.profile || copy.topbar.operator} / ${address}`
+        ? `${state.session.profile || copy.topbar.operator} / ${truncateAddress(address)}`
         : copy.topbar.notConnected,
       status: address ? labels.statusConnected : labels.statusOffline,
       kind: address ? "ok" : "fault",

@@ -31,7 +31,7 @@ import { StatePill } from "../components/StatePill.js";
 import { MobileDisclosure } from "../components/MobileDisclosure.js";
 import { EmptyState, SkeletonRows, Spinner } from "../components/ui.js";
 import { GasTankCard } from "../components/axiom/GasTankCard.js";
-import { getCopy } from "../lib/copy.js";
+import { getCopy, type Locale } from "../lib/copy.js";
 import { routePath } from "../lib/routeRegistry.js";
 import type { AppState } from "../lib/models.js";
 import {
@@ -56,15 +56,15 @@ import { formatTokenAmount, truncateAddress } from "../utils/format.js";
 import { APP_CHAIN, APP_CHAIN_ID } from "../config/wagmi.js";
 
 /**
- * Activity-row detail suffix: local clock/date via Intl (locale-aware) —
+ * Activity-row detail suffix: local clock/date via Intl in the app locale —
  * block numbers mean nothing to a first-time user.
  */
-function eventTimeLabel(event: AxiomEvent): string {
+function eventTimeLabel(event: AxiomEvent, locale: Locale): string {
   const ts = event.timestamp ?? event.receivedAt;
   const date = new Date(ts);
   return date.toDateString() === new Date().toDateString()
-    ? date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-    : date.toLocaleDateString([], { month: "short", day: "numeric" });
+    ? date.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" })
+    : date.toLocaleDateString(locale, { month: "short", day: "numeric" });
 }
 
 interface PortfolioAgent {
@@ -149,7 +149,7 @@ function ContextStrip({
         <strong>{copy.dashboard.attentionCount(reviewCount)}</strong>
         <button
           className="text-link"
-          onClick={() => go("/transactions?filter=review")}
+          onClick={() => go(`${routePath("transactions")}?filter=review`)}
         >
           {copy.dashboard.openReviewQueue} <ArrowRight size={14} />
         </button>
@@ -319,8 +319,8 @@ export function DashboardPage({
         icon: <Activity size={16} />,
         kind: event.eventName || "Event",
         detail: tokenId
-          ? `agent #${tokenId}, ${eventTimeLabel(event)}`
-          : eventTimeLabel(event),
+          ? `agent #${tokenId}, ${eventTimeLabel(event, state.settings.locale)}`
+          : eventTimeLabel(event, state.settings.locale),
         state: "confirmed" as const,
         open: tokenId
           ? `/agents/${tokenId}?tab=activity`
@@ -328,7 +328,7 @@ export function DashboardPage({
       };
     });
     return [...local, ...chainEvents].slice(0, 3);
-  }, [state.transactions, ownEvents]);
+  }, [state.transactions, ownEvents, state.settings.locale]);
   return (
     <div className="ops-page">
       <div className="page-head page-head-asymmetric">

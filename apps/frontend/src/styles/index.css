@@ -1792,7 +1792,7 @@ input[type="range"] {
 /* C-SETTINGS "More filters" popover: portaled + fixed so it is never clipped
    by the chip row's overflow-x scrolling on narrow viewports; the backdrop
    carries the click-away leg of the dismiss contract. */
-.filters-backdrop { position: fixed; inset: 0; z-index: var(--layer-topbar, 40); background: transparent; }
+.popover-backdrop { position: fixed; inset: 0; z-index: var(--layer-topbar, 40); background: transparent; }
 .filters-popover {
   position: fixed;
   z-index: var(--layer-popover, 60);
@@ -3355,6 +3355,7 @@ strong {
     letter-spacing: 0.12em;
     font-weight: 800;
     font-size: var(--fs-body);
+    text-decoration: none;
   }
   .brand img {
     width: 28px;

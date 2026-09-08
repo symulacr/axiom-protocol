@@ -119,6 +119,11 @@ function cleanPathOf(path: string): string {
   return path.split("?", 1)[0] ?? path;
 }
 
+/** Canonical "route to the 404 surface" target: no registry entry, so
+ *  resolveRoute falls through to "not-found". Pages navigate here instead of
+ *  hardcoding a synthetic path string. */
+export const NOT_FOUND_PATH = "/this-path-does-not-exist-404";
+
 /** Public hub slug for a request path, following short-URL aliases. Legacy
  *  spellings (handled by redirectHubTarget) intentionally do NOT resolve to a
  *  200-render slug — a redirect must never render duplicate content. */

@@ -18,7 +18,12 @@ export const listFocusables = (root: HTMLElement | null): HTMLElement[] =>
 export function useModalDismiss(
   onClose: () => void,
   surfaceRef: RefObject<HTMLElement | null>,
+  /** scrollLock: freeze document.body overflow while the layer is open
+   * (same contract as the ChatPage/AppShell drawers' inline lock). Default
+   * false — popovers and nested dialogs keep the page scrollable. */
+  options?: { scrollLock?: boolean },
 ): void {
+  const scrollLock = options?.scrollLock === true;
   // Latest-callback ref: the Esc listener binds once on mount, so inline closures stay safe.
   const onCloseRef = useRef(onClose);
   useEffect(() => {
@@ -60,6 +65,10 @@ export function useModalDismiss(
       }
     };
     document.addEventListener("keydown", onKeyDown);
+    // Scroll lock (opt-in): wheel/touch over the backdrop must not scroll the
+    // page behind a modal layer. Save/restore the prior inline value.
+    const priorOverflow = scrollLock ? document.body.style.overflow : null;
+    if (scrollLock) document.body.style.overflow = "hidden";
     // Initial focus: the surface's first focusable (each dialog's close X or first control) —
     // dialogs no longer open with focus still sitting on the page trigger behind them.
     const focusTimer = window.setTimeout(() => {
@@ -68,8 +77,9 @@ export function useModalDismiss(
     return () => {
       window.clearTimeout(focusTimer);
       document.removeEventListener("keydown", onKeyDown);
+      if (priorOverflow !== null) document.body.style.overflow = priorOverflow;
       // Deferred one tick: wins over the backdrop mousedown's default focus shift, so focus lands on the trigger.
       window.setTimeout(() => priorFocus?.focus(), 0);
     };
-  }, [surfaceRef]);
+  }, [surfaceRef, scrollLock]);
 }

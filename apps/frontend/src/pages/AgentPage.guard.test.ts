@@ -45,12 +45,61 @@ test("no hook call between the early return and the main return", () => {
 });
 
 test("the 404 navigation effect stays above the early return", () => {
-  const effect = src.indexOf(
-    'if (agentMissing) go("/this-path-does-not-exist-404");',
-  );
+  const effect = src.indexOf("if (agentMissing) go(NOT_FOUND_PATH);");
   const earlyReturn = src.indexOf("if (agentMissing) return null;");
   assert.ok(effect >= 0, "navigation effect present");
   assert.ok(effect < earlyReturn, "effect (a hook) must precede the return");
+});
+
+// F3: the synthetic 404 path lives in ONE named export (routeRegistry), never
+// as a magic string at a call site.
+test("404 navigation targets NOT_FOUND_PATH from routeRegistry", () => {
+  assert.match(
+    src,
+    /import \{ NOT_FOUND_PATH, routePath \} from "\.\.\/lib\/routeRegistry\.js";/,
+    "AgentPage imports NOT_FOUND_PATH",
+  );
+  assert.ok(
+    !src.includes('"/this-path-does-not-exist-404"'),
+    "no hardcoded synthetic 404 path in the page",
+  );
+  const registry = readFileSync(
+    join(import.meta.dir, "../lib/routeRegistry.ts"),
+    "utf8",
+  );
+  assert.match(
+    registry,
+    /export const NOT_FOUND_PATH = "\/this-path-does-not-exist-404";/,
+    "routeRegistry exports the constant",
+  );
+});
+
+// F3 activity tab: chain events and local receipts render as ONE time-sorted
+// list (a fresh receipt interleaves with older chain events), and chain rows
+// are real anchors when a tx hash exists (middle-click / copy-link), a
+// disabled button otherwise — never window.open on a bare button.
+test("activity rows merge-sort both sources and chain rows are anchors", () => {
+  assert.match(
+    src,
+    /\.sort\(\(a, b\) => b\.sortTs - a\.sortTs\)/,
+    "merged rows sort by timestamp",
+  );
+  assert.ok(
+    !src.includes("[...events].reverse().map"),
+    "chain events no longer render as a separate reversed block",
+  );
+  const localBlock = src.indexOf("{localReceipts.map((tx) => (");
+  assert.equal(
+    localBlock,
+    -1,
+    "local receipts no longer render as a second stacked block",
+  );
+  assert.ok(!src.includes("window.open("), "no window.open navigation");
+  assert.match(
+    src,
+    /href=\{explorerTx\(event\.txHash\)\}/,
+    "chain row carries a real href",
+  );
 });
 
 // M9: the copy-hash button renders only with a real hash, and the copied

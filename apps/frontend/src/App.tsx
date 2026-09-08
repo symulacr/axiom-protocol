@@ -31,7 +31,11 @@ import {
   useNavigate,
 } from "react-router-dom";
 import { useAccount, useSwitchChain } from "wagmi";
-import { AppShell, Logo } from "./components/axiom/AppShell.js";
+import {
+  AppShell,
+  isEditableTarget,
+  Logo,
+} from "./components/axiom/AppShell.js";
 import { WalletGate, isSessionFresh } from "./components/axiom/WalletGate.js";
 import { Button, Status } from "./components/axiom/Controls.js";
 import {
@@ -50,12 +54,13 @@ import { useModalDismiss } from "./hooks/useModalDismiss.js";
 import { useUiStore } from "./lib/uiStore.js";
 import { humanizeError } from "./utils/format.js";
 import {
+  getShortcutPath,
   KNOWN_PATHS,
   redirectHubTarget,
   resolvePublicSeoSlug,
   resolveRoute,
 } from "./lib/routeRegistry.js";
-import { lockedGateFor } from "./lib/consoleCatalog.js";
+import { lockedGateFor, lockedGates } from "./lib/consoleCatalog.js";
 import { MEDIA } from "./lib/media.js";
 import { getCopy, interpolate, type Locale } from "./lib/copy.js";
 import type { FlowKind, NoticeSeverity } from "./lib/models.js";
@@ -537,6 +542,22 @@ export function App(): ReactElement {
     [navigate],
   );
 
+  // Alt+1..5 / M / P / T / K route shortcuts — skip editable targets. They go
+  // through go() (router navigate + scroll-to-top), never raw pushState.
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (isEditableTarget(event.target)) return;
+      if (!event.altKey || event.ctrlKey || event.metaKey || event.shiftKey)
+        return;
+      const path = getShortcutPath(event.key);
+      if (!path) return;
+      event.preventDefault();
+      go(path);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [go]);
+
   const [walletOpen, setWalletOpen] = useState(false);
   const openWallet = (requestedPath = path) => {
     dispatch({
@@ -867,7 +888,10 @@ function LockedRoute({
 }) {
   const copy = getCopy(locale);
   const pathname = requested.split("?", 1)[0] ?? requested;
-  const gate = lockedGateFor(pathname);
+  // lockedGateFor already falls back through /agents/ to the /app gate; the
+  // ?? here keeps a catalog refactor (a dropped /app row) from blanking the
+  // page — the null branch must stay unreachable.
+  const gate = lockedGateFor(pathname) ?? lockedGates["/app"];
   if (!gate) return null;
   const hero = copy.lockedHero[gate.hero];
 
