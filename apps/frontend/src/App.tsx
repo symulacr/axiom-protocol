@@ -263,7 +263,7 @@ function Guide({
         <div className="guide-media">
           <img
             src={item.image}
-            alt="Axiom onboarding illustration"
+            alt={copy.guide.illustrationAlt}
             loading="lazy"
             decoding="async"
           />

@@ -1188,6 +1188,8 @@ body.light .three-bg { opacity: .35; }
 .review-proof, .review-error { display: flex; gap: .45rem; align-items: flex-start; padding: .68rem; color: var(--sheet-dim); border: 1px solid color-mix(in srgb, var(--phosphor) 20%, transparent); font-size: var(--fs-small); line-height: 1.4; }
 .review-proof svg { flex: 0 0 auto; color: var(--phosphor); }
 .review-error { color: #ffd2bd; border-color: rgba(234,119,80,.45); background: rgba(234,119,80,.1); }
+/* H-L6: when the alert is the whole document its title is the page h1 — keep the strong's scale. */
+.review-error .review-error-title { margin: 0; font-size: inherit; }
 /* F-01 receiver co-sign step: copper (action-required) panel inside the sheet —
    same geometry as .review-proof so the step reads as part of the one confirm surface. */
 .review-cosign { display: flex; gap: .45rem; align-items: flex-start; padding: .68rem; color: var(--muted); border: 1px solid color-mix(in srgb, var(--copper) 45%, transparent); background: var(--copper-08); font-size: var(--fs-small); line-height: 1.4; }

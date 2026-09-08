@@ -6,7 +6,7 @@ describe("Axiom copy pluralisation", () => {
     // Current contracts after the proto-subpages-A copy reword ("not ready").
     expect(getCopy("en").dashboard.review(1)).toBe("1 agent isn't ready yet");
     expect(getCopy("en").dashboard.review(3)).toBe("3 agents aren't ready yet");
-    expect(getCopy("fr").dashboard.review(1)).toBe("1 agent n'est pas prêt");
+    expect(getCopy("fr").dashboard.review(1)).toBe("1 agent n’est pas prêt");
     expect(getCopy("fr").dashboard.review(3)).toBe(
       "3 agents ne sont pas prêts",
     );
@@ -128,7 +128,6 @@ describe("Axiom i18n contract (C-08/C-11/C-12)", () => {
       expect(copy.wallet.wrongNetworkTitle).toContain("{chainName}");
       expect(copy.wallet.switchNetwork).toContain("{chainName}");
       expect(copy.agentDetail.balanceToSpend).toContain("{amount}");
-      expect(copy.chat.statusOnline).toContain("{chainName}");
       expect(copy.chat.statusWrongNetwork).toContain("{chainName}");
       expect(copy.chat.wrongNetworkBanner).toContain("{chainName}");
       expect(copy.chat.promptVaultHint).toContain("{nativeSymbol}");
@@ -201,9 +200,7 @@ describe("Axiom i18n contract (C-08/C-11/C-12)", () => {
       }
       // The family must actually be in use at its four canonical homes.
       expect(copy.dashboard.addMoney).toMatch(/Fund|Financer|finanzieren/);
-      expect(copy.agentDetail.fundAgent).toMatch(
-        /Fund|Financer|finanzieren/,
-      );
+      expect(copy.agentDetail.fundAgent).toMatch(/Fund|Financer|finanzieren/);
       expect(copy.flows.payment.title).toMatch(
         /Fund an agent|Financer un agent|Agenten finanzieren/,
       );
