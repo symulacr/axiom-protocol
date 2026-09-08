@@ -1407,15 +1407,17 @@ body .icon-button.landing-menu-trigger { display: grid; width: var(--icon-hit-lg
   from { opacity: 0; transform: scale(0.97) translateY(8px); }
   to   { opacity: 1; transform: scale(1) translateY(0); }
 }
-/* Inline conflict list (was the nested modal's .connect-options). */
+/* Inline conflict list (was the nested modal's .connect-options). Rows take
+   the popover item radius (same convention as .landing-mobile-item) — the
+   global .button sharp corner stays a console-only contract. */
 .connect-options-inline { display: grid; gap: var(--space-2); }
-.connect-options-inline .button { transition: transform var(--motion-fade-220), box-shadow var(--motion-fade-220); }
+.connect-options-inline .button { border-radius: var(--radius-md); transition: transform var(--motion-fade-220), box-shadow var(--motion-fade-220); }
 @media (hover: hover) and (pointer: fine) {
   /* R17: lift only on real pointers (touch false-hover guard). */
   .connect-options-inline .button:hover { transform: translateY(-1px); box-shadow: 0 8px 20px color-mix(in srgb, var(--copper) 16%, transparent); }
 }
 /* WalletConnect SDK pairing card — code surfaces inline, one panel total. */
-.wallet-pairing { display: grid; gap: var(--space-2); padding: var(--space-3); border: 1px solid var(--line); background: var(--bg-2); }
+.wallet-pairing { display: grid; gap: var(--space-2); padding: var(--space-3); border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--bg-2); }
 .wallet-pairing strong { font: var(--fw-title) var(--fs-body) var(--font-display); }
 .wallet-pairing span { color: var(--muted); font-size: var(--fs-small); }
 .wallet-pairing code { overflow-wrap: anywhere; color: var(--ink); font: 500 var(--fs-mono) var(--font-mono); font-size: var(--fs-small); }
@@ -5521,6 +5523,128 @@ body .landing-page .icon-button.landing-design-switch { display: grid; width: va
 .app-shell.light .flow-stage-top h2,
 .app-shell.light .flow-context h2,
 .app-shell.light .not-integrated h2 {
+  font-family: var(--font-serif-display);
+  font-weight: 500;
+  letter-spacing: -0.018em;
+}
+
+/* ====================================================================== *
+ * plan-003 receipt ticket — the receipt drawer reads as a printed        *
+ * on-chain receipt in both landing languages. Dark Forge: canvas panel,  *
+ * copper spine, mono data rows, phosphor only on the verified-evidence   *
+ * line (the forge role split: copper = action, phosphor = signal/        *
+ * receipts). Light Editorial: the same ticket on paper, Fraunces title,  *
+ * ink hairlines. Dashed rules are the ticket's perforation lines. The    *
+ * drawer portals to document.body, so the light flip keys off body.light *
+ * (the .app-shell token chain never reaches the portal).                 *
+ * ====================================================================== */
+
+/* The icon-button recipe's `body .icon-button { position: relative }` (0,1,1)
+   silently beat the completion layer's `.drawer-close { position: absolute }`
+   (0,1,0), so the close X rendered in-flow over the title. Re-pin it to the
+   drawer's top corner at (0,2,0). */
+.receipt-drawer .drawer-close {
+  position: absolute;
+  top: var(--space-5);
+  right: var(--space-5);
+}
+
+/* Ticket head: document type (eyebrow) + what ran (kind) + state + age. */
+.receipt-ticket-head {
+  padding-block-end: var(--space-4);
+  border-bottom: 1px dashed var(--line);
+}
+.receipt-ticket-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-block-end: var(--space-3);
+}
+.receipt-ticket-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-inline-end: auto;
+  color: var(--dim);
+  font: 500 var(--fs-mono) var(--font-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+/* Phosphor diamond: the receipt is verified evidence, so its marker takes
+   the signal role (echoes the brand mark's nucleus). */
+.receipt-ticket-eyebrow::before {
+  content: "";
+  flex: 0 0 auto;
+  width: 7px;
+  height: 7px;
+  background: var(--phosphor);
+  transform: rotate(45deg);
+}
+.receipt-ticket-age {
+  color: var(--dim);
+  font-size: var(--fs-mono);
+}
+.receipt-ticket-head h2 {
+  margin: 0;
+  color: var(--ink);
+  font: var(--fw-strong) var(--fs-title)/1.15 var(--font-display);
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+}
+.receipt-ticket-detail {
+  margin: var(--space-1) 0 0;
+  color: var(--completion-dim);
+  font: var(--fs-small) var(--font-mono);
+  overflow-wrap: anywhere;
+}
+
+/* The action row is the ticket's tear-off stub between two perforation
+   rules; the disabled-explorer reason drops to its own line. */
+.receipt-drawer .receipt-primary-action {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  margin-top: var(--space-4);
+  padding-block-end: var(--space-4);
+  border-bottom: 1px dashed var(--line);
+}
+.receipt-drawer .receipt-primary-action .field-hint {
+  flex-basis: 100%;
+}
+
+.receipt-drawer .receipt-proof-disclosure .drawer-list {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+/* Ticket data rows: mono micro labels over mono values. */
+.receipt-drawer .drawer-list dt {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+/* The full hash is the ticket's serial line — a recessed plate on its own
+   row (label above), not another squeezed column value. */
+.receipt-drawer .drawer-list > div:has(.receipt-hash-value) {
+  grid-template-columns: 1fr;
+  gap: var(--space-1);
+}
+.receipt-drawer .drawer-list .receipt-hash-value {
+  align-items: flex-start;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--panel-2) 60%, transparent);
+}
+.receipt-drawer .drawer-list .receipt-hash-value .inline-copy {
+  flex: 0 0 auto;
+  margin-inline-start: auto;
+}
+.receipt-drawer .receipt-event-ok {
+  color: var(--phosphor);
+}
+
+/* Light Editorial flip: the ticket prints on paper — serif title, same
+   structure. Palette tokens already flip via body.light. */
+body.light .receipt-ticket-head h2 {
   font-family: var(--font-serif-display);
   font-weight: 500;
   letter-spacing: -0.018em;

@@ -56,3 +56,26 @@ test("M10: /agents/ routes go without the dead intent param", () => {
   assert.ok(src.includes('withIntent(tx.route, "recovery")'));
   assert.ok(src.includes('withIntent(tx.route, "receipt")'));
 });
+
+// plan-003 receipt-ticket guards: the explorer action renders exactly once
+// (the header action row owns it; the Network row prints the chain readout),
+// and the Agent cell prints a formatted id or the dash — never a bare 0,
+// never the "chain"/"new" sentinels.
+test("R3: one explorer leg — the Network row prints the chain, not a link", () => {
+  const networkRow = src.match(/<dt>\{txCopy\.network\}<\/dt>[\s\S]*?<\/div>/);
+  assert.ok(networkRow, "network row present");
+  assert.doesNotMatch(networkRow![0], /explorerHref|viewOnExplorer/);
+  assert.match(
+    src,
+    /interpolate\(copy\.flowUi\.networkFact, \{\s*chainName: APP_CHAIN\.name,\s*chainId: APP_CHAIN_ID,\s*\}\)/,
+    "network readout interpolates the shared chain fact",
+  );
+});
+
+test("R3: agent cell prints #id for real token ids (0 included), dash otherwise", () => {
+  assert.match(
+    src,
+    /\/\^\\d\+\$\/\.test\(tx\.agent\) \? `#\$\{tx\.agent\}` : "—"/,
+    "bare digits are real ids; sentinels and empty print the dash",
+  );
+});
