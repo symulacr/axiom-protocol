@@ -49,7 +49,10 @@ test("GasTankCard refill is gated on an empty tank + remaining grants", () => {
     join(import.meta.dir, "../components/axiom/GasTankCard.tsx"),
     "utf8",
   );
-  assert.ok(src.includes("tank.balance > 0n || tank.grantsLeft === 0n"));
+  // prettier wraps the disabled expression across lines — assert the
+  // conditions, not their whitespace.
+  assert.ok(src.includes("tank.balance > 0n"));
+  assert.ok(src.includes("tank.grantsLeft === 0n"));
 });
 
 test("GasTankCard deposit enforces the 0.01 minimum", () => {
