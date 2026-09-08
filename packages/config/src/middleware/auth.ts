@@ -87,6 +87,9 @@ const CLIENT_ALLOWED_ROUTES: ReadonlyArray<{
   { methods: ["POST"], match: (p) => p.startsWith("/v1/relayer/faucet/") },
   // Public market data (V3 W6-B): Pyth prices for the swap UI's slippage check.
   { methods: ["GET"], match: (p) => p === "/v1/prices" },
+  // Receiver public-key lookup (read-only; keys are public by definition). The
+  // transfer modal's NO_ONCHAIN_KEY fallback probes this from the browser.
+  { methods: ["GET"], match: (p) => p.startsWith("/v1/registry/pubkey/") },
 ];
 
 export function isClientPathAllowed(method: string, path: string): boolean {
