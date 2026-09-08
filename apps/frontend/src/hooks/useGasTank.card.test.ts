@@ -84,6 +84,23 @@ test("chat tools.ts carries the optional sponsor capability on ToolContext", () 
   assert.ok(src.includes("signTypedDataAsync"));
 });
 
+test("GasTankCard refill claims via a wallet write, never an eth_call read", () => {
+  const src = readFileSync(
+    join(import.meta.dir, "../components/axiom/GasTankCard.tsx"),
+    "utf8",
+  );
+  // grantCredit() is nonpayable in the ABI: a readContract simulation returns
+  // `credited` but commits nothing on-chain, so the success toast must follow
+  // a real wallet-submitted tx hash instead.
+  assert.ok(src.includes('functionName: "grantCredit"'));
+  assert.ok(src.includes("walletClient.writeContract"));
+  const refill = src.slice(
+    src.indexOf("const onRefill"),
+    src.indexOf("const onRefill") + 900,
+  );
+  assert.ok(!refill.includes("readContract"));
+});
+
 test("tank status shape derives opsLeft + sponsored from live reads", () => {
   const status = tankResponseShape({
     balance: 20_000_000_000_000_000n,
