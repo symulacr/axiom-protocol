@@ -88,22 +88,20 @@ export function GasTankCard({
     }
   };
 
-  /** Self-serve grant claim when the tank is empty: grantCredit() is value-free. */
+  /** Self-serve grant claim when the tank is empty: grantCredit() is value-free
+   *  but state-changing (ABI: nonpayable), so this is a wallet write — an
+   *  eth_call read would simulate the credit and never commit it on-chain. */
   const onRefill = async (): Promise<void> => {
-    if (!gasTank || !address || !publicClient || busy) return;
+    if (!gasTank || !address || !walletClient || busy) return;
     setBusy(true);
     setActionError(null);
     try {
-      const res = await publicClient.readContract({
+      const hash = await walletClient.writeContract({
         address: gasTank,
         abi: toViemAbi(GAS_TANK_ABI),
         functionName: "grantCredit",
       });
-      if (res !== undefined && res !== null) {
-        toast.success(copy.refillDone);
-      } else {
-        toast.error(copy.refillFailed, { duration: Infinity });
-      }
+      toast.success(`${copy.refillDone} (${hash.slice(0, 10)}…)`);
       refetch();
     } catch (err) {
       const msg = humanizeError(err);
@@ -195,7 +193,12 @@ export function GasTankCard({
             variant="ghost"
             busy={busy}
             onClick={() => void onRefill()}
-            disabled={busy || tank.balance > 0n || tank.grantsLeft === 0n}
+            disabled={
+              busy ||
+              !walletClient ||
+              tank.balance > 0n ||
+              tank.grantsLeft === 0n
+            }
           >
             {copy.refillAction}
           </Button>
