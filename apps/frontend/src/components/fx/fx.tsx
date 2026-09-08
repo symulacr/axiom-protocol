@@ -5,7 +5,30 @@
   `[data-reduce-motion="true"]` attribute uiStore sets on <html>. All motion
   is translateY-only (RTL-safe) and gated to paint cheaply (transform/opacity).
 */
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { Component, useEffect, useRef, useState, type ReactNode } from "react";
+
+/** Error boundary for the npm effect islands (metal-fx, border-beam,
+ *  thinking-orbs, liquid-gooey). A third-party render/commit throw must
+ *  never take the landing down with it: the island unmounts and the static
+ *  fallback child stays. Errors are swallowed deliberately — the variants'
+ *  zero-console-error contract (NOTES-A/B degradation contract). */
+export class IslandGuard extends Component<
+  { fallback: ReactNode; children: ReactNode; onFail?: () => void },
+  { failed: boolean }
+> {
+  override state = { failed: false };
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  override componentDidCatch() {
+    // Fallback is already rendered; keep the console clean by design. The
+    // host may swap to a different fallback tree (goo menu → panel menu).
+    this.props.onFail?.();
+  }
+  override render() {
+    return this.state.failed ? this.props.fallback : this.props.children;
+  }
+}
 
 /** True when either reduced-motion channel is active. */
 export function useReducedMotion(): boolean {
@@ -122,34 +145,6 @@ export function ScrollProgress() {
 
   if (reduced) return null;
   return <div ref={ref} className="aw-scroll-progress" aria-hidden="true" />;
-}
-
-/** Mouse-tracked spotlight surface — sets `--aw-spot-x/--aw-spot-y` so the
- *  CSS layer can paint a soft copper radial highlight. Purely decorative. */
-export function SpotlightCard({
-  children,
-  className = "",
-}: {
-  children: ReactNode;
-  className?: string;
-}) {
-  const ref = useRef<HTMLDivElement | null>(null);
-
-  return (
-    <div
-      ref={ref}
-      className={`aw-spotlight ${className}`.trim()}
-      onPointerMove={(event) => {
-        const el = ref.current;
-        if (!el) return;
-        const rect = el.getBoundingClientRect();
-        el.style.setProperty("--aw-spot-x", `${event.clientX - rect.left}px`);
-        el.style.setProperty("--aw-spot-y", `${event.clientY - rect.top}px`);
-      }}
-    >
-      {children}
-    </div>
-  );
 }
 
 /** Film-grain overlay. One per page, fixed, pointer-events: none; the CSS
