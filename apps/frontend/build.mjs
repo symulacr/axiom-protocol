@@ -9,21 +9,25 @@ const frontendDir = import.meta.dirname;
 const repoRoot = resolve(frontendDir, "../..");
 
 // Load VITE_* from root .env (single source of truth; Vite's envDir is gone).
-// Shell/CI/Vercel-exported VITE_* (process.env) take PRECEDENCE over the file,
-// mirroring dev.mjs — a CI build with Vercel Environment Variables must be
-// able to override the committed public defaults without editing .env.
-// A missing .env is fine — every VITE_* has a runtime default in src/config.
-let envSrc = "";
-try {
-  envSrc = await readFile(join(repoRoot, ".env"), "utf8");
-} catch {
-  envSrc = "";
-}
+// VITE_* values are public by design (they ship in the browser bundle), so the
+// gitignored .env.secrets-local may carry the real ones (browser API key,
+// WalletConnect project id) that must never be committed to the tracked .env
+// template; it layers over .env. Shell/CI/Vercel-exported VITE_*
+// (process.env) take final precedence, mirroring dev.mjs.
+// Missing files are fine — every VITE_* has a runtime default in src/config.
 const envFileVars = {};
-for (const line of envSrc.split("\n")) {
+for (const rel of [".env", ".env.secrets-local"]) {
+  let envSrc = "";
+  try {
+    envSrc = await readFile(join(repoRoot, rel), "utf8");
+  } catch {
+    continue;
+  }
+  for (const line of envSrc.split("\n")) {
 	const key = /^VITE_[A-Z_]+(?==)/.exec(line)?.[0];
 	if (!key) continue;
 	envFileVars[key] = line.slice(key.length + 1);
+  }
 }
 function pickViteEnv(source) {
 	const out = {};
