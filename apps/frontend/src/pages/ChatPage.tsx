@@ -69,6 +69,7 @@ import {
   compactHistory,
   MAX_TOOL_LOOPS,
   summarizeConversation,
+  snapHistoryStart,
   isAskUserResult,
   type ChatSessionContext,
 } from "@axiom/chat-runtime";
@@ -1026,6 +1027,9 @@ function ChatPageInner(): ReactElement {
       setIsStreaming(true);
       streamErrorRef.current = null;
       setStreamError(null);
+      // A new run re-tests compute — drop the sticky failure banner; the
+      // catch re-sets it if this run fails too.
+      setComputeHint(null);
       toolRunsRef.current = {};
       setToolRuns({});
       turnMetricsRef.current = [];
@@ -1109,18 +1113,24 @@ function ChatPageInner(): ReactElement {
               body: JSON.stringify({
                 model: CHAT_MODEL,
                 // Cap at the backend's max(50) — tool-heavy sessions otherwise
-                // brick with "Validation failed" once history exceeds it.
+                // brick with "Validation failed" once history exceeds it. The
+                // cap must snap to a tool-block boundary (snapHistoryStart):
+                // a payload opening on an orphaned tool result is rejected
+                // upstream with a 400 (2026-09-08 incident).
                 messages: [
                   { role: "system", content: systemContent },
-                  ...fitToContext(
-                    currentMessages.filter((m) => !m.meta?.error),
-                    {
-                      model: CHAT_MODEL,
-                      system: systemContent,
-                      tools: TOOLS,
-                      contextWindow: effectiveContextWindow,
-                    },
-                  ).slice(-50),
+                  ...capRecentMessages(
+                    fitToContext(
+                      currentMessages.filter((m) => !m.meta?.error),
+                      {
+                        model: CHAT_MODEL,
+                        system: systemContent,
+                        tools: TOOLS,
+                        contextWindow: effectiveContextWindow,
+                      },
+                    ),
+                    50,
+                  ),
                 ],
                 tools: TOOLS,
                 stream: true,
@@ -1387,7 +1397,10 @@ function ChatPageInner(): ReactElement {
           }
           // U24: error toasts persist until dismissed (same regime as the Notice rail);
           // the 3s Toaster default stays for success/info toasts only.
+          // `id` dedupes: a repeating failure updates ONE persistent toast
+          // instead of stacking a new one per failed turn.
           const toastOpts = {
+            id: `chat-error:${msg}`,
             duration: Infinity,
             ...(refDesc ? { description: refDesc } : {}),
           };
@@ -2203,7 +2216,15 @@ function groupTurns(messages: Message[]): Turn[] {
     }
     if (msg.role === "tool") {
       if (msg.name === "ask_user") {
-        cur.asks.push(msg);
+        // Steps dedupe repeated identical tool_calls; asks must too — a
+        // duplicated ask_user result would render the same option card twice.
+        const isDup = cur.asks.some(
+          (a) =>
+            a.content === msg.content ||
+            (msg.tool_call_id !== undefined &&
+              a.tool_call_id === msg.tool_call_id),
+        );
+        if (!isDup) cur.asks.push(msg);
         continue;
       }
       const step = msg.tool_call_id
@@ -2333,6 +2354,16 @@ function stripSummaryLead<T extends { role: string; content: string | null }>(
     msgs[0].content.startsWith("[Earlier conversation summary]")
     ? msgs.slice(1)
     : msgs;
+}
+
+/** Hard message-count cap that never opens inside a tool block — the same
+ * rule fitToContext/compactHistory follow (snapHistoryStart). */
+function capRecentMessages<T extends { role: string }>(
+  msgs: T[],
+  max: number,
+): T[] {
+  if (msgs.length <= max) return msgs;
+  return msgs.slice(snapHistoryStart(msgs, msgs.length - max));
 }
 
 export default function ChatPage(): ReactElement {

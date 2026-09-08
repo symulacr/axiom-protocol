@@ -318,6 +318,46 @@ test("/v1/chat/completions maps an upstream 401 to a compute_auth 502 rail", asy
   }
 });
 
+test("/v1/chat/completions passes an upstream 400 through as invalid_request, not a 502 compute outage", async () => {
+  const prevEnv = snapshotComputeEnv();
+  const prevDisable = process.env.AXIOM_DISABLE_AUTH;
+  process.env.AXIOM_DISABLE_AUTH = "true";
+  process.env.AXIOM_COMPUTE_DIRECT_KEY = "test-key";
+  process.env.AXIOM_COMPUTE_DIRECT_URL = "http://127.0.0.1:1/v1/proxy";
+  const restoreFetch = stubPort1Fetch(
+    () =>
+      new Response(
+        JSON.stringify({
+          error: {
+            type: "invalid_request_error",
+            code: "400001",
+            message:
+              "The request is invalid: Messages with role 'tool' must be a response to a preceding message with 'tool_calls'.",
+          },
+        }),
+        { status: 400, headers: { "content-type": "application/json" } },
+      ),
+  );
+  const booted = await boot(makeConfig());
+  try {
+    const res = await chatRequest(booted.baseUrl, {
+      messages: [{ role: "user", content: "hello" }],
+    });
+    assert.equal(res.status, 400);
+    const body = (await res.json()) as { code?: string; error?: string };
+    assert.equal(body.code, "invalid_request");
+    assert.ok(
+      body.error?.includes("tool_calls"),
+      `error should carry the provider reason, got: ${body.error}`,
+    );
+  } finally {
+    await booted.close();
+    restoreFetch();
+    restoreComputeEnv(prevEnv);
+    restoreEnv("AXIOM_DISABLE_AUTH", prevDisable);
+  }
+});
+
 test("/v1/chat/completions streams an empty-response warning when upstream returns zero chunks", async () => {
   const prevEnv = snapshotComputeEnv();
   const prevDisable = process.env.AXIOM_DISABLE_AUTH;
