@@ -40,6 +40,25 @@ export type GateHero = {
   copy: string;
 };
 
+/** Locked-gate ids — the consoleCatalog slug per gated route. */
+export type GateSlug =
+  | "overview"
+  | "settings"
+  | "transactions"
+  | "chat"
+  | "mint"
+  | "payment"
+  | "transfer"
+  | "storage"
+  | "agent"
+  | "roster"
+  | "tick"
+  | "deposit"
+  | "withdraw";
+
+/** Locked-gate schematic row text; the row icon stays in consoleCatalog. */
+export type GateRowText = { label: string; value: string };
+
 export type Copy = {
   nav: {
     howItWorks: string;
@@ -99,6 +118,8 @@ export type Copy = {
    * through the aria-labels). */
   a11y: {
     primaryNav: string;
+    /** Sonner toast region label (the one sonner default that leaks English). */
+    notificationsRegion: string;
     openNav: string;
     closeNav: string;
     hideSidebar: string;
@@ -196,6 +217,8 @@ export type Copy = {
   };
   guide: {
     nextStep: string;
+    /** Guide overlay artwork alt (rendered in every locale). */
+    illustrationAlt: string;
     finish: string;
     skip: string;
     step1Title: string;
@@ -244,8 +267,9 @@ export type Copy = {
     hubLabels: Record<PublicSeoSlug, string>;
   };
   /** Pre-auth locked-gate hero copy for every gated route — one locale owner
-   * per surface. The visual slots (slug/label/media/schematic) live in
-   * consoleCatalog.lockedGates; the words live here. */
+   * per surface. The visual slots (slug/media/row icons) live in
+   * consoleCatalog.lockedGates; the hero words live here, the gate label and
+   * schematic row text in copy.gate. */
   lockedHero: {
     app: GateHero;
     settings: GateHero;
@@ -1000,6 +1024,13 @@ export type Copy = {
     hash: string;
     age: string;
     state: string;
+    /** Fallback kind for unnamed chain events (B-M3). */
+    chainEvent: string;
+    /** Chain-event row detail. Placeholders: {agent}, {block}. */
+    eventDetail: string;
+    /** Chain-event row detail when the event carries no agent token.
+     * Placeholder: {block}. */
+    eventDetailBlockOnly: string;
     emptyState: string;
     /** Zero-receipts first run (no filter active) — distinct from the filter-miss line. */
     emptyAll: string;
@@ -1030,6 +1061,9 @@ export type Copy = {
   /** I6: relative-age strings shared by receipt surfaces. */
   time: {
     minutesAgo: (minutes: number) => string;
+    /** Age ladder past 119 minutes (B-L3). */
+    hoursAgo: (hours: number) => string;
+    daysAgo: (days: number) => string;
     /** Age cell for chain rows the indexer returned without a timestamp. */
     indexed: string;
   };
@@ -1037,9 +1071,13 @@ export type Copy = {
   gate: {
     statusWallet: string;
     statusNetwork: string;
-    /** Gate preview alt text; the label is the consoleCatalog gate label. */
+    /** Gate preview alt text; the label is the localized labels[slug]. */
     previewAlt: (label: string) => string;
     previewNote: string;
+    /** B-M4: gate label + schematic row text per gate slug (was hardcoded
+     * English in consoleCatalog); the row icons stay in the catalog. */
+    labels: Record<GateSlug, string>;
+    rows: Record<GateSlug, [GateRowText, GateRowText]>;
   };
   /** T1 guided first success: the dismissible Dashboard activation card. */
   checklist: {
@@ -1065,6 +1103,15 @@ const enS = (count: number) => (count === 1 ? "" : "s");
 const frS = (count: number) => (count > 1 ? "s" : "");
 const deS = (count: number) => (count === 1 ? "" : "en");
 
+/* Route names shared by the nav label, the flow receiptKind (copy.test.ts
+ * pins them equal) and the locked-gate label — one source per locale. */
+const enTickName = "Run agent task";
+const enTxCenterName = "Transaction center";
+const frTickName = "Lancer une tâche";
+const frTxCenterName = "Centre transactionnel";
+const deTickName = "Agent-Aufgabe ausführen";
+const deTxCenterName = "Transaktionszentrum";
+
 const english: Copy = {
   nav: {
     howItWorks: "How Axiom works",
@@ -1077,7 +1124,7 @@ const english: Copy = {
     mint: "Mint",
     payment: "Payment",
     transfer: "Transfer",
-    tick: "Run agent task",
+    tick: enTickName,
     deposit: "Deposit",
     withdraw: "Withdraw",
     groupOverview: "Overview",
@@ -1116,6 +1163,7 @@ const english: Copy = {
   },
   a11y: {
     primaryNav: "Primary navigation",
+    notificationsRegion: "Notifications",
     openNav: "Open primary navigation",
     closeNav: "Close navigation",
     hideSidebar: "Hide sidebar",
@@ -1223,6 +1271,7 @@ const english: Copy = {
   },
   guide: {
     nextStep: "Next step",
+    illustrationAlt: "Axiom onboarding illustration",
     finish: "Finish guide",
     skip: "Skip for now",
     step1Title: "Start with the next safe action.",
@@ -1660,7 +1709,7 @@ const english: Copy = {
       title: "Run the next tick",
       copy: "Intent → provider → stream → result → event or transaction → recovery.",
       steps: ["Bounded instruction", "Provider route", "Event indexed"],
-      receiptKind: "Run agent task",
+      receiptKind: enTickName,
       consequence: "Launch one cancellable task.",
       proofLine: "Records the provider route and execution evidence.",
       contextTitle: "Stream before result.",
@@ -1778,7 +1827,8 @@ const english: Copy = {
       "In vault: {amount} {symbol}. The resulting balance appears in review.",
     allowanceNote:
       "Current allowance: {amount} {symbol}, approves exactly this amount, never infinite.",
-    liveRouteNote: "",
+    liveRouteNote:
+      "Live route: wallet signature and contract write happen only after review.",
     simulateRejectedError: "Signature rejected. Reviewed details are saved.",
     simulateTimeoutError: "Confirmation expired. Resume from review.",
     tickActed: "acted",
@@ -2030,7 +2080,7 @@ const english: Copy = {
     errDelegationWallet: "Connect your wallet to install a delegation.",
   },
   transactions: {
-    title: "Transaction center",
+    title: enTxCenterName,
     description: "Every signature has a state, a source and a recovery path.",
     refreshState: "Refresh state",
     refreshNotice: "Receipt index revalidated. Pending states remain pending.",
@@ -2047,6 +2097,9 @@ const english: Copy = {
     hash: "Hash",
     age: "Age",
     state: "State",
+    chainEvent: "Chain event",
+    eventDetail: "agent #{agent}, block {block}",
+    eventDetailBlockOnly: "block {block}",
     emptyState: "No receipts match this filter.",
     emptyAll: "No receipts yet. Mint an agent to create the first one.",
     closeReceipt: "Close receipt",
@@ -2082,6 +2135,8 @@ const english: Copy = {
   },
   time: {
     minutesAgo: (minutes) => `${minutes}m ago`,
+    hoursAgo: (hours) => `${hours}h ago`,
+    daysAgo: (days) => `${days}d ago`,
     indexed: "indexed",
   },
   gate: {
@@ -2089,6 +2144,76 @@ const english: Copy = {
     statusNetwork: "network mismatch",
     previewAlt: (label) => `${label} preview`,
     previewNote: "Preview — connect a wallet for live data.",
+    // deposit/withdraw labels mirror nav.deposit/nav.withdraw.
+    labels: {
+      overview: "Console overview",
+      settings: "Session settings",
+      transactions: enTxCenterName,
+      chat: "Operator chat",
+      mint: "Mint an agent",
+      payment: "Payment route",
+      transfer: "Transfer flow",
+      storage: "Storage proofs",
+      agent: "Agent detail",
+      roster: "Agent roster",
+      tick: enTickName,
+      deposit: "Deposit",
+      withdraw: "Withdraw",
+    },
+    rows: {
+      overview: [
+        { label: "Agents", value: "••• live" },
+        { label: "Next tick", value: "••• queued" },
+      ],
+      settings: [
+        { label: "Display", value: "•••" },
+        { label: "Session", value: "••• h" },
+      ],
+      transactions: [
+        { label: "Receipts", value: "••• indexed" },
+        { label: "Recovery", value: "ready" },
+      ],
+      chat: [
+        { label: "Thread", value: "••• turns" },
+        { label: "Tools", value: "••• live" },
+      ],
+      mint: [
+        { label: "Identity", value: "unique" },
+        { label: "Ownership", value: "you" },
+      ],
+      payment: [
+        { label: "Approval cap", value: "••• 0G" },
+        { label: "Fees", value: "up front" },
+      ],
+      transfer: [
+        { label: "Co-sign", value: "receiver" },
+        { label: "Expiry", value: "enforced" },
+      ],
+      storage: [
+        { label: "Proofs", value: "••• verified" },
+        { label: "Roots", value: "on-chain" },
+      ],
+      agent: [
+        { label: "Identity", value: "ERC-7857" },
+        { label: "Receipts", value: "•••" },
+      ],
+      roster: [
+        { label: "Roster", value: "••• agents" },
+        { label: "Details", value: "per agent" },
+      ],
+      tick: [
+        { label: "Instruction", value: "bounded" },
+        { label: "Stream", value: "••• tokens" },
+      ],
+      deposit: [
+        { label: "Vault gas", value: "••• 0G" },
+        { label: "Top-up", value: "native" },
+      ],
+      withdraw: [
+        { label: "Balance", value: "••• 0G" },
+        { label: "Cooldown", value: "•••" },
+      ],
+    },
   },
   // Locked-gate heroes — every gated route in one table (was: English strings
   // in consoleCatalog.lockedRouteMeta + a lockedHero override for the three
@@ -2195,6 +2320,7 @@ const french: Copy = {
     groupResources: "Ressources",
     payment: "Paiement",
     transfer: "Transfert",
+    tick: frTickName,
     deposit: "Dépôt",
     withdraw: "Retrait",
   },
@@ -2232,6 +2358,7 @@ const french: Copy = {
   },
   a11y: {
     primaryNav: "Navigation principale",
+    notificationsRegion: "Notifications",
     openNav: "Ouvrir la navigation principale",
     closeNav: "Fermer la navigation",
     hideSidebar: "Masquer la barre latérale",
@@ -2345,6 +2472,7 @@ const french: Copy = {
   },
   guide: {
     nextStep: "Étape suivante",
+    illustrationAlt: "Illustration du guide Axiom",
     finish: "Terminer le guide",
     skip: "Passer pour l’instant",
     step1Title: "Commencez par la prochaine action sûre.",
@@ -2791,6 +2919,7 @@ const french: Copy = {
       title: "Lancer le prochain tick",
       copy: "Intention → fournisseur → flux → résultat → événement ou transaction → récupération.",
       steps: ["Instruction bornée", "Route fournisseur", "Événement indexé"],
+      receiptKind: frTickName,
       consequence: "Lancer une instruction bornée et annulable.",
       proofLine: "Enregistre la route fournisseur et la preuve d’exécution.",
       contextTitle: "Le flux avant le résultat.",
@@ -3165,7 +3294,7 @@ const french: Copy = {
   },
   transactions: {
     ...english.transactions,
-    title: "Centre transactionnel",
+    title: frTxCenterName,
     description:
       "Chaque signature possède un état, une source et un chemin de récupération.",
     refreshState: "Actualiser l’état",
@@ -3185,8 +3314,10 @@ const french: Copy = {
     operation: "Opération",
     age: "Âge",
     state: "État",
-    emptyState:
-      "Aucun reçu ne correspond à cet état. Le store partagé ne masque aucun élément.",
+    chainEvent: "Événement de chaîne",
+    eventDetail: "agent #{agent}, bloc {block}",
+    eventDetailBlockOnly: "bloc {block}",
+    emptyState: "Aucun reçu ne correspond à cet état.",
     emptyAll: "Pas encore de reçu. Mintez un agent pour créer le premier.",
     closeReceipt: "Fermer le reçu",
     transactionHash: "Hash de transaction",
@@ -3220,6 +3351,8 @@ const french: Copy = {
   },
   time: {
     minutesAgo: (minutes) => `il y a ${minutes} min`,
+    hoursAgo: (hours) => `il y a ${hours} h`,
+    daysAgo: (days) => `il y a ${days} j`,
     indexed: "indexé",
   },
   gate: {
@@ -3227,6 +3360,76 @@ const french: Copy = {
     statusNetwork: "mauvais réseau",
     previewAlt: (label) => `Aperçu ${label}`,
     previewNote: "Aperçu : connectez un wallet pour les données réelles.",
+    // deposit/withdraw : libellés identiques à nav.deposit/nav.withdraw.
+    labels: {
+      overview: "Vue d’ensemble de la console",
+      settings: "Réglages de session",
+      transactions: frTxCenterName,
+      chat: "Chat opérateur",
+      mint: "Créer un agent",
+      payment: "Route de paiement",
+      transfer: "Flux de transfert",
+      storage: "Preuves de stockage",
+      agent: "Détail de l’agent",
+      roster: "Liste d’agents",
+      tick: frTickName,
+      deposit: "Dépôt",
+      withdraw: "Retrait",
+    },
+    rows: {
+      overview: [
+        { label: "Agents", value: "••• en ligne" },
+        { label: "Prochain tick", value: "••• en file" },
+      ],
+      settings: [
+        { label: "Affichage", value: "•••" },
+        { label: "Session", value: "••• h" },
+      ],
+      transactions: [
+        { label: "Reçus", value: "••• indexés" },
+        { label: "Récupération", value: "prête" },
+      ],
+      chat: [
+        { label: "Fil", value: "••• tours" },
+        { label: "Outils", value: "••• en ligne" },
+      ],
+      mint: [
+        { label: "Identité", value: "unique" },
+        { label: "Propriété", value: "vous" },
+      ],
+      payment: [
+        { label: "Plafond d’approbation", value: "••• 0G" },
+        { label: "Frais", value: "d’avance" },
+      ],
+      transfer: [
+        { label: "Co-signature", value: "destinataire" },
+        { label: "Expiration", value: "appliquée" },
+      ],
+      storage: [
+        { label: "Preuves", value: "••• vérifiées" },
+        { label: "Racines", value: "on-chain" },
+      ],
+      agent: [
+        { label: "Identité", value: "ERC-7857" },
+        { label: "Reçus", value: "•••" },
+      ],
+      roster: [
+        { label: "Liste", value: "••• agents" },
+        { label: "Détails", value: "par agent" },
+      ],
+      tick: [
+        { label: "Instruction", value: "bornée" },
+        { label: "Flux", value: "••• tokens" },
+      ],
+      deposit: [
+        { label: "Gaz du vault", value: "••• 0G" },
+        { label: "Recharge", value: "native" },
+      ],
+      withdraw: [
+        { label: "Solde", value: "••• 0G" },
+        { label: "Délai", value: "•••" },
+      ],
+    },
   },
   lockedHero: {
     app: {
@@ -3330,6 +3533,7 @@ const german: Copy = {
     groupResources: "Ressourcen",
     transactions: "Transaktionen",
     payment: "Zahlung",
+    tick: deTickName,
     deposit: "Einzahlen",
     withdraw: "Auszahlen",
   },
@@ -3368,6 +3572,7 @@ const german: Copy = {
   },
   a11y: {
     primaryNav: "Hauptnavigation",
+    notificationsRegion: "Benachrichtigungen",
     openNav: "Hauptnavigation öffnen",
     closeNav: "Navigation schließen",
     hideSidebar: "Seitenleiste ausblenden",
@@ -3478,6 +3683,7 @@ const german: Copy = {
   },
   guide: {
     nextStep: "Nächster Schritt",
+    illustrationAlt: "Axiom-Einführungsillustration",
     finish: "Guide beenden",
     skip: "Jetzt überspringen",
     step1Title: "Beginne mit der nächsten sicheren Aktion.",
@@ -3925,6 +4131,7 @@ const german: Copy = {
       title: "Nächsten Tick ausführen",
       copy: "Absicht → Provider → Stream → Ergebnis → Ereignis oder Transaktion → Recovery.",
       steps: ["Begrenzte Anweisung", "Provider-Route", "Ereignis indexiert"],
+      receiptKind: deTickName,
       consequence: "Eine begrenzte, abbrechbare Anweisung starten.",
       proofLine: "Speichert Provider-Route und Ausführungsnachweis.",
       contextTitle: "Stream vor Ergebnis.",
@@ -4300,7 +4507,7 @@ const german: Copy = {
   },
   transactions: {
     ...english.transactions,
-    title: "Transaktionszentrum",
+    title: deTxCenterName,
     description:
       "Jede Signatur hat einen Status, eine Quelle und einen Wiederherstellungspfad.",
     refreshState: "Status aktualisieren",
@@ -4318,8 +4525,10 @@ const german: Copy = {
     moreFilters: "Mehr Filter",
     age: "Alter",
     state: "Status",
-    emptyState:
-      "Keine Belege passen zu diesem Status. Der gemeinsame Store verbirgt keine Elemente.",
+    chainEvent: "Chain-Ereignis",
+    eventDetail: "Agent #{agent}, Block {block}",
+    eventDetailBlockOnly: "Block {block}",
+    emptyState: "Keine Belege passen zu diesem Status.",
     emptyAll: "Noch keine Belege. Minte einen Agenten für den ersten.",
     closeReceipt: "Beleg schließen",
     transactionHash: "Transaktions-Hash",
@@ -4353,6 +4562,8 @@ const german: Copy = {
   },
   time: {
     minutesAgo: (minutes) => `vor ${minutes} Min.`,
+    hoursAgo: (hours) => `vor ${hours} Std.`,
+    daysAgo: (days) => `vor ${days} T.`,
     indexed: "indexiert",
   },
   gate: {
@@ -4360,6 +4571,76 @@ const german: Copy = {
     statusNetwork: "falsches Netzwerk",
     previewAlt: (label) => `${label}-Vorschau`,
     previewNote: "Vorschau: Wallet verbinden für Live-Daten.",
+    // deposit/withdraw: Labels wie nav.deposit/nav.withdraw.
+    labels: {
+      overview: "Konsolen-Übersicht",
+      settings: "Sitzungseinstellungen",
+      transactions: deTxCenterName,
+      chat: "Operator-Chat",
+      mint: "Agent minten",
+      payment: "Zahlungsroute",
+      transfer: "Transfer-Flow",
+      storage: "Speicher-Nachweise",
+      agent: "Agent-Detail",
+      roster: "Agent-Liste",
+      tick: deTickName,
+      deposit: "Einzahlen",
+      withdraw: "Auszahlen",
+    },
+    rows: {
+      overview: [
+        { label: "Agents", value: "••• live" },
+        { label: "Nächster Tick", value: "••• in Warteschlange" },
+      ],
+      settings: [
+        { label: "Anzeige", value: "•••" },
+        { label: "Sitzung", value: "••• Std." },
+      ],
+      transactions: [
+        { label: "Belege", value: "••• indexiert" },
+        { label: "Wiederherstellung", value: "bereit" },
+      ],
+      chat: [
+        { label: "Thread", value: "••• Turns" },
+        { label: "Tools", value: "••• live" },
+      ],
+      mint: [
+        { label: "Identität", value: "eindeutig" },
+        { label: "Eigentum", value: "du" },
+      ],
+      payment: [
+        { label: "Freigabelimit", value: "••• 0G" },
+        { label: "Gebühren", value: "im Voraus" },
+      ],
+      transfer: [
+        { label: "Co-Signatur", value: "Empfänger" },
+        { label: "Ablauf", value: "erzwungen" },
+      ],
+      storage: [
+        { label: "Nachweise", value: "••• verifiziert" },
+        { label: "Roots", value: "on-chain" },
+      ],
+      agent: [
+        { label: "Identität", value: "ERC-7857" },
+        { label: "Belege", value: "•••" },
+      ],
+      roster: [
+        { label: "Liste", value: "••• Agents" },
+        { label: "Details", value: "pro Agent" },
+      ],
+      tick: [
+        { label: "Instruktion", value: "begrenzt" },
+        { label: "Stream", value: "••• Tokens" },
+      ],
+      deposit: [
+        { label: "Vault-Gas", value: "••• 0G" },
+        { label: "Top-up", value: "nativ" },
+      ],
+      withdraw: [
+        { label: "Saldo", value: "••• 0G" },
+        { label: "Cooldown", value: "•••" },
+      ],
+    },
   },
   lockedHero: {
     app: {
