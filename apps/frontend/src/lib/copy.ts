@@ -145,12 +145,21 @@ export type Copy = {
     loading: string;
   };
   landing: {
+    /** Hero h1. Placeholders: `{emphasis}` opens <em>, `{endEmphasis}` closes it. */
     title: string;
     description: string;
     /** document.title for the landing route (App.tsx route table). */
     docTitle: string;
     /** Closing CTA before the footer; empty locales fall back to English. */
     closingCta: string;
+    /** R1: editorial-variant closing headline (emphasis markers). */
+    closingTitle: string;
+    /** R1: hero eyebrow (emphasis markers around the standard's name). */
+    eyebrow: string;
+    /** R1: A/B design-switch accessible labels (the switch is icon-only and
+     * doubles as the landing's theme control: forge = dark, editorial = light). */
+    switchToEditorial: string;
+    switchToForge: string;
     menuGuideHint: string;
     menuDevelopers: string;
     menuDevelopersHint: string;
@@ -160,6 +169,41 @@ export type Copy = {
       howItWorks: string;
       start: string;
       connect: string;
+    };
+    /** R1: console section headline (emphasis markers). */
+    consoleTitle: string;
+    /** R1: simulated agent feed — the forge console strip and the editorial
+     * hero card share this one source. Line templates carry {tick},
+     * {receiptHash}, {block} and {nativeSymbol} placeholders. */
+    console: {
+      agentId: string;
+      chip: string;
+      indexing: string;
+      /** Visible orb state labels for the working/searching/solving cycle. */
+      orbStates: ReadonlyArray<string>;
+      /** Orb accessible name; `{state}` resolves to the current orbStates entry. */
+      orbA11y: string;
+      /** Screen-reader summary of the full feed (the animated lines are
+       * aria-hidden). `{nativeSymbol}` placeholder. */
+      srOnly: string;
+      /** aria-label of the editorial hero console card. */
+      previewA11y: string;
+      lines: ReadonlyArray<string>;
+    };
+    /** R1: protocol-fact stats (1 mint tx, 0 accounts, 100% receipted, ERC id)
+     * — numbers are locale-invariant, labels localize. */
+    stats: ReadonlyArray<{ value: number; suffix: string; label: string }>;
+    /** R1: editorial-variant spec sheet. The Account cluster's row values are
+     * composed from principles.items by icon at render time (one copy source);
+     * the Network row interpolates {chainName}/{chainId} from config/wagmi. */
+    spec: {
+      /** Placeholders: `{emphasis}` opens <em>, `{endEmphasis}` closes it. */
+      title: string;
+      clusters: ReadonlyArray<{
+        head: string;
+        rows: ReadonlyArray<{ label: string; value: string }>;
+      }>;
+      account: { head: string; accessLabel: string; receiptsLabel: string };
     };
     /** L2-N6: principles section — 3 cards. */
     principles: {
@@ -173,11 +217,12 @@ export type Copy = {
       }>;
     };
     /** R12: how-it-works — the three-step operating loop (no numbered chips:
-        the banned numbered-label pattern; titles carry the sequence). */
+        the banned numbered-label pattern; titles carry the sequence).
+        R1: `fact` is the editorial variant's mono footnote under each tab. */
     how: {
       /** Placeholders: `{emphasis}` opens <em>, `{endEmphasis}` closes it. */
       title: string;
-      steps: ReadonlyArray<{ title: string; body: string }>;
+      steps: ReadonlyArray<{ title: string; body: string; fact: string }>;
     };
     /** L2-N8: landing footer. */
     footer: {
@@ -1205,11 +1250,15 @@ const english: Copy = {
     loading: "Loading",
   },
   landing: {
-    title: "Ownable AI agents, on 0G.",
+    title: "Ownable AI agents, {emphasis}on 0G.{endEmphasis}",
     description:
       "Mint an agent with a bounded vault. It runs only inside rules you set, and every action leaves an on-chain receipt.",
     docTitle: "Axiom: Own an AI Agent On-Chain",
     closingCta: "Mint your first agent.",
+    closingTitle: "Mint your {emphasis}first agent.{endEmphasis}",
+    eyebrow: "{emphasis}ERC-7857{endEmphasis} · ownable agent standard",
+    switchToEditorial: "Switch to the light editorial design",
+    switchToForge: "Switch to the dark forge design",
     menuGuideHint: "How signing and receipts work",
     menuDevelopers: "Developers",
     menuDevelopersHint: "APIs and developer tools",
@@ -1219,6 +1268,56 @@ const english: Copy = {
       howItWorks: "How it works",
       start: "Start",
       connect: "Connect",
+    },
+    consoleTitle: "The agent, {emphasis}thinking on-chain.{endEmphasis}",
+    console: {
+      agentId: "AXIOM OPS / AGENT 0x7a4c…91f2",
+      chip: "Simulated feed",
+      indexing: "indexing",
+      orbStates: ["working", "searching", "solving"],
+      orbA11y: "Agent is {state}",
+      srOnly:
+        "tick 4821, vault check passed, daily limit 25 {nativeSymbol}. Action: rebalance storage, within bounds. Receipt 0x8f3ac21e indexed at block 4812336. Next tick in 60 seconds, agent idle.",
+      previewA11y: "Agent console preview, sample data",
+      lines: [
+        "tick {tick} · vault check ok, limit 25 {nativeSymbol}/day",
+        "action: rebalance_storage · within bounds",
+        "receipt {receiptHash} indexed · block {block}",
+        "next tick in 60s · agent idle",
+      ],
+    },
+    stats: [
+      { value: 1, suffix: "", label: "transaction to mint agent and vault" },
+      { value: 0, suffix: "", label: "accounts, emails or passwords" },
+      { value: 100, suffix: "%", label: "of signatures indexed as receipts" },
+      { value: 7857, suffix: "", label: "the ERC standard agents live under" },
+    ],
+    spec: {
+      title: "The protocol, {emphasis}specified.{endEmphasis}",
+      clusters: [
+        {
+          head: "Identity",
+          rows: [
+            { label: "Standard", value: "ERC-7857, ownable AI agents" },
+            { label: "Network", value: "{chainName}, chain {chainId}" },
+          ],
+        },
+        {
+          head: "Bounds",
+          rows: [
+            { label: "Vault", value: "Bounded, daily limit set by the owner" },
+            {
+              label: "Overspend",
+              value: "Impossible by construction, for agent and team",
+            },
+          ],
+        },
+      ],
+      account: {
+        head: "Account",
+        accessLabel: "Access",
+        receiptsLabel: "Receipts",
+      },
     },
     principles: {
       title: "What makes Axiom {emphasis}different.{endEmphasis}",
@@ -1249,11 +1348,17 @@ const english: Copy = {
         {
           title: "Mint.",
           body: "One transaction creates the agent and its vault.",
+          fact: "1 transaction · ERC-7857",
         },
-        { title: "Fund.", body: "Top up the vault. Set the daily limit." },
+        {
+          title: "Fund.",
+          body: "Top up the vault. Set the daily limit.",
+          fact: "owner-set limit, enforced on-chain",
+        },
         {
           title: "Run.",
           body: "Ticks execute inside your rules. Receipts index on-chain.",
+          fact: "one receipt per signature",
         },
       ],
     },
@@ -2420,10 +2525,14 @@ const french: Copy = {
   },
   landing: {
     ...english.landing,
-    title: "Des agents IA que vous possédez, sur 0G.",
+    title: "Des agents IA que vous possédez, {emphasis}sur 0G.{endEmphasis}",
     description:
       "Mintez un agent avec un coffre plafonné. Il ne s’exécute que dans les règles que vous fixez, et chaque action laisse un reçu on-chain.",
     closingCta: "Mintez votre premier agent.",
+    closingTitle: "Mintez votre {emphasis}premier agent.{endEmphasis}",
+    eyebrow: "{emphasis}ERC-7857{endEmphasis} · des agents que vous possédez",
+    switchToEditorial: "Passer au design éditorial clair",
+    switchToForge: "Passer au design forge sombre",
     docTitle: "Axiom : possédez vos agents IA on-chain",
     menuGuideHint: "Comment fonctionnent signatures et reçus",
     menuDevelopers: "Développeurs",
@@ -2434,6 +2543,60 @@ const french: Copy = {
       howItWorks: "Comment ça marche",
       start: "Démarrer",
       connect: "Connecter",
+    },
+    consoleTitle: "L’agent, {emphasis}qui pense on-chain.{endEmphasis}",
+    console: {
+      agentId: "AXIOM OPS / AGENT 0x7a4c…91f2",
+      chip: "Flux simulé",
+      indexing: "indexation",
+      orbStates: ["en cours", "en recherche", "en résolution"],
+      orbA11y: "L’agent est {state}",
+      srOnly:
+        "tick 4821, coffre vérifié, limite quotidienne 25 {nativeSymbol}. Action : rebalance storage, dans les limites. Reçu 0x8f3ac21e indexé au bloc 4812336. Prochain tick dans 60 secondes, agent inactif.",
+      previewA11y: "Aperçu de la console agent, données d’exemple",
+      lines: [
+        "tick {tick} · coffre vérifié, limite 25 {nativeSymbol}/jour",
+        "action : rebalance_storage · dans les limites",
+        "reçu {receiptHash} indexé · bloc {block}",
+        "prochain tick dans 60 s · agent inactif",
+      ],
+    },
+    stats: [
+      {
+        value: 1,
+        suffix: "",
+        label: "transaction pour minter agent et coffre",
+      },
+      { value: 0, suffix: "", label: "comptes, e-mails ou mots de passe" },
+      { value: 100, suffix: "%", label: "des signatures indexées en reçus" },
+      { value: 7857, suffix: "", label: "le standard ERC des agents" },
+    ],
+    spec: {
+      title: "Le protocole, {emphasis}spécifié.{endEmphasis}",
+      clusters: [
+        {
+          head: "Identité",
+          rows: [
+            { label: "Standard", value: "ERC-7857, des agents IA possédables" },
+            { label: "Réseau", value: "{chainName}, chaîne {chainId}" },
+          ],
+        },
+        {
+          head: "Limites",
+          rows: [
+            {
+              label: "Coffre",
+              value: "Plafonné, limite quotidienne fixée par le propriétaire",
+            },
+            {
+              label: "Dépassement",
+              value:
+                "Impossible par construction, pour l’agent comme pour l’équipe",
+            },
+          ],
+        },
+      ],
+      account: { head: "Compte", accessLabel: "Accès", receiptsLabel: "Reçus" },
     },
     principles: {
       title: "Ce qui rend Axiom {emphasis}différent.{endEmphasis}",
@@ -2464,14 +2627,17 @@ const french: Copy = {
         {
           title: "Mintez.",
           body: "Une transaction crée l’agent et son coffre.",
+          fact: "1 transaction · ERC-7857",
         },
         {
           title: "Financez.",
           body: "Approvisionnez le coffre. Fixez la limite quotidienne.",
+          fact: "limite du propriétaire, appliquée on-chain",
         },
         {
           title: "Opérez.",
           body: "Les ticks s’exécutent dans vos règles. Les reçus s’indexent on-chain.",
+          fact: "un reçu par signature",
         },
       ],
     },
@@ -3652,10 +3818,14 @@ const german: Copy = {
   },
   landing: {
     ...english.landing,
-    title: "Eigene KI-Agenten, auf 0G.",
+    title: "Eigene KI-Agenten, {emphasis}auf 0G.{endEmphasis}",
     description:
       "Minte einen Agenten mit einem begrenzten Tresor. Er läuft nur innerhalb deiner Regeln, und jede Aktion hinterlässt einen On-Chain-Beleg.",
     closingCta: "Minte deinen ersten Agenten.",
+    closingTitle: "Minte deinen {emphasis}ersten Agenten.{endEmphasis}",
+    eyebrow: "{emphasis}ERC-7857{endEmphasis} · Agenten in deinem Besitz",
+    switchToEditorial: "Zum hellen Editorial-Design wechseln",
+    switchToForge: "Zum dunklen Forge-Design wechseln",
     docTitle: "Axiom: Eigene KI-Agenten on-chain",
     menuGuideHint: "Wie Signatur und Beleg funktionieren",
     menuDevelopers: "Entwickler",
@@ -3666,6 +3836,59 @@ const german: Copy = {
       howItWorks: "So funktioniert es",
       start: "Starten",
       connect: "Verbinden",
+    },
+    consoleTitle: "Der Agent, {emphasis}der on-chain denkt.{endEmphasis}",
+    console: {
+      agentId: "AXIOM OPS / AGENT 0x7a4c…91f2",
+      chip: "Simulierter Feed",
+      indexing: "Indexierung",
+      orbStates: ["aktiv", "suchend", "lösend"],
+      orbA11y: "Agent ist {state}",
+      srOnly:
+        "Tick 4821, Tresor-Check bestanden, Tageslimit 25 {nativeSymbol}. Aktion: rebalance storage, innerhalb der Grenzen. Beleg 0x8f3ac21e bei Block 4812336 indexiert. Nächster Tick in 60 Sekunden, Agent inaktiv.",
+      previewA11y: "Vorschau der Agent-Konsole, Beispieldaten",
+      lines: [
+        "Tick {tick} · Tresor-Check ok, Limit 25 {nativeSymbol}/Tag",
+        "Aktion: rebalance_storage · innerhalb der Grenzen",
+        "Beleg {receiptHash} indexiert · Block {block}",
+        "nächster Tick in 60 s · Agent inaktiv",
+      ],
+    },
+    stats: [
+      { value: 1, suffix: "", label: "Transaktion für Agent und Tresor" },
+      { value: 0, suffix: "", label: "Konten, E-Mails oder Passwörter" },
+      { value: 100, suffix: "%", label: "der Signaturen als Belege indexiert" },
+      { value: 7857, suffix: "", label: "der ERC-Standard der Agenten" },
+    ],
+    spec: {
+      title: "Das Protokoll, {emphasis}spezifiziert.{endEmphasis}",
+      clusters: [
+        {
+          head: "Identität",
+          rows: [
+            { label: "Standard", value: "ERC-7857, eigene KI-Agenten" },
+            { label: "Netzwerk", value: "{chainName}, Chain {chainId}" },
+          ],
+        },
+        {
+          head: "Grenzen",
+          rows: [
+            {
+              label: "Tresor",
+              value: "Begrenzt, Tageslimit vom Besitzer gesetzt",
+            },
+            {
+              label: "Überschreitung",
+              value: "Konstruktionsbedingt unmöglich, für Agent und Team",
+            },
+          ],
+        },
+      ],
+      account: {
+        head: "Konto",
+        accessLabel: "Zugang",
+        receiptsLabel: "Belege",
+      },
     },
     principles: {
       title: "Was Axiom {emphasis}anders macht.{endEmphasis}",
@@ -3696,11 +3919,17 @@ const german: Copy = {
         {
           title: "Minten.",
           body: "Eine Transaktion erstellt Agent und Tresor.",
+          fact: "1 Transaktion · ERC-7857",
         },
-        { title: "Finanzieren.", body: "Tresor aufladen. Tageslimit setzen." },
+        {
+          title: "Finanzieren.",
+          body: "Tresor aufladen. Tageslimit setzen.",
+          fact: "Besitzer-Limit, on-chain erzwungen",
+        },
         {
           title: "Ausführen.",
           body: "Ticks laufen in deinen Regeln. Belege indexieren on-chain.",
+          fact: "ein Beleg pro Signatur",
         },
       ],
     },
