@@ -4884,7 +4884,9 @@ body .landing-page .icon-button.landing-design-switch { display: grid; width: va
 .forge-btn-ghost .forge-btn-icon { background: color-mix(in srgb, var(--ink) 8%, transparent); }
 
 /* Layout container. */
-.forge-wrap { max-width: 1180px; margin: 0 auto; padding: 0 24px; width: 100%; }
+/* Layout container — full-bleed fluid (user call: no hard cap, no dead side
+   zones); the clamp padding is the only edge. */
+.forge-wrap { width: 100%; padding: 0 clamp(24px, 5vw, 76px); }
 
 /* Hero. */
 .forge-hero {
@@ -4894,7 +4896,19 @@ body .landing-page .icon-button.landing-design-switch { display: grid; width: va
   padding-top: 96px;
   padding-bottom: 64px;
 }
-.forge-hero-inner { max-width: 880px; }
+/* Hero: copy column left, live console card right (user call, R1 follow-up). */
+.forge-hero-inner { display: grid; grid-template-columns: minmax(0, 1.02fr) minmax(0, .98fr); gap: clamp(28px, 4.5vw, 72px); align-items: center; }
+.forge-hero-copy { min-width: 0; }
+.forge-hero-console { min-width: 0; }
+/* The console card is the hero's square, prominent artifact. */
+.forge-hero-console .forge-console-shell { aspect-ratio: 1 / 1; display: flex; flex-direction: column; }
+.forge-hero-console .forge-console { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.forge-hero-console .forge-console-body { flex: 1; min-height: 0; }
+@media (max-width: 980px) {
+  .forge-hero-inner { grid-template-columns: 1fr; }
+  .forge-hero-console { max-width: 560px; }
+  .forge-hero-console .forge-console-shell { aspect-ratio: auto; }
+}
 .forge-eyebrow {
   display: inline-flex;
   align-items: center;
