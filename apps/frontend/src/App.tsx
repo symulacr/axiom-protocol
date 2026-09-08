@@ -31,10 +31,15 @@ import {
   useNavigate,
 } from "react-router-dom";
 import { useAccount, useSwitchChain } from "wagmi";
-import { AppShell, Logo } from "./components/axiom/AppShell.js";
+import {
+  AppShell,
+  isEditableTarget,
+  Logo,
+} from "./components/axiom/AppShell.js";
 import { WalletGate, isSessionFresh } from "./components/axiom/WalletGate.js";
 import { Button, Status } from "./components/axiom/Controls.js";
 import {
+  AlertTriangle,
   ArrowLeft,
   ArrowRight,
   CircleCheck,
@@ -49,12 +54,13 @@ import { useModalDismiss } from "./hooks/useModalDismiss.js";
 import { useUiStore } from "./lib/uiStore.js";
 import { humanizeError } from "./utils/format.js";
 import {
+  getShortcutPath,
   KNOWN_PATHS,
   redirectHubTarget,
   resolvePublicSeoSlug,
   resolveRoute,
 } from "./lib/routeRegistry.js";
-import { lockedGateFor } from "./lib/consoleCatalog.js";
+import { lockedGateFor, lockedGates } from "./lib/consoleCatalog.js";
 import { MEDIA } from "./lib/media.js";
 import { getCopy, interpolate, type Locale } from "./lib/copy.js";
 import type { FlowKind, NoticeSeverity } from "./lib/models.js";
@@ -183,10 +189,11 @@ function Notice({
 }) {
   if (!text) return null;
   // U24: errors persist (manual ✕ only, role=alert); successes keep the timed toast.
+  // Icon + modifier class carry severity — an error must not wear the success check.
   const isError = severity === "error";
   return (
     <div
-      className="notice-toast"
+      className={`notice-toast${isError ? " notice-toast--error" : ""}`}
       role={isError ? "alert" : "status"}
       aria-live={isError ? "assertive" : "polite"}
       onMouseEnter={onPause}
@@ -194,7 +201,7 @@ function Notice({
       onFocusCapture={onPause}
       onBlurCapture={onResume}
     >
-      <CircleCheck size={16} />
+      {isError ? <AlertTriangle size={16} /> : <CircleCheck size={16} />}
       <span>{text}</span>
       <button
         onClick={onClose}
@@ -535,6 +542,22 @@ export function App(): ReactElement {
     [navigate],
   );
 
+  // Alt+1..5 / M / P / T / K route shortcuts — skip editable targets. They go
+  // through go() (router navigate + scroll-to-top), never raw pushState.
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (isEditableTarget(event.target)) return;
+      if (!event.altKey || event.ctrlKey || event.metaKey || event.shiftKey)
+        return;
+      const path = getShortcutPath(event.key);
+      if (!path) return;
+      event.preventDefault();
+      go(path);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [go]);
+
   const [walletOpen, setWalletOpen] = useState(false);
   const openWallet = (requestedPath = path) => {
     dispatch({
@@ -606,7 +629,7 @@ export function App(): ReactElement {
     const copy = getCopy(locale);
     const clean = location.pathname;
     if (clean === "/") {
-      document.title = "Axiom: Own an AI Agent On-Chain";
+      document.title = copy.landing.docTitle;
       return;
     }
     const agentMatch = clean.match(/^\/agents\/(\d+)/);
@@ -626,7 +649,7 @@ export function App(): ReactElement {
             "/deposit": copy.nav.deposit,
             "/withdraw": copy.nav.withdraw,
             "/settings": copy.settings.pageTitle,
-            "/staking": "0G Stake",
+            "/staking": copy.staking.pageTitle,
             "/transfer/co-sign": copy.flowUi.receiveTitle,
           }[clean];
     if (name) document.title = `${name} — Axiom`;
@@ -826,7 +849,7 @@ function WrongNetworkNotice({
     }
   };
   return (
-    <LockedShell statusLabel="network mismatch">
+    <LockedShell statusLabel={copy.gate.statusNetwork}>
       <section className="locked-route-copy" role="alert">
         <h1>{interpolate(copy.wallet.wrongNetworkTitle, chainVars)}</h1>
         <p>{copy.wallet.wrongNetworkDescription}</p>
@@ -865,13 +888,16 @@ function LockedRoute({
 }) {
   const copy = getCopy(locale);
   const pathname = requested.split("?", 1)[0] ?? requested;
-  const gate = lockedGateFor(pathname);
+  // lockedGateFor already falls back through /agents/ to the /app gate; the
+  // ?? here keeps a catalog refactor (a dropped /app row) from blanking the
+  // page — the null branch must stay unreachable.
+  const gate = lockedGateFor(pathname) ?? lockedGates["/app"];
   if (!gate) return null;
   const hero = copy.lockedHero[gate.hero];
 
   return (
     <LockedShell
-      statusLabel="wallet not connected"
+      statusLabel={copy.gate.statusWallet}
       shellClass={`locked-${gate.slug}`}
     >
       <section className="locked-route-copy">
@@ -892,12 +918,12 @@ function LockedRoute({
         <div className="locked-preview">
           <img
             src={gate.media}
-            alt={`${gate.label} preview`}
+            alt={copy.gate.previewAlt(gate.label)}
             loading="lazy"
             decoding="async"
           />
           <div>
-            <small>Preview — connect a wallet for live data.</small>
+            <small>{copy.gate.previewNote}</small>
           </div>
         </div>
         {/* Schematic mock, not data: masked values only (the gate never fakes

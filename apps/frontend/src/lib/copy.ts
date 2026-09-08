@@ -4,10 +4,16 @@
  * phosphor states factual, and avoid implying a live wallet or contract call.
  */
 
+import type { PublicSeoSlug } from "./routeRegistry";
+
 export type Locale = "en" | "fr" | "de";
 /** Sidebar rail group-header keys (h1 §1) — indexable subset of Copy["nav"]. */
 export type NavGroupKey =
   "groupOverview" | "groupOperations" | "groupResources";
+/** Landing footer link ids — key the FOOTER_HREFS map in LandingPage, so
+ * label↔href pairs survive copy reorders (F2b). */
+export type LandingFooterLinkId =
+  "agents" | "receipts" | "storage" | "developers";
 type CopyFlow =
   "mint" | "payment" | "transfer" | "tick" | "deposit" | "withdraw";
 
@@ -63,6 +69,7 @@ export type Copy = {
     openRail: string;
     oracleLive: string;
     oracleDown: string;
+    chainLabel: (id: string) => string;
   };
   /** Priority action strip + next-safe-action engine (lib/nextSafeAction). */
   strip: {
@@ -111,76 +118,29 @@ export type Copy = {
     switchToDark: string;
     /** U27: skip-to-content link in AppShell. */
     skipToContent: string;
+    /** I5: ui.tsx shared primitives (CopyButton + Spinner) read these via
+     * useUiStore, so every consumer localizes without prop threading. */
+    copyLabel: string;
+    copyA11y: string;
+    copiedA11y: string;
+    loading: string;
   };
   landing: {
-    titleLead: string;
-    titleEmphasis: string;
+    title: string;
     description: string;
-    nextSafeAction: string;
-    consoleAccess: string;
+    /** document.title for the landing route (App.tsx route table). */
+    docTitle: string;
+    /** Closing CTA before the footer; empty locales fall back to English. */
+    closingCta: string;
     menuGuideHint: string;
     menuDevelopers: string;
     menuDevelopersHint: string;
-    /** U21: signed-out escape hatch straight into the public /chat surface. */
-    tryAssistant: string;
-    stripOperateSmall: string;
-    /** R10: proof-field caption — small mono caption + Fraunces italic body. */
-    proofCaptionSmall: string;
-    proofPlateA11y: string;
-    proofCaptionBody: string;
-    /** T4: real product preview inside the hero plate (self-demonstrating). */
-    previewAgentDesc: string;
-    previewReceiptTitle: string;
     nav: {
       overview: string;
       principles: string;
       howItWorks: string;
       start: string;
       connect: string;
-    };
-    /** L2-N2: hero meta strip — live chain + on-chain agent count. */
-    meta: {
-      /** Placeholders: `{chainName}`, `{chainId}`. */
-      network: string;
-      /** Placeholder: `{count}`. */
-      agentsOnline: string;
-    };
-    /** L2-N3: hero trust-line chips. */
-    trust: {
-      nonCustodial: string;
-      signedIn: string;
-      receipt: string;
-    };
-    /** L2-N4: proof plate chrome — live label + floating receipt. */
-    proof: {
-      label: string;
-      caption: string;
-      receipt: {
-        kind: string;
-        state: string;
-        title: string;
-        agent: string;
-        block: string;
-        gas: string;
-        outcome: string;
-        outcomeValue: string;
-        meta: string;
-      };
-    };
-    /** L2-N5: live activity ticker under the hero. */
-    ticker: {
-      /** Placeholder: `{chainId}`. */
-      label: string;
-      items: ReadonlyArray<{
-        dot: "default" | "warning";
-        agent: string;
-        action: string;
-        ago: string;
-      }>;
-      /** L2-N5-LIVE: localized action label for every queryable event name.
-       * Used by useLandingTicker to render recent events. The fallback
-       * ("tx mined") is applied by the hook when an eventName is missing. */
-      actionLabels: Readonly<Record<string, string>>;
     };
     /** L2-N6: principles section — 3 cards. */
     principles: {
@@ -200,22 +160,12 @@ export type Copy = {
       title: string;
       steps: ReadonlyArray<{ title: string; body: string }>;
     };
-    /** L2-N7: journey section — 2 cards (replaces the strip). */
-    journey: {
-      /** Placeholders: `{emphasis}` opens <em>, `{endEmphasis}` closes it. */
-      title: string;
-      items: ReadonlyArray<{
-        title: string;
-        body: string;
-        meta: string;
-        cta: string;
-        onClick: "onGuide" | "goToApp";
-      }>;
-    };
     /** L2-N8: landing footer. */
     footer: {
       credit: string;
-      links: ReadonlyArray<{ label: string }>;
+      /** F2b: links carry a stable id that keys LandingPage's FOOTER_HREFS
+       * map — the old index wiring drifted if copy reordered. */
+      links: ReadonlyArray<{ id: LandingFooterLinkId; label: string }>;
     };
   };
   wallet: {
@@ -241,6 +191,8 @@ export type Copy = {
     pairingHint: string;
     /** Shown when no injected provider announced via EIP-6963. */
     noWalletDetected: string;
+    /** Interpolated as the chain id when the wallet reports none. */
+    unknownChain: string;
   };
   guide: {
     nextStep: string;
@@ -257,6 +209,8 @@ export type Copy = {
     openSettings: string;
   };
   staking: {
+    /** PageHead title + document.title (the App route table reuses it). */
+    pageTitle: string;
     lede: string;
     body: string;
     openVault: string;
@@ -280,13 +234,14 @@ export type Copy = {
     openConsole: string;
     /** document.title for unknown routes. */
     title: string;
+    /** Alt text for the recovery illustration. */
+    heroAlt: string;
     /** Wave-12B: accessible name for the recovery explore row. */
     exploreA11y: string;
-    /** Wave-12B: public hub labels for the recovery explore row — the
-     * destinations are wired by the locale-stable PUBLIC_HUB_PATHS order
-     * (agents/payments/proofs/storage/developers, mirrors LandingPage's
-     * FOOTER_HREFS index contract). */
-    hubLabels: [string, string, string, string, string];
+    /** Wave-12B/F2b: public hub labels for the recovery explore row, keyed by
+     * the same slug union the registry derives PUBLIC_HUB_PATHS from — labels
+     * and destinations can no longer drift apart on reorder. */
+    hubLabels: Record<PublicSeoSlug, string>;
   };
   /** Pre-auth locked-gate hero copy for every gated route — one locale owner
    * per surface. The visual slots (slug/label/media/schematic) live in
@@ -513,7 +468,7 @@ export type Copy = {
     send: string;
     queue: string;
     stop: string;
-    removeQueued: string;
+    removeQueued: (message: string) => string;
     composerNearLimit: (remaining: number) => string;
     routing: string;
     routingHint: string;
@@ -564,6 +519,23 @@ export type Copy = {
     footHint: string;
     storedOn0G: string;
     historyClose: string;
+    /** I1: the run-loop strings that were hardcoded English. */
+    /** Terminal turn-limit message; {max} is MAX_TOOL_LOOPS. */
+    turnLimit: (max: number) => string;
+    /** 429 toast. */
+    rateLimited: string;
+    /** Empty terminal answer from the model. */
+    noResponse: string;
+    /** The model named an unregistered tool (run card + tool result). */
+    unknownTool: (name: string) => string;
+    /** openTransfer rejects a non-numeric id. */
+    invalidTokenId: (tokenId: string) => string;
+    /** TransferModal closed without submitting. */
+    transferCancelled: string;
+    /** Stream start/end announcements on the persistent visually-hidden
+     * status node; the token flush itself stays aria-hidden (M2). */
+    streamStarted: string;
+    streamComplete: string;
   };
   /** GasTank card (V3 W5-B). Placeholders: {used}/{cap} grant counters. */
   gasTank: {
@@ -580,17 +552,10 @@ export type Copy = {
     depositAction: string;
     refillAction: string;
     tankLowBanner: string;
-    /** V3 W6-B faucet row: balance + eligibility badge + claim button. */
-    faucetBalanceLabel: string;
-    faucetEligibleBadge: string;
-    faucetIneligibleBadge: string;
-    faucetClaimAction: string;
     /** Outcome toasts (audit critique-2 C2: refill/claim were silent). */
     depositQueued: string;
     refillDone: string;
     refillFailed: string;
-    faucetDone: string;
-    faucetFailed: string;
   };
   storage: {
     title: string;
@@ -709,8 +674,6 @@ export type Copy = {
     intentBounded: string;
     intentRecovery: string;
     intentReceipt: string;
-    /** Visually hidden label for the tick token stream. */
-    streamLabel: string;
     cancelStream: string;
     /** proto-subpages-a mint trims: cost row replaces Network+Limit on the
      * mint sheet. */
@@ -767,6 +730,8 @@ export type Copy = {
     factBoundary: string;
     /** Placeholders: {chainName}, {chainId}. */
     networkFact: string;
+    /** Chain id alone, no name segment (receiver-page fact). */
+    networkFactId: string;
     primarySign: string;
     primaryApprove: string;
     primaryContinuePayment: string;
@@ -791,6 +756,7 @@ export type Copy = {
     transferPubkeyFallbackSummary: string;
     transferPubkeyResolvePending: string;
     transferPubkeyResolveFailed: string;
+    transferPubkeyResolveResolved: string;
     transferAgentTitle: (id: string) => string;
     /** cross-wallet handoff — sender side (review-sheet co-sign step). */
     handoffTitle: string;
@@ -841,11 +807,70 @@ export type Copy = {
     claimRawToggle: string;
     /** Plain-language ghost exit used by CoSignPage back buttons. */
     goHome: string;
+    /** I3: vault-write guard when no wallet is connected at submit time. */
+    connectToSubmit: string;
+    /** I3: mint review fallback when the name field is blank. */
+    mintAgentFallback: string;
+    /** I3: aria-label for the review-sheet action row. */
+    operationActions: string;
+    /** Tick stream start/end announcements on the visually-hidden status
+     * node; the token flush itself is aria-hidden (M4). */
+    streamStarted: string;
+    streamComplete: string;
+    /** CoSignPage hint shown when the Clipboard API is unavailable. */
+    receiveCopyManual: string;
+    /** One-word actions shared by flow overlays. */
+    cancel: string;
+    edit: string;
+    /** I4: TransferModal body — phases, fields, validation, actions, toasts. */
+    transferPhases: Record<
+      "idle" | "challenge" | "signing" | "finalizing" | "confirming",
+      string
+    >;
+    transferRetryHint: string;
+    transferErrChallenge: string;
+    transferErrSubmit: string;
+    transferErrGeneric: string;
+    closeTransferA11y: string;
+    transferLede: string;
+    transferReceiverLabel: string;
+    transferPubkeyLabel: string;
+    transferPubkeyPlaceholder: string;
+    transferRekeySummary: string;
+    transferRekeyHint: string;
+    transferOldKeyLabel: string;
+    transferOldKeyPlaceholder: string;
+    transferOldUriLabel: string;
+    transferOldUriPlaceholder: string;
+    transferErrKeyRequired: string;
+    transferErrKeyPrefix: string;
+    transferErrKeyLength: (length: number) => string;
+    transferErrRekeyPair: string;
+    transferSigning: string;
+    transferSignAction: string;
+    transferConfirmLede: string;
+    transferAuthorizedTitle: string;
+    transferAuthorizedBody: string;
+    transferProofDetails: string;
+    /** Sealed-proof labels render inline after a mono value; the second one
+     * carries its "; " separator so locales keep their own punctuation. */
+    transferNewHashLabel: string;
+    transferSealedKeyLabel: string;
+    transferOwnershipProof: string;
+    transferValidUntil: string;
+    transferAcceptedBy: string;
+    transferSubmitting: string;
+    transferConfirmAction: string;
+    /** Success toast; {hash} arrives pre-truncated. */
+    transferConfirmedToast: (hash: string) => string;
   };
   agentDetail: {
     /** Balance caption: `{amount}` — formatted balance + symbol from chain config. */
     balanceToSpend: string;
     needsSetup: string;
+    /** Head status pill pair: strategy bound → online, otherwise attention. */
+    statusOnline: string;
+    statusAttention: string;
     dataHash: string;
     overview: string;
     execute: string;
@@ -973,8 +998,29 @@ export type Copy = {
      * the row's kind/detail/pill — it leads with its own title. */
     drawerTitle: string;
     proofTitle: string;
+    /** I2: receipt-surface strings that were hardcoded English. */
+    viewOnExplorer: string;
+    copyReceiptHash: string;
+    receiptCopied: string;
+    receiptsCount: (shown: number, total: number) => string;
+    filterA11y: string;
+    clearFilter: string;
   };
   status: Record<string, string>;
+  /** I6: relative-age strings shared by receipt surfaces. */
+  time: {
+    minutesAgo: (minutes: number) => string;
+    /** Age cell for chain rows the indexer returned without a timestamp. */
+    indexed: string;
+  };
+  /** Locked-route shell chrome (App.tsx LockedShell pill + gate preview). */
+  gate: {
+    statusWallet: string;
+    statusNetwork: string;
+    /** Gate preview alt text; the label is the consoleCatalog gate label. */
+    previewAlt: (label: string) => string;
+    previewNote: string;
+  };
   /** T1 guided first success: the dismissible Dashboard activation card. */
   checklist: {
     title: string;
@@ -1025,6 +1071,7 @@ const english: Copy = {
     openRail: "Show sidebar",
     oracleLive: "online",
     oracleDown: "services degraded",
+    chainLabel: (id) => `chain ${id}`,
   },
   strip: {
     reviewTitle: (kind) => `Review ${kind}`,
@@ -1066,24 +1113,20 @@ const english: Copy = {
     walletAccess: "Axiom wallet access",
     closeWalletAccess: "Close wallet access",
     skipToContent: "Skip to content",
+    copyLabel: "Copy",
+    copyA11y: "Copy to clipboard",
+    copiedA11y: "Copied to clipboard",
+    loading: "Loading",
   },
   landing: {
-    titleLead: "Own an AI agent.",
-    titleEmphasis: "Keep every action accountable.",
+    title: "Ownable AI agents, on 0G.",
     description:
-      "Mint an agent with a bounded vault. It works inside rules you set.",
-    nextSafeAction: "Next safe action",
-    consoleAccess: "Console access",
+      "Mint an agent with a bounded vault. It runs only inside rules you set, and every action leaves an on-chain receipt.",
+    docTitle: "Axiom: Own an AI Agent On-Chain",
+    closingCta: "Mint your first agent.",
     menuGuideHint: "How signing and receipts work",
     menuDevelopers: "Developers",
     menuDevelopersHint: "APIs and developer tools",
-    tryAssistant: "Try the assistant",
-    stripOperateSmall: "Receipts beside action",
-    proofCaptionSmall: "Sealed transfer",
-    proofPlateA11y: "Open the proofs hub",
-    proofCaptionBody: "Every payload is re-keyed to its new owner.",
-    previewAgentDesc: "Oracle attestations, every 10 minutes",
-    previewReceiptTitle: "Tick receipt",
     nav: {
       overview: "Overview",
       principles: "Principles",
@@ -1091,152 +1134,50 @@ const english: Copy = {
       start: "Start",
       connect: "Connect",
     },
-    meta: {
-      network: "{chainName} · chain {chainId}",
-      agentsOnline: "{count} agents online",
-    },
-    trust: {
-      nonCustodial: "Non-custodial",
-      signedIn: "Signed in < 30s",
-      receipt: "Every action → receipt",
-    },
-    proof: {
-      label: "Agent #7 · live",
-      caption: "Receipts beside every action.",
-      receipt: {
-        kind: "Tick receipt",
-        state: "Just now",
-        title: "Oracle attestations",
-        agent: "Agent",
-        block: "Block",
-        gas: "Gas",
-        outcome: "Outcome",
-        outcomeValue: "Held (idle)",
-        meta: "agent 7 · tx mined",
-      },
-    },
-    ticker: {
-      label: "Live · chain {chainId}",
-      items: [
-        {
-          dot: "default",
-          agent: "agent #3",
-          action: "vault topped",
-          ago: "22s ago",
-        },
-        {
-          dot: "default",
-          agent: "agent #11",
-          action: "receipt indexed",
-          ago: "38s ago",
-        },
-        {
-          dot: "warning",
-          agent: "agent #88",
-          action: "oracle attestation",
-          ago: "51s ago",
-        },
-      ],
-      actionLabels: {
-        Transfer: "ownership changed",
-        Updated: "metadata updated",
-        Authorization: "access authorized",
-        AuthorizationRevoked: "authorization revoked",
-        VerifierUpdated: "verifier updated",
-        CreatorSet: "creator set",
-        MintFeeUpdated: "mint fee updated",
-        StorageInfoUpdated: "storage info updated",
-        PublishedSealedKey: "sealed key published",
-        DelegateAccess: "delegate access granted",
-        Deposited: "vault topped",
-        Withdrawn: "vault withdrew",
-        StrategySet: "strategy set",
-        Executed: "tick ran",
-        PaymentProcessed: "payment settled",
-        ComputeProviderPaid: "compute provider paid",
-        EarningsWithdrawn: "earnings paid",
-        RoyaltySet: "royalty set",
-        ProtocolTreasuryProposed: "treasury change proposed",
-        ProtocolTreasuryUpdated: "treasury updated",
-        ProtocolTreasuryProposalCancelled: "treasury proposal cancelled",
-        ProtocolFeeBpsUpdated: "protocol fee updated",
-        PaymentTokenUpdated: "payment token updated",
-        Paused: "contract paused",
-        Unpaused: "contract unpaused",
-        MetadataJsonDecisionDocumented: "metadata decision logged",
-        Cloned: "proxy cloned",
-        Upgraded: "implementation upgraded",
-        Initialized: "contract initialized",
-        SignerProposed: "signer proposed",
-        SignerExecuted: "oracle attestation",
-        SignerProposalCancelled: "signer proposal cancelled",
-        ProofUsed: "oracle attestation",
-        DelegationInstalled: "delegation installed",
-        DelegationRevoked: "delegation revoked",
-        DelegatedExecuted: "delegated execution",
-        AdminChanged: "admin changed",
-        BeaconUpgraded: "beacon upgraded",
-        Tick: "receipt indexed",
-        Unknown: "tx mined",
-      },
-    },
     principles: {
       title: "What makes Axiom {emphasis}different.{endEmphasis}",
       items: [
         {
           icon: "shield",
           title: "Bounded by design.",
-          body: "An on-chain vault with a daily limit. No off-chain guardrails.",
+          body: "An on-chain vault with a daily limit. Nothing can spend past it — not even us.",
           link: "Read the spec",
         },
         {
           icon: "receipt",
           title: "Receipts, not promises.",
-          body: "Every signature indexes as a receipt: agent, block, outcome.",
+          body: "Every signature is indexed as a receipt: which agent, which block, what happened.",
           link: "How receipts work",
         },
         {
           icon: "wallet",
           title: "Your wallet, your keys.",
-          body: "Connect the wallet you already use. No accounts, no emails.",
-          link: "Wallet options",
+          body: "Connect the wallet you already have. No accounts, no emails, no passwords.",
+          link: "",
         },
       ],
     },
     how: {
       title: "Three steps to {emphasis}a running agent.{endEmphasis}",
       steps: [
-        { title: "Mint.", body: "One transaction creates the agent and its vault." },
-        { title: "Fund.", body: "Top up the vault. Set the daily limit." },
-        { title: "Run.", body: "Ticks execute inside your rules. Receipts index on-chain." },
-      ],
-    },
-    journey: {
-      title: "Two paths {emphasis}to start.{endEmphasis}",
-      items: [
         {
-          title: "Learn the boundary before you sign.",
-          body: "How signing splits from custody, and which wallets keep your keys yours. No wallet needed to read.",
-          meta: "Read time · 3 min",
-          cta: "How signing works",
-          onClick: "onGuide",
+          title: "Mint.",
+          body: "One transaction creates the agent and its vault.",
         },
+        { title: "Fund.", body: "Top up the vault. Set the daily limit." },
         {
-          title: "Open the console and operate receipts.",
-          body: "Connect once to mint, fund and run. The console tracks each step.",
-          meta: "Live · {count} agents online",
-          cta: "Console access",
-          onClick: "goToApp",
+          title: "Run.",
+          body: "Ticks execute inside your rules. Receipts index on-chain.",
         },
       ],
     },
     footer: {
       credit: "Built on 0G · Mainnet beta",
       links: [
-        { label: "Agents" },
-        { label: "Receipts" },
-        { label: "Storage" },
-        { label: "Developers" },
+        { id: "agents", label: "Agents" },
+        { id: "receipts", label: "Receipts" },
+        { id: "storage", label: "Storage" },
+        { id: "developers", label: "Developers" },
       ],
     },
   },
@@ -1258,6 +1199,7 @@ const english: Copy = {
     pairingHint: "Copy the code into your wallet app's WalletConnect screen.",
     noWalletDetected:
       "No browser wallet detected. Install one, or use a mobile wallet.",
+    unknownChain: "unknown",
   },
   guide: {
     nextStep: "Next step",
@@ -1276,6 +1218,7 @@ const english: Copy = {
     openSettings: "Open settings",
   },
   staking: {
+    pageTitle: "0G Stake",
     lede: "Staking isn\u0027t part of Axiom.",
     body: "Staking lives in the official 0G app : agents, vaults and receipts stay here.",
     openVault: "Go to my agents",
@@ -1292,15 +1235,16 @@ const english: Copy = {
     returnToLanding: "Return to landing",
     openConsole: "Open the app",
     title: "Page not found",
+    heroAlt: "Abstract recoverable Axiom route",
     // Wave-12B: recovery explore row (accessible name + hub labels).
     exploreA11y: "Explore public paths",
-    hubLabels: [
-      "Agents",
-      "Payments",
-      "Proofs",
-      "Storage",
-      "Developers",
-    ],
+    hubLabels: {
+      agents: "Agents",
+      payments: "Payments",
+      proofs: "Proofs",
+      storage: "Storage",
+      developers: "Developers",
+    },
   },
   errorBoundary: {
     networkTitle: "Connection problem",
@@ -1509,7 +1453,7 @@ const english: Copy = {
     send: "Send",
     queue: "Queue",
     stop: "Stop",
-    removeQueued: "Remove queued message",
+    removeQueued: (message) => `Remove queued message: ${message}`,
     composerNearLimit: (remaining) =>
       `${remaining} characters left before the composer cuts off pastes`,
     routing: "Routing",
@@ -1561,6 +1505,15 @@ const english: Copy = {
     footHint: "Shift+Enter for a new line",
     storedOn0G: "Stored on 0G",
     historyClose: "Close history",
+    turnLimit: (max) =>
+      `Turn limit hit after ${max} steps — send "continue" to keep going.`,
+    rateLimited: "Rate limited: wait a moment and try again.",
+    noResponse: "No response: try again.",
+    unknownTool: (name) => `Unknown tool: ${name}`,
+    invalidTokenId: (tokenId) => `invalid tokenId: ${tokenId}`,
+    transferCancelled: "Transfer cancelled: no transaction was submitted.",
+    streamStarted: "Response started.",
+    streamComplete: "Response complete.",
   },
   gasTank: {
     title: "Gas Tank",
@@ -1576,16 +1529,10 @@ const english: Copy = {
     refillAction: "Claim free gas grant",
     tankLowBanner:
       "Your gas tank is nearly empty : ops keep running until your free grants run out.",
-    faucetBalanceLabel: "Test tokens",
-    faucetEligibleBadge: "faucet available",
-    faucetIneligibleBadge: "faucet claimed",
-    faucetClaimAction: "Claim free test tokens",
     depositQueued: "Deposit queued : track it in the transaction center.",
     refillDone: "Gas grant claimed. Tank balance refreshed.",
     refillFailed:
       "Gas grant claim failed : check your connection and try again.",
-    faucetDone: "Test tokens minted.",
-    faucetFailed: "Faucet claim failed : you may already have claimed.",
   },
   storage: {
     title: "Store the payload, then verify its proof.",
@@ -1761,7 +1708,6 @@ const english: Copy = {
     intentBounded: "Instruction selected. Streaming stays cancellable.",
     intentRecovery: "Recovering an existing receipt. No duplicate operation.",
     intentReceipt: "Linked to an indexed receipt.",
-    streamLabel: "Streamed tokens",
     cancelStream: "Cancel stream",
     factCost: "Cost",
     confirmMint: "1 click in your wallet, usual network fee",
@@ -1814,6 +1760,7 @@ const english: Copy = {
     factNetwork: "Network",
     factBoundary: "Asks twice?",
     networkFact: "{chainName}, chain {chainId}",
+    networkFactId: "chain {chainId}",
     primarySign: "Sign & execute",
     primaryApprove: "Approve spending limit",
     primaryContinuePayment: "Continue to payment",
@@ -1835,6 +1782,8 @@ const english: Copy = {
     transferPubkeyResolvePending: "Looking up the key for this address…",
     transferPubkeyResolveFailed:
       "No public key found on-chain for this address yet. Paste it manually below.",
+    transferPubkeyResolveResolved:
+      "Key found on-chain. The receiver can decrypt the payload.",
     transferAgentTitle: (id) => `Transfer agent #${id}`,
     handoffTitle: "Receiver on another device?",
     handoffBody:
@@ -1881,10 +1830,68 @@ const english: Copy = {
     claimUrlLabel: "Approval link",
     claimRawToggle: "Advanced, raw signature",
     goHome: "Home",
+    connectToSubmit: "Connect a wallet to submit this operation.",
+    mintAgentFallback: "Axiom agent",
+    operationActions: "Operation actions",
+    streamStarted: "Stream started.",
+    streamComplete: "Stream complete.",
+    receiveCopyManual:
+      "Clipboard unavailable: select the link above and copy it manually.",
+    cancel: "Cancel",
+    edit: "Edit",
+    transferPhases: {
+      idle: "Ready",
+      challenge: "Preparing transfer…",
+      signing: "Waiting for signature…",
+      finalizing: "Securing data for the receiver…",
+      confirming: "Confirming on-chain…",
+    },
+    transferRetryHint: "Failed. Tap Edit to retry.",
+    transferErrChallenge: "The request failed. Please try again.",
+    transferErrSubmit:
+      "Submission failed. Nothing was sent. Tap Edit to retry.",
+    transferErrGeneric: "Something went wrong. Tap Edit to start over.",
+    closeTransferA11y: "Close transfer",
+    transferLede:
+      "You'll sign once to authorize, then confirm the on-chain transfer.",
+    transferReceiverLabel: "Receiver address",
+    transferPubkeyLabel: "Receiver public key",
+    transferPubkeyPlaceholder: "0x…  (128 hex chars)",
+    transferRekeySummary: "Re-encrypt for receiver (optional)",
+    transferRekeyHint:
+      "Optional: AES key + storage URI so only the receiver can read the data after the transfer. Blank = sign-only.",
+    transferOldKeyLabel: "Old data encryption key (base64)",
+    transferOldKeyPlaceholder: "base64 32-byte AES key",
+    transferOldUriLabel: "Old data URI (0x…)",
+    transferOldUriPlaceholder: "0x… storage root hash",
+    transferErrKeyRequired: "required",
+    transferErrKeyPrefix: "must be 0x-prefixed",
+    transferErrKeyLength: (length) =>
+      `must be ${length} chars (64 raw bytes, no 0x04 prefix)`,
+    transferErrRekeyPair:
+      "supply both old data key and old data URI to re-encrypt, or leave both blank",
+    transferSigning: "Signing…",
+    transferSignAction: "Sign transfer authorization",
+    transferConfirmLede:
+      "Confirm. Your wallet will ask for the final signature.",
+    transferAuthorizedTitle: "Transfer authorized",
+    transferAuthorizedBody:
+      "the agent's data was re-encrypted so only the new owner can read it.",
+    transferProofDetails: "Proof details",
+    transferNewHashLabel: "New metadata hash:",
+    transferSealedKeyLabel: "; new sealed key:",
+    transferOwnershipProof: "Ownership proof",
+    transferValidUntil: "Valid until",
+    transferAcceptedBy: "Accepted by",
+    transferSubmitting: "Submitting…",
+    transferConfirmAction: "Confirm on-chain transfer",
+    transferConfirmedToast: (hash) => `Transfer ${hash}… confirmed`,
   },
   agentDetail: {
     balanceToSpend: "Has {amount} to spend, ready",
     needsSetup: "Needs setup",
+    statusOnline: "online",
+    statusAttention: "attention",
     dataHash: "Metadata hash",
     overview: "About",
     execute: "Run",
@@ -2014,8 +2021,15 @@ const english: Copy = {
     runAnother: "Run another like this",
     drawerTitle: "Receipt detail",
     proofTitle: "Technical details",
+    viewOnExplorer: "View on explorer",
+    copyReceiptHash: "Copy receipt hash",
+    receiptCopied: "Receipt hash copied.",
+    receiptsCount: (shown, total) => `${shown} of ${total} receipts`,
+    filterA11y: "Receipt state filter",
+    clearFilter: "Clear filter",
   },
   status: {
+    label: "Status",
     ready: "Ready to start",
     approval: "Approval requested",
     signing: "Signature requested",
@@ -2025,6 +2039,16 @@ const english: Copy = {
     reverted: "Reverted",
     rejected: "Rejected",
     stale: "Needs review",
+  },
+  time: {
+    minutesAgo: (minutes) => `${minutes}m ago`,
+    indexed: "indexed",
+  },
+  gate: {
+    statusWallet: "wallet not connected",
+    statusNetwork: "network mismatch",
+    previewAlt: (label) => `${label} preview`,
+    previewNote: "Preview — connect a wallet for live data.",
   },
   // Locked-gate heroes — every gated route in one table (was: English strings
   // in consoleCatalog.lockedRouteMeta + a lockedHero override for the three
@@ -2141,6 +2165,7 @@ const french: Copy = {
     openRail: "Afficher la barre latérale",
     oracleLive: "en ligne",
     oracleDown: "services dégradés",
+    chainLabel: (id) => `chaîne ${id}`,
   },
   strip: {
     ...english.strip,
@@ -2184,26 +2209,21 @@ const french: Copy = {
     walletAccess: "Accès wallet Axiom",
     closeWalletAccess: "Fermer l’accès wallet",
     skipToContent: "Aller au contenu",
+    copyLabel: "Copier",
+    copyA11y: "Copier dans le presse-papiers",
+    copiedA11y: "Copié dans le presse-papiers",
+    loading: "Chargement",
   },
   landing: {
     ...english.landing,
-    titleLead: "Possédez des agents IA",
-    titleEmphasis: "qui travaillent pour vous.",
+    title: "Des agents IA que vous possédez, sur 0G.",
     description:
-      "Mintez un agent sur 0G, mettez vos fonds au travail et gardez le contrôle.",
-    nextSafeAction: "Prochaine action sûre",
-    consoleAccess: "Accès console",
-    tryAssistant: "Essayer l’assistant",
+      "Mintez un agent avec un coffre plafonné. Il ne s'exécute que dans les règles que vous fixez, et chaque action laisse un reçu on-chain.",
+    closingCta: "Mintez votre premier agent.",
+    docTitle: "Axiom : possédez vos agents IA on-chain",
     menuGuideHint: "Comment fonctionnent signatures et reçus",
     menuDevelopers: "Développeurs",
     menuDevelopersHint: "APIs et outils pour développeurs",
-    stripOperateSmall: "Reçus à côté de l’action",
-    proofCaptionSmall: "Transfert scellé",
-    proofPlateA11y: "Ouvrir le hub des preuves",
-    proofCaptionBody:
-      "Chaque payload est recréé pour son nouveau propriétaire.",
-    previewAgentDesc: "Attestations oracle, toutes les 10 minutes",
-    previewReceiptTitle: "Reçu de tick",
     nav: {
       overview: "Aperçu",
       principles: "Principes",
@@ -2211,152 +2231,53 @@ const french: Copy = {
       start: "Démarrer",
       connect: "Connecter",
     },
-    meta: {
-      network: "{chainName} · chaîne {chainId}",
-      agentsOnline: "{count} agents en ligne",
-    },
-    trust: {
-      nonCustodial: "Non-dépositaire",
-      signedIn: "Signé en < 30s",
-      receipt: "Chaque action → reçu",
-    },
-    proof: {
-      label: "Agent n°7 · en direct",
-      caption: "Reçus à côté de chaque action.",
-      receipt: {
-        kind: "Reçu de tick",
-        state: "À l'instant",
-        title: "Attestations oracle",
-        agent: "Agent",
-        block: "Bloc",
-        gas: "Gas",
-        outcome: "Résultat",
-        outcomeValue: "Maintenu (inactif)",
-        meta: "agent 7 · tx minée",
-      },
-    },
-    ticker: {
-      label: "En direct · chaîne {chainId}",
-      items: [
-        {
-          dot: "default",
-          agent: "agent #3",
-          action: "coffre approvisionné",
-          ago: "il y a 22s",
-        },
-        {
-          dot: "default",
-          agent: "agent #11",
-          action: "reçu indexé",
-          ago: "il y a 38s",
-        },
-        {
-          dot: "warning",
-          agent: "agent #88",
-          action: "attestation oracle",
-          ago: "il y a 51s",
-        },
-      ],
-      actionLabels: {
-        Transfer: "propriété transférée",
-        Updated: "métadonnées mises à jour",
-        Authorization: "accès autorisé",
-        AuthorizationRevoked: "autorisation révoquée",
-        VerifierUpdated: "vérificateur mis à jour",
-        CreatorSet: "créateur défini",
-        MintFeeUpdated: "frais de mint mis à jour",
-        StorageInfoUpdated: "infos stockage mises à jour",
-        PublishedSealedKey: "clé scellée publiée",
-        DelegateAccess: "accès délégué accordé",
-        Deposited: "coffre approvisionné",
-        Withdrawn: "coffre retiré",
-        StrategySet: "stratégie définie",
-        Executed: "tick exécuté",
-        PaymentProcessed: "paiement réglé",
-        ComputeProviderPaid: "fournisseur payé",
-        EarningsWithdrawn: "gains versés",
-        RoyaltySet: "redevance définie",
-        ProtocolTreasuryProposed: "changement trésorerie proposé",
-        ProtocolTreasuryUpdated: "trésorerie mise à jour",
-        ProtocolTreasuryProposalCancelled: "proposition annulée",
-        ProtocolFeeBpsUpdated: "frais protocole mis à jour",
-        PaymentTokenUpdated: "token paiement mis à jour",
-        Paused: "contrat en pause",
-        Unpaused: "contrat réactivé",
-        MetadataJsonDecisionDocumented: "décision métadonnées enregistrée",
-        Cloned: "proxy cloné",
-        Upgraded: "implémentation mise à jour",
-        Initialized: "contrat initialisé",
-        SignerProposed: "signataire proposé",
-        SignerExecuted: "attestation oracle",
-        SignerProposalCancelled: "proposition signataire annulée",
-        ProofUsed: "attestation oracle",
-        DelegationInstalled: "délégation installée",
-        DelegationRevoked: "délégation révoquée",
-        DelegatedExecuted: "exécution déléguée",
-        AdminChanged: "admin modifié",
-        BeaconUpgraded: "beacon mis à jour",
-        Tick: "reçu indexé",
-        Unknown: "tx minée",
-      },
-    },
     principles: {
       title: "Ce qui rend Axiom {emphasis}différent.{endEmphasis}",
       items: [
         {
           icon: "shield",
           title: "Délimité par conception.",
-          body: "Un coffre on-chain avec une limite quotidienne. Rien hors chaîne.",
+          body: "Un coffre on-chain avec une limite quotidienne. Rien ne peut dépenser au-delà — nous non plus.",
           link: "Lire la spec",
         },
         {
           icon: "receipt",
           title: "Reçus, pas promesses.",
-          body: "Chaque signature devient un reçu indexé : agent, bloc, résultat.",
+          body: "Chaque signature est indexée en reçu : quel agent, quel bloc, que s'est-il passé.",
           link: "Comment fonctionnent les reçus",
         },
         {
           icon: "wallet",
           title: "Votre wallet, vos clés.",
-          body: "Connectez le wallet que vous utilisez déjà. Pas de comptes, pas d'emails.",
-          link: "Options de wallet",
+          body: "Connectez le wallet que vous avez déjà. Pas de comptes, pas d'emails, pas de mots de passe.",
+          link: "",
         },
       ],
     },
     how: {
       title: "Trois étapes vers {emphasis}un agent actif.{endEmphasis}",
       steps: [
-        { title: "Mintez.", body: "Une transaction crée l'agent et son coffre." },
-        { title: "Financez.", body: "Approvisionnez le coffre. Fixez la limite quotidienne." },
-        { title: "Opérez.", body: "Les ticks s'exécutent dans vos règles. Les reçus s'indexent on-chain." },
-      ],
-    },
-    journey: {
-      title: "Deux chemins {emphasis}pour commencer.{endEmphasis}",
-      items: [
         {
-          title: "Apprenez la limite avant de signer.",
-          body: "Comment la signature se sépare de la garde et quels wallets gardent vos clés. Pas de wallet pour lire.",
-          meta: "Temps de lecture · 3 min",
-          cta: "Comment fonctionne la signature",
-          onClick: "onGuide",
+          title: "Mintez.",
+          body: "Une transaction crée l'agent et son coffre.",
         },
         {
-          title: "Ouvrir la console et opérer les reçus.",
-          body: "Connectez-vous une fois pour minter, financer et opérer. La console suit chaque étape.",
-          meta: "En direct · {count} agents en ligne",
-          cta: "Accès console",
-          onClick: "goToApp",
+          title: "Financez.",
+          body: "Approvisionnez le coffre. Fixez la limite quotidienne.",
+        },
+        {
+          title: "Opérez.",
+          body: "Les ticks s'exécutent dans vos règles. Les reçus s'indexent on-chain.",
         },
       ],
     },
     footer: {
       credit: "Construit sur 0G · Mainnet beta",
       links: [
-        { label: "Agents" },
-        { label: "Reçus" },
-        { label: "Stockage" },
-        { label: "Développeurs" },
+        { id: "agents", label: "Agents" },
+        { id: "receipts", label: "Reçus" },
+        { id: "storage", label: "Stockage" },
+        { id: "developers", label: "Développeurs" },
       ],
     },
   },
@@ -2376,9 +2297,11 @@ const french: Copy = {
     walletConnectLabel: "WalletConnect",
     walletConnectHint: "Scannez le QR code ou ouvrez votre app wallet",
     pairingTitle: "Appairez votre wallet",
-    pairingHint: "Copiez le code dans l'écran WalletConnect de votre app wallet.",
+    pairingHint:
+      "Copiez le code dans l'écran WalletConnect de votre app wallet.",
     noWalletDetected:
       "Aucun wallet de navigateur détecté. Installez-en un ou utilisez un wallet mobile.",
+    unknownChain: "inconnue",
   },
   guide: {
     nextStep: "Étape suivante",
@@ -2398,6 +2321,7 @@ const french: Copy = {
     openSettings: "Ouvrir les réglages",
   },
   staking: {
+    pageTitle: "0G Stake",
     lede: "Le staking ne fait pas partie d’Axiom.",
     body: "Le staking passe par l’app officielle 0G : agents, coffres et reçus restent ici.",
     openVault: "Aller à mes agents",
@@ -2414,15 +2338,16 @@ const french: Copy = {
     returnToLanding: "Retour à l’accueil",
     openConsole: "Ouvrir l’app",
     title: "Page introuvable",
+    heroAlt: "Route Axiom abstraite récupérable",
     // Wave-12B : rangée d’exploration de secours (nom accessible + libellés hubs).
     exploreA11y: "Explorer les parcours publics",
-    hubLabels: [
-      "Agents",
-      "Paiements",
-      "Preuves",
-      "Stockage",
-      "Développeurs",
-    ],
+    hubLabels: {
+      agents: "Agents",
+      payments: "Paiements",
+      proofs: "Preuves",
+      storage: "Stockage",
+      developers: "Développeurs",
+    },
   },
   errorBoundary: {
     networkTitle: "Problème de connexion",
@@ -2629,7 +2554,7 @@ const french: Copy = {
     send: "Envoyer",
     stop: "Arrêter",
     queue: "En file",
-    removeQueued: "Retirer le message en file",
+    removeQueued: (message) => `Retirer le message en file : ${message}`,
     composerNearLimit: (remaining) =>
       `${remaining} caractères restants avant que le champ ne tronque les collages`,
     routing: "Routage",
@@ -2684,6 +2609,15 @@ const french: Copy = {
     footHint: "Maj+Entrée pour un saut de ligne",
     storedOn0G: "Stocké sur 0G",
     historyClose: "Fermer l'historique",
+    turnLimit: (max) =>
+      `Limite de tours atteinte après ${max} étapes : envoyez « continue » pour poursuivre.`,
+    rateLimited: "Trop de requêtes : patientez un instant, puis réessayez.",
+    noResponse: "Aucune réponse : réessayez.",
+    unknownTool: (name) => `Outil inconnu : ${name}`,
+    invalidTokenId: (tokenId) => `tokenId invalide : ${tokenId}`,
+    transferCancelled: "Transfert annulé : aucune transaction n’a été soumise.",
+    streamStarted: "Début de la réponse.",
+    streamComplete: "Réponse terminée.",
   },
   gasTank: {
     ...english.gasTank,
@@ -2700,18 +2634,10 @@ const french: Copy = {
     refillAction: "Réclamer une subvention de gaz",
     tankLowBanner:
       "Votre réservoir de gaz est presque vide : les opérations continuent jusqu'à épuisement de vos subventions gratuites.",
-    faucetBalanceLabel: "Jetons de test",
-    faucetEligibleBadge: "robinet disponible",
-    faucetIneligibleBadge: "robinet réclamé",
-    faucetClaimAction: "Réclamer les jetons de test",
-    depositQueued:
-      "Dépôt en file : suivez-le dans le centre des transactions.",
+    depositQueued: "Dépôt en file : suivez-le dans le centre des transactions.",
     refillDone: "Subvention de gaz réclamée. Solde du réservoir actualisé.",
     refillFailed:
       "Échec de la réclamation de gaz : vérifiez votre connexion et réessayez.",
-    faucetDone: "Jetons de test mintés.",
-    faucetFailed:
-      "Échec de la réclamation du faucet : vous avez peut-être déjà réclamé.",
   },
   storage: {
     ...english.storage,
@@ -2891,7 +2817,6 @@ const french: Copy = {
     intentRecovery:
       "Récupération d’un reçu existant. Aucune opération en double.",
     intentReceipt: "Lié à un reçu indexé.",
-    streamLabel: "Flux de tokens",
     cancelStream: "Annuler le flux",
     factCost: "Coût",
     confirmMint: "Un clic dans votre wallet, frais de réseau habituels",
@@ -2946,6 +2871,7 @@ const french: Copy = {
     factNetwork: "Réseau",
     factBoundary: "Double demande ?",
     networkFact: "{chainName}, chaîne {chainId}",
+    networkFactId: "chaîne {chainId}",
     primarySign: "Signer et exécuter",
     primaryApprove: "Approuver la limite de dépense",
     primaryContinuePayment: "Continuer vers le paiement",
@@ -2969,6 +2895,8 @@ const french: Copy = {
     transferPubkeyResolvePending: "Recherche de la clé pour cette adresse…",
     transferPubkeyResolveFailed:
       "Aucune clé publique trouvée on-chain pour cette adresse. Collez-la manuellement ci-dessous.",
+    transferPubkeyResolveResolved:
+      "Clé trouvée on-chain. Le destinataire peut déchiffrer la charge.",
     transferAgentTitle: (id) => `Transférer l’agent #${id}`,
     handoffTitle: "Destinataire sur un autre appareil ?",
     handoffBody:
@@ -3018,11 +2946,70 @@ const french: Copy = {
     claimUrlLabel: "Lien d’approbation",
     claimRawToggle: "Avancé, signature brute",
     goHome: "Accueil",
+    connectToSubmit: "Connectez un wallet pour soumettre cette opération.",
+    mintAgentFallback: "Agent Axiom",
+    operationActions: "Actions de l’opération",
+    streamStarted: "Flux lancé.",
+    streamComplete: "Flux terminé.",
+    receiveCopyManual:
+      "Presse-papiers indisponible : sélectionnez le lien ci-dessus et copiez-le manuellement.",
+    cancel: "Annuler",
+    edit: "Modifier",
+    transferPhases: {
+      idle: "Prêt",
+      challenge: "Préparation du transfert…",
+      signing: "En attente de la signature…",
+      finalizing: "Sécurisation des données pour le destinataire…",
+      confirming: "Confirmation on-chain…",
+    },
+    transferRetryHint: "Échec. Touchez Modifier pour réessayer.",
+    transferErrChallenge: "La demande a échoué. Réessayez.",
+    transferErrSubmit:
+      "Échec de la soumission. Rien n’a été envoyé. Touchez Modifier pour réessayer.",
+    transferErrGeneric:
+      "Une erreur est survenue. Touchez Modifier pour recommencer.",
+    closeTransferA11y: "Fermer le transfert",
+    transferLede:
+      "Vous signez une fois pour autoriser, puis vous confirmez le transfert on-chain.",
+    transferReceiverLabel: "Adresse du destinataire",
+    transferPubkeyLabel: "Clé publique du destinataire",
+    transferPubkeyPlaceholder: "0x…  (128 caractères hex)",
+    transferRekeySummary: "Rechiffrer pour le destinataire (optionnel)",
+    transferRekeyHint:
+      "Optionnel : clé AES + URI de stockage pour que seul le destinataire puisse lire les données après le transfert. Vide = signature seule.",
+    transferOldKeyLabel: "Ancienne clé de chiffrement des données (base64)",
+    transferOldKeyPlaceholder: "clé AES 32 octets en base64",
+    transferOldUriLabel: "Ancienne URI des données (0x…)",
+    transferOldUriPlaceholder: "hash racine de stockage 0x…",
+    transferErrKeyRequired: "requis",
+    transferErrKeyPrefix: "doit être préfixée de 0x",
+    transferErrKeyLength: (length) =>
+      `doit faire ${length} caractères (64 octets bruts, sans préfixe 0x04)`,
+    transferErrRekeyPair:
+      "fournissez l’ancienne clé et l’ancienne URI des données pour rechiffrer, ou laissez les deux vides",
+    transferSigning: "Signature…",
+    transferSignAction: "Signer l’autorisation de transfert",
+    transferConfirmLede:
+      "Confirmez. Votre wallet demandera la signature finale.",
+    transferAuthorizedTitle: "Transfert autorisé",
+    transferAuthorizedBody:
+      "les données de l’agent ont été rechiffrées pour que seul le nouveau propriétaire puisse les lire.",
+    transferProofDetails: "Détails de la preuve",
+    transferNewHashLabel: "Nouveau hash de métadonnées :",
+    transferSealedKeyLabel: "; nouvelle clé scellée :",
+    transferOwnershipProof: "Preuve de propriété",
+    transferValidUntil: "Valide jusqu’au",
+    transferAcceptedBy: "Accepté par",
+    transferSubmitting: "Soumission…",
+    transferConfirmAction: "Confirmer le transfert on-chain",
+    transferConfirmedToast: (hash) => `Transfert ${hash}… confirmé`,
   },
   agentDetail: {
     ...english.agentDetail,
     balanceToSpend: "Dispose de {amount} à dépenser, prêt",
     needsSetup: "À configurer",
+    statusOnline: "en ligne",
+    statusAttention: "attention",
     dataHash: "Hash de métadonnées",
     overview: "À propos",
     execute: "Lancer",
@@ -3119,8 +3106,15 @@ const french: Copy = {
     runAnother: "Relancer une opération similaire",
     drawerTitle: "Détail du reçu",
     proofTitle: "Détails techniques",
+    viewOnExplorer: "Voir sur l’explorateur",
+    copyReceiptHash: "Copier le hash du reçu",
+    receiptCopied: "Hash du reçu copié.",
+    receiptsCount: (shown, total) => `${shown} sur ${total} reçus`,
+    filterA11y: "Filtre d’état des reçus",
+    clearFilter: "Effacer le filtre",
   },
   status: {
+    label: "Statut",
     ready: "Prêt à démarrer",
     approval: "Approbation demandée",
     signing: "Signature demandée",
@@ -3130,6 +3124,16 @@ const french: Copy = {
     reverted: "Annulée",
     rejected: "Refusée",
     stale: "À vérifier",
+  },
+  time: {
+    minutesAgo: (minutes) => `il y a ${minutes} min`,
+    indexed: "indexé",
+  },
+  gate: {
+    statusWallet: "wallet non connecté",
+    statusNetwork: "mauvais réseau",
+    previewAlt: (label) => `Aperçu ${label}`,
+    previewNote: "Aperçu : connectez un wallet pour les données réelles.",
   },
   lockedHero: {
     app: {
@@ -3243,6 +3247,7 @@ const german: Copy = {
     openRail: "Seitenleiste zeigen",
     oracleLive: "online",
     oracleDown: "Dienste beeinträchtigt",
+    chainLabel: (id) => `Chain ${id}`,
   },
   strip: {
     ...english.strip,
@@ -3287,26 +3292,21 @@ const german: Copy = {
     walletAccess: "Axiom-Wallet-Zugang",
     closeWalletAccess: "Wallet-Zugang schließen",
     skipToContent: "Zum Inhalt springen",
+    copyLabel: "Kopieren",
+    copyA11y: "In die Zwischenablage kopieren",
+    copiedA11y: "In die Zwischenablage kopiert",
+    loading: "Laden",
   },
   landing: {
     ...english.landing,
-    titleLead: "Eigene KI-Agents,",
-    titleEmphasis: "die für dich arbeiten.",
+    title: "Eigene KI-Agenten, auf 0G.",
     description:
-      "Minte einen Agent auf 0G, lass deine Mittel arbeiten und behalte die Kontrolle.",
-    nextSafeAction: "Nächste sichere Aktion",
-    consoleAccess: "Konsolenzugriff",
-    tryAssistant: "Assistent testen",
+      "Mint einen Agenten mit einem begrenzten Tresor. Er läuft nur innerhalb deiner Regeln, und jede Aktion hinterlässt einen On-Chain-Beleg.",
+    closingCta: "Minte deinen ersten Agenten.",
+    docTitle: "Axiom: Eigene KI-Agenten on-chain",
     menuGuideHint: "Wie Signatur und Beleg funktionieren",
     menuDevelopers: "Entwickler",
     menuDevelopersHint: "APIs und Entwickler-Tools",
-    stripOperateSmall: "Belege neben der Aktion",
-    proofCaptionSmall: "Versiegelte Übertragung",
-    proofPlateA11y: "Proofs-Hub öffnen",
-    proofCaptionBody:
-      "Jede Nutzlast wird neu für ihren neuen Eigentümer verschlüsselt.",
-    previewAgentDesc: "Oracle-Attestierungen, alle 10 Minuten",
-    previewReceiptTitle: "Tick-Beleg",
     nav: {
       overview: "Überblick",
       principles: "Prinzipien",
@@ -3314,152 +3314,50 @@ const german: Copy = {
       start: "Starten",
       connect: "Verbinden",
     },
-    meta: {
-      network: "{chainName} · Kette {chainId}",
-      agentsOnline: "{count} Agents online",
-    },
-    trust: {
-      nonCustodial: "Nicht-verwahrend",
-      signedIn: "In < 30s signiert",
-      receipt: "Jede Aktion → Beleg",
-    },
-    proof: {
-      label: "Agent Nr. 7 · live",
-      caption: "Belege neben jeder Aktion.",
-      receipt: {
-        kind: "Tick-Beleg",
-        state: "Gerade eben",
-        title: "Oracle-Attestierungen",
-        agent: "Agent",
-        block: "Block",
-        gas: "Gas",
-        outcome: "Ergebnis",
-        outcomeValue: "Gehalten (inaktiv)",
-        meta: "Agent 7 · tx gemined",
-      },
-    },
-    ticker: {
-      label: "Live · Kette {chainId}",
-      items: [
-        {
-          dot: "default",
-          agent: "agent #3",
-          action: "Tresor aufgefüllt",
-          ago: "vor 22s",
-        },
-        {
-          dot: "default",
-          agent: "agent #11",
-          action: "Beleg indexiert",
-          ago: "vor 38s",
-        },
-        {
-          dot: "warning",
-          agent: "agent #88",
-          action: "Oracle-Attestierung",
-          ago: "vor 51s",
-        },
-      ],
-      actionLabels: {
-        Transfer: "Eigentümer gewechselt",
-        Updated: "Metadaten aktualisiert",
-        Authorization: "Zugriff autorisiert",
-        AuthorizationRevoked: "Autorisierung widerrufen",
-        VerifierUpdated: "Verifier aktualisiert",
-        CreatorSet: "Ersteller gesetzt",
-        MintFeeUpdated: "Mint-Gebühr aktualisiert",
-        StorageInfoUpdated: "Speicherinfo aktualisiert",
-        PublishedSealedKey: "Versiegelter Schlüssel veröffentlicht",
-        DelegateAccess: "Delegierter Zugriff gewährt",
-        Deposited: "Tresor aufgefüllt",
-        Withdrawn: "Tresor abgehoben",
-        StrategySet: "Strategie gesetzt",
-        Executed: "Tick ausgeführt",
-        PaymentProcessed: "Zahlung abgewickelt",
-        ComputeProviderPaid: "Compute-Anbieter bezahlt",
-        EarningsWithdrawn: "Einnahmen ausgezahlt",
-        RoyaltySet: "Lizenzgebühr gesetzt",
-        ProtocolTreasuryProposed: "Tresor-Änderung vorgeschlagen",
-        ProtocolTreasuryUpdated: "Tresor aktualisiert",
-        ProtocolTreasuryProposalCancelled: "Vorschlag abgebrochen",
-        ProtocolFeeBpsUpdated: "Protokollgebühr aktualisiert",
-        PaymentTokenUpdated: "Zahlungs-Token aktualisiert",
-        Paused: "Vertrag pausiert",
-        Unpaused: "Vertrag reaktiviert",
-        MetadataJsonDecisionDocumented: "Metadaten-Entscheidung protokolliert",
-        Cloned: "Proxy geklont",
-        Upgraded: "Implementierung aktualisiert",
-        Initialized: "Vertrag initialisiert",
-        SignerProposed: "Signer vorgeschlagen",
-        SignerExecuted: "Oracle-Attestierung",
-        SignerProposalCancelled: "Signer-Vorschlag abgebrochen",
-        ProofUsed: "Oracle-Attestierung",
-        DelegationInstalled: "Delegation installiert",
-        DelegationRevoked: "Delegation widerrufen",
-        DelegatedExecuted: "Delegierte Ausführung",
-        AdminChanged: "Admin geändert",
-        BeaconUpgraded: "Beacon aktualisiert",
-        Tick: "Beleg indexiert",
-        Unknown: "tx gemined",
-      },
-    },
     principles: {
       title: "Was Axiom {emphasis}anders macht.{endEmphasis}",
       items: [
         {
           icon: "shield",
           title: "Grenzen durch Design.",
-          body: "Ein on-chain Tresor mit täglichem Limit. Keine Off-Chain-Absicherungen.",
+          body: "Ein on-chain Tresor mit täglichem Limit. Nichts kann darüber hinaus ausgeben — wir auch nicht.",
           link: "Spec lesen",
         },
         {
           icon: "receipt",
           title: "Belege, keine Versprechen.",
-          body: "Jede Signatur wird ein indexierter Beleg: Agent, Block, Ergebnis.",
+          body: "Jede Signatur wird als Beleg indexiert: welcher Agent, welcher Block, was passiert ist.",
           link: "Wie Belege funktionieren",
         },
         {
           icon: "wallet",
           title: "Dein Wallet, deine Schlüssel.",
-          body: "Verbinde das Wallet, das du bereits nutzt. Keine Accounts, keine E-Mails.",
-          link: "Wallet-Optionen",
+          body: "Verbinde das Wallet, das du schon hast. Keine Accounts, keine E-Mails, keine Passwörter.",
+          link: "",
         },
       ],
     },
     how: {
       title: "Drei Schritte zu {emphasis}einem laufenden Agent.{endEmphasis}",
       steps: [
-        { title: "Minten.", body: "Eine Transaktion erstellt Agent und Tresor." },
-        { title: "Finanzieren.", body: "Tresor aufladen. Tageslimit setzen." },
-        { title: "Ausführen.", body: "Ticks laufen in deinen Regeln. Belege indexieren on-chain." },
-      ],
-    },
-    journey: {
-      title: "Zwei Wege {emphasis}zum Start.{endEmphasis}",
-      items: [
         {
-          title: "Lerne die Grenze, bevor du unterschreibst.",
-          body: "Wie Signieren und Verwahrung getrennt werden und welche Wallets deine Schlüssel behalten. Kein Wallet zum Lesen nötig.",
-          meta: "Lesezeit · 3 min",
-          cta: "Wie die Signatur funktioniert",
-          onClick: "onGuide",
+          title: "Minten.",
+          body: "Eine Transaktion erstellt Agent und Tresor.",
         },
+        { title: "Finanzieren.", body: "Tresor aufladen. Tageslimit setzen." },
         {
-          title: "Öffne die Konsole und bediene Belege.",
-          body: "Verbinde dich einmal zum Minten, Finanzieren und Ausführen. Die Konsole verfolgt jeden Schritt.",
-          meta: "Live · {count} Agents online",
-          cta: "Konsolenzugriff",
-          onClick: "goToApp",
+          title: "Ausführen.",
+          body: "Ticks laufen in deinen Regeln. Belege indexieren on-chain.",
         },
       ],
     },
     footer: {
       credit: "Gebaut auf 0G · Mainnet beta",
       links: [
-        { label: "Agents" },
-        { label: "Belege" },
-        { label: "Speicher" },
-        { label: "Entwickler" },
+        { id: "agents", label: "Agents" },
+        { id: "receipts", label: "Belege" },
+        { id: "storage", label: "Speicher" },
+        { id: "developers", label: "Entwickler" },
       ],
     },
   },
@@ -3479,9 +3377,11 @@ const german: Copy = {
     walletConnectLabel: "WalletConnect",
     walletConnectHint: "QR-Code scannen oder Wallet-App öffnen",
     pairingTitle: "Wallet koppeln",
-    pairingHint: "Kopiere den Code in den WalletConnect-Bildschirm deiner Wallet-App.",
+    pairingHint:
+      "Kopiere den Code in den WalletConnect-Bildschirm deiner Wallet-App.",
     noWalletDetected:
       "Keine Browser-Wallet erkannt. Installiere eine oder nutze eine mobile Wallet.",
+    unknownChain: "unbekannt",
   },
   guide: {
     nextStep: "Nächster Schritt",
@@ -3500,6 +3400,7 @@ const german: Copy = {
     openSettings: "Einstellungen öffnen",
   },
   staking: {
+    pageTitle: "0G Stake",
     lede: "Staking ist nicht Teil von Axiom.",
     body: "Staking läuft über die offizielle 0G-App : Agents, Vaults und Receipts bleiben hier.",
     openVault: "Zu meinen Agents",
@@ -3516,15 +3417,16 @@ const german: Copy = {
     returnToLanding: "Zurück zur Startseite",
     openConsole: "App öffnen",
     title: "Seite nicht gefunden",
+    heroAlt: "Abstrakte wiederherstellbare Axiom-Route",
     // Wave-12B: Erkennungsreihe (barrierefreier Name + Hub-Beschriftungen).
     exploreA11y: "Öffentliche Pfade erkunden",
-    hubLabels: [
-      "Agents",
-      "Zahlungen",
-      "Nachweise",
-      "Storage",
-      "Developers",
-    ],
+    hubLabels: {
+      agents: "Agents",
+      payments: "Zahlungen",
+      proofs: "Nachweise",
+      storage: "Storage",
+      developers: "Developers",
+    },
   },
   errorBoundary: {
     networkTitle: "Verbindungsproblem",
@@ -3730,7 +3632,7 @@ const german: Copy = {
     send: "Senden",
     queue: "Einreihen",
     stop: "Stopp",
-    removeQueued: "Wartende Nachricht entfernen",
+    removeQueued: (message) => `Wartende Nachricht entfernen: ${message}`,
     composerNearLimit: (remaining) =>
       `${remaining} Zeichen übrig, bevor der Editor Einfügungen kürzt`,
     routingHint: "Nur diese Unterhaltung",
@@ -3782,6 +3684,17 @@ const german: Copy = {
     footHint: "Umschalt+Eingabe für eine neue Zeile",
     storedOn0G: "Auf 0G gespeichert",
     historyClose: "Verlauf schließen",
+    turnLimit: (max) =>
+      `Rundenlimit nach ${max} Schritten erreicht — sende „continue“, um fortzufahren.`,
+    rateLimited:
+      "Zu viele Anfragen: einen Moment warten, dann erneut versuchen.",
+    noResponse: "Keine Antwort: erneut versuchen.",
+    unknownTool: (name) => `Unbekanntes Tool: ${name}`,
+    invalidTokenId: (tokenId) => `Ungültige tokenId: ${tokenId}`,
+    transferCancelled:
+      "Transfer abgebrochen: es wurde keine Transaktion übermittelt.",
+    streamStarted: "Antwort begonnen.",
+    streamComplete: "Antwort abgeschlossen.",
   },
   gasTank: {
     ...english.gasTank,
@@ -3798,19 +3711,10 @@ const german: Copy = {
     refillAction: "Gratis-Gas-Zuschuss anfordern",
     tankLowBanner:
       "Dein Gas-Tank ist fast leer : Operationen laufen weiter, bis deine Gratis-Zuschüsse aufgebraucht sind.",
-    faucetBalanceLabel: "Test-Token",
-    faucetEligibleBadge: "Hahn verfügbar",
-    faucetIneligibleBadge: "Hahn abgerufen",
-    faucetClaimAction: "Gratis Test-Token anfordern",
-    depositQueued:
-      "Einzahlung eingereicht : im Transaktionscenter verfolgen.",
-    refillDone:
-      "Gas-Zuschuss angefordert. Tankkonto aktualisiert.",
+    depositQueued: "Einzahlung eingereicht : im Transaktionscenter verfolgen.",
+    refillDone: "Gas-Zuschuss angefordert. Tankkonto aktualisiert.",
     refillFailed:
       "Gas-Zuschuss fehlgeschlagen : Verbindung prüfen und erneut versuchen.",
-    faucetDone: "Test-Token gemintet.",
-    faucetFailed:
-      "Faucet-Anforderung fehlgeschlagen : möglicherweise bereits abgerufen.",
   },
   storage: {
     ...english.storage,
@@ -3992,7 +3896,6 @@ const german: Copy = {
     intentRecovery:
       "Ein bestehender Beleg wird wiederaufgenommen. Kein doppelter Vorgang.",
     intentReceipt: "Mit einem indexierten Beleg verknüpft.",
-    streamLabel: "Token-Stream",
     cancelStream: "Stream abbrechen",
     factCost: "Kosten",
     confirmMint: "Ein Klick im Wallet, übliche Netzwerkgebühr",
@@ -4049,6 +3952,7 @@ const german: Copy = {
     factNetwork: "Netzwerk",
     factBoundary: "Doppelt gefragt?",
     networkFact: "{chainName}, Chain {chainId}",
+    networkFactId: "Chain {chainId}",
     primarySign: "Signieren & ausführen",
     primaryApprove: "Ausgabenlimit genehmigen",
     primaryContinuePayment: "Zur Zahlung fortfahren",
@@ -4073,6 +3977,8 @@ const german: Copy = {
     transferPubkeyResolvePending: "Schlüssel für diese Adresse wird gesucht…",
     transferPubkeyResolveFailed:
       "Kein öffentlicher Schlüssel on-chain für diese Adresse gefunden. Fügen Sie ihn unten manuell ein.",
+    transferPubkeyResolveResolved:
+      "Schlüssel on-chain gefunden. Der Empfänger kann die Nutzlast entschlüsseln.",
     transferAgentTitle: (id) => `Agent #${id} übertragen`,
     handoffTitle: "Empfänger an einem anderen Gerät?",
     handoffBody:
@@ -4119,11 +4025,71 @@ const german: Copy = {
     claimUrlLabel: "Zustimmungs-Link",
     claimRawToggle: "Erweitert, rohe Signatur",
     goHome: "Startseite",
+    connectToSubmit: "Verbinde ein Wallet, um diesen Vorgang zu übermitteln.",
+    mintAgentFallback: "Axiom-Agent",
+    operationActions: "Aktionen des Vorgangs",
+    streamStarted: "Stream gestartet.",
+    streamComplete: "Stream abgeschlossen.",
+    receiveCopyManual:
+      "Zwischenablage nicht verfügbar: Link oben auswählen und manuell kopieren.",
+    cancel: "Abbrechen",
+    edit: "Bearbeiten",
+    transferPhases: {
+      idle: "Bereit",
+      challenge: "Transfer wird vorbereitet…",
+      signing: "Warten auf Signatur…",
+      finalizing: "Daten werden für den Empfänger gesichert…",
+      confirming: "On-Chain-Bestätigung…",
+    },
+    transferRetryHint: "Fehlgeschlagen. Zum Wiederholen auf Bearbeiten tippen.",
+    transferErrChallenge:
+      "Die Anfrage ist fehlgeschlagen. Bitte erneut versuchen.",
+    transferErrSubmit:
+      "Übermittlung fehlgeschlagen. Nichts wurde gesendet. Zum Wiederholen auf Bearbeiten tippen.",
+    transferErrGeneric:
+      "Etwas ist schiefgelaufen. Zum Neustart auf Bearbeiten tippen.",
+    closeTransferA11y: "Transfer schließen",
+    transferLede:
+      "Du signierst einmal zur Autorisierung und bestätigst dann den On-Chain-Transfer.",
+    transferReceiverLabel: "Empfängeradresse",
+    transferPubkeyLabel: "Öffentlicher Schlüssel des Empfängers",
+    transferPubkeyPlaceholder: "0x…  (128 Hex-Zeichen)",
+    transferRekeySummary: "Für Empfänger neu verschlüsseln (optional)",
+    transferRekeyHint:
+      "Optional: AES-Schlüssel + Speicher-URI, damit nur der Empfänger die Daten nach dem Transfer lesen kann. Leer = nur signieren.",
+    transferOldKeyLabel: "Alter Daten-Verschlüsselungsschlüssel (base64)",
+    transferOldKeyPlaceholder: "base64 32-Byte-AES-Schlüssel",
+    transferOldUriLabel: "Alte Daten-URI (0x…)",
+    transferOldUriPlaceholder: "0x… Speicher-Root-Hash",
+    transferErrKeyRequired: "erforderlich",
+    transferErrKeyPrefix: "muss mit 0x beginnen",
+    transferErrKeyLength: (length) =>
+      `muss ${length} Zeichen haben (64 Roh-Bytes, ohne 0x04-Präfix)`,
+    transferErrRekeyPair:
+      "alten Datenschlüssel und alte Daten-URI angeben, um neu zu verschlüsseln, oder beide leer lassen",
+    transferSigning: "Signierung…",
+    transferSignAction: "Transfer-Autorisierung signieren",
+    transferConfirmLede:
+      "Bestätigen. Dein Wallet fragt die finale Signatur ab.",
+    transferAuthorizedTitle: "Transfer autorisiert",
+    transferAuthorizedBody:
+      "die Daten des Agents wurden neu verschlüsselt, sodass nur der neue Inhaber sie lesen kann.",
+    transferProofDetails: "Nachweisdetails",
+    transferNewHashLabel: "Neuer Metadaten-Hash:",
+    transferSealedKeyLabel: "; neuer versiegelter Schlüssel:",
+    transferOwnershipProof: "Eigentumsnachweis",
+    transferValidUntil: "Gültig bis",
+    transferAcceptedBy: "Akzeptiert von",
+    transferSubmitting: "Übermittlung…",
+    transferConfirmAction: "On-Chain-Transfer bestätigen",
+    transferConfirmedToast: (hash) => `Transfer ${hash}… bestätigt`,
   },
   agentDetail: {
     ...english.agentDetail,
     balanceToSpend: "Hat {amount} zum Ausgeben, bereit",
     needsSetup: "Einrichtung nötig",
+    statusOnline: "online",
+    statusAttention: "Achtung",
     dataHash: "Metadaten-Hash",
     overview: "Über",
     execute: "Starten",
@@ -4219,8 +4185,15 @@ const german: Copy = {
     runAnother: "Ähnliche Operation erneut ausführen",
     drawerTitle: "Belegdetail",
     proofTitle: "Technische Details",
+    viewOnExplorer: "Im Explorer ansehen",
+    copyReceiptHash: "Beleg-Hash kopieren",
+    receiptCopied: "Beleg-Hash kopiert.",
+    receiptsCount: (shown, total) => `${shown} von ${total} Belegen`,
+    filterA11y: "Belegstatus-Filter",
+    clearFilter: "Filter zurücksetzen",
   },
   status: {
+    label: "Status",
     ready: "Bereit zum Start",
     approval: "Freigabe angefordert",
     signing: "Signatur angefordert",
@@ -4230,6 +4203,16 @@ const german: Copy = {
     reverted: "Zurückgesetzt",
     rejected: "Abgelehnt",
     stale: "Prüfung nötig",
+  },
+  time: {
+    minutesAgo: (minutes) => `vor ${minutes} Min.`,
+    indexed: "indexiert",
+  },
+  gate: {
+    statusWallet: "Wallet nicht verbunden",
+    statusNetwork: "falsches Netzwerk",
+    previewAlt: (label) => `${label}-Vorschau`,
+    previewNote: "Vorschau: Wallet verbinden für Live-Daten.",
   },
   lockedHero: {
     app: {

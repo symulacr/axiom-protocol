@@ -24,7 +24,12 @@ import {
   X,
   Zap,
 } from "../components/axiom/icons.js";
-import { Button, PageHead, PanelHead, Status } from "../components/axiom/Controls.js";
+import {
+  Button,
+  PageHead,
+  PanelHead,
+  Status,
+} from "../components/axiom/Controls.js";
 import { SkeletonRows } from "../components/ui.js";
 import { StatePill } from "../components/StatePill.js";
 import { MobileDisclosure } from "../components/MobileDisclosure.js";
@@ -57,7 +62,10 @@ function eventKindIcon(eventName: string) {
   return <Zap size={16} />;
 }
 
-function eventToTransaction(event: AxiomEvent): Transaction {
+function eventToTransaction(
+  event: AxiomEvent,
+  time: ReturnType<typeof getCopy>["time"],
+): Transaction {
   const tokenId = eventTokenId(event);
   return {
     id: `${event.txHash}:${event.logIndex}`,
@@ -67,8 +75,13 @@ function eventToTransaction(event: AxiomEvent): Transaction {
       : `block ${event.blockNumber}`,
     hash: event.txHash || "—",
     age: event.timestamp
-      ? `${Math.max(0, Math.round((Date.now() - event.timestamp * 1000) / 60000))}m ago`
-      : "indexed",
+      ? time.minutesAgo(
+          Math.max(
+            0,
+            Math.round((Date.now() - event.timestamp * 1000) / 60000),
+          ),
+        )
+      : time.indexed,
     state: "confirmed",
     route: tokenId ? `/agents/${tokenId}` : routePath("transactions"),
     agent: tokenId ?? "chain",
@@ -78,9 +91,14 @@ function eventToTransaction(event: AxiomEvent): Transaction {
 
 /** local receipts persist across reload — derive their age from the
  * persisted creation time instead of resurrecting a frozen "now". */
-function transactionAge(tx: Transaction): string {
+function transactionAge(
+  tx: Transaction,
+  time: ReturnType<typeof getCopy>["time"],
+): string {
   if (typeof tx.createdAt === "number") {
-    return `${Math.max(0, Math.round((Date.now() - tx.createdAt) / 60000))}m ago`;
+    return time.minutesAgo(
+      Math.max(0, Math.round((Date.now() - tx.createdAt) / 60000)),
+    );
   }
   return tx.age;
 }
@@ -120,7 +138,7 @@ function AdvancedFiltersPopover({
   useModalDismiss(onClose, popoverRef);
   return createPortal(
     <>
-      <div className="filters-backdrop" onMouseDown={onClose} />
+      <div className="popover-backdrop" onMouseDown={onClose} />
       <div
         ref={popoverRef}
         className="filters-popover"
@@ -166,13 +184,25 @@ function ReceiptDrawer({
   const txCopy = copy.transactions;
   // Dismiss contract: Esc + Tab trap + initial focus + focus restore added here; backdrop and X already existed.
   const drawerRef = useRef<HTMLElement>(null);
-  useModalDismiss(onClose, drawerRef);
+  useModalDismiss(onClose, drawerRef, { scrollLock: true });
   // U5: chain rows without a txHash synthesize "—" — no explorer link for those.
   const explorerHref = explorerTx(tx.hash);
   const recover = isRecoverableTx(tx.state);
-  const copyHash = () => {
-    navigator.clipboard?.writeText(tx.hash);
-    dispatch({ type: "notice", notice: "Receipt hash copied." });
+  // intent params are consumed by the flow pages only — AgentPage reads no
+  // intent, so /agents/ routes go without it instead of carrying a dead param.
+  const withIntent = (route: string, intentValue: string) =>
+    route.startsWith("/agents/") ? route : `${route}?intent=${intentValue}`;
+  const copyHash = async () => {
+    // Guarded write (ui.tsx CopyButton pattern): no clipboard API or a denied
+    // write must not raise the copied notice for a copy that never happened.
+    const clipboard = navigator.clipboard;
+    if (!clipboard?.writeText) return;
+    try {
+      await clipboard.writeText(tx.hash);
+      dispatch({ type: "notice", notice: txCopy.receiptCopied });
+    } catch {
+      // clipboard denied — hash stays selectable in the drawer
+    }
   };
   const primaryAction = recover ? (
     <Button
@@ -180,7 +210,7 @@ function ReceiptDrawer({
         dispatch({ type: "tx-state", txId: tx.id, txState: "ready" });
         dispatch({ type: "notice", notice: txCopy.recoveryNotice });
         onClose();
-        go(`${tx.route}?intent=recovery`);
+        go(withIntent(tx.route, "recovery"));
       }}
       icon={<RotateCcw size={16} />}
     >
@@ -199,17 +229,29 @@ function ReceiptDrawer({
           rel="noreferrer"
         >
           <ArrowRight size={16} />
-          View on explorer
+          {txCopy.viewOnExplorer}
         </a>
       ) : (
-        <span className="button button-primary" aria-disabled="true">
-          <ArrowRight size={16} />
-          View on explorer
-        </span>
+        // U5: no hash yet — a real disabled button (focusable, announced) plus
+        // the one-line reason, never an inert span.
+        <>
+          <button
+            type="button"
+            className="button button-primary"
+            disabled
+            aria-describedby="receipt-explorer-pending"
+          >
+            <ArrowRight size={16} />
+            {txCopy.viewOnExplorer}
+          </button>
+          <small id="receipt-explorer-pending" className="field-hint">
+            {txCopy.awaitingFinalEvidence}
+          </small>
+        </>
       )}
       <Button
         variant="ghost"
-        onClick={() => go(`${tx.route}?intent=receipt`)}
+        onClick={() => go(withIntent(tx.route, "receipt"))}
         icon={<RotateCcw size={16} />}
       >
         {txCopy.runAnother}
@@ -217,14 +259,14 @@ function ReceiptDrawer({
     </>
   );
   return createPortal(
-    <div className="drawer-layer" onClick={onClose}>
+    <div className="drawer-layer" onMouseDown={onClose}>
       <aside
         ref={drawerRef}
         className="receipt-drawer"
         role="dialog"
         aria-modal="true"
         aria-label={`${txCopy.drawerTitle}: ${tx.kind}`}
-        onClick={(event) => event.stopPropagation()}
+        onMouseDown={(event) => event.stopPropagation()}
       >
         <button
           className="icon-button drawer-close"
@@ -250,8 +292,8 @@ function ReceiptDrawer({
                 {tx.hash}{" "}
                 <button
                   className="inline-copy"
-                  onClick={copyHash}
-                  aria-label="Copy receipt hash"
+                  onClick={() => void copyHash()}
+                  aria-label={txCopy.copyReceiptHash}
                 >
                   <Copy size={14} />
                 </button>
@@ -267,10 +309,10 @@ function ReceiptDrawer({
                     target="_blank"
                     rel="noreferrer"
                   >
-                    View on explorer <ArrowRight size={14} />
+                    {txCopy.viewOnExplorer} <ArrowRight size={14} />
                   </a>
                 ) : (
-                  <span>View on explorer</span>
+                  <span>{txCopy.viewOnExplorer}</span>
                 )}
               </dd>
             </div>
@@ -371,12 +413,12 @@ export function TransactionsPage({
       merged.set(eventDedupeKey(event), event);
     }
     const chainEvents = [...merged.values()].map((event) =>
-      eventToTransaction(event),
+      eventToTransaction(event, copy.time),
     );
     const seen = new Set(chainEvents.map((tx) => tx.id));
     const local = state.transactions.filter((tx) => !seen.has(tx.id));
     return [...local, ...chainEvents];
-  }, [events, wsEvents, eventScope, state.transactions]);
+  }, [events, wsEvents, eventScope, state.transactions, copy.time]);
 
   const filtered =
     filter === "all"
@@ -428,6 +470,19 @@ export function TransactionsPage({
     }
   };
 
+  // The popover position is computed once from the trigger rect and portaled
+  // to body; scroll/resize would leave it floating detached, so it closes.
+  useEffect(() => {
+    if (!filtersPos) return;
+    const close = () => setFiltersPos(null);
+    window.addEventListener("scroll", close, true);
+    window.addEventListener("resize", close);
+    return () => {
+      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("resize", close);
+    };
+  }, [filtersPos]);
+
   return (
     <div className="ops-page">
       <PageHead title={txCopy.title} lede={txCopy.description}>
@@ -472,6 +527,7 @@ export function TransactionsPage({
         </div>
         <button
           className="ops-summary-recovery"
+          aria-disabled={demo || undefined}
           onClick={() => chooseFilter("review")}
         >
           <h2 className="ops-summary-value num">
@@ -495,12 +551,12 @@ export function TransactionsPage({
         >
           <div className="transaction-filter-controls">
             <span className="result-count num" aria-live="polite">
-              {filtered.length} of {transactions.length} receipts
+              {txCopy.receiptsCount(filtered.length, transactions.length)}
             </span>
             <div
               className="filters"
               role="group"
-              aria-label="Receipt state filter"
+              aria-label={txCopy.filterA11y}
             >
               {(["all", "review", "confirmed"] as const).map((value) => (
                 <button
@@ -562,7 +618,7 @@ export function TransactionsPage({
                 {truncateHex(tx.hash, 8, 4)}
               </span>
               <span className="mono num transaction-age">
-                {transactionAge(tx)}
+                {transactionAge(tx, copy.time)}
               </span>
               <StatePill state={tx.state} />
               <ChevronRight size={16} />
@@ -597,7 +653,7 @@ export function TransactionsPage({
               <p>{txCopy.emptyState}</p>
               {/* U15 icon order: this is an action, so the icon leads. */}
               <button className="text-link" onClick={() => chooseFilter("all")}>
-                <RotateCcw size={14} /> Clear filter
+                <RotateCcw size={14} /> {txCopy.clearFilter}
               </button>
             </div>
           )}

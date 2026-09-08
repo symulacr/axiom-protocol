@@ -65,7 +65,7 @@ export function StoragePage({
         )}
         <Button
           variant="secondary"
-          onClick={() => go("/chat")}
+          onClick={() => go(routePath("chat"))}
           icon={<MessageSquare size={16} />}
         >
           {copy.storage.openChat}
@@ -79,7 +79,7 @@ export function StoragePage({
           {/* L2-B4: the single operable element on this otherwise read-only
               page — verification happens on 0G infrastructure, never faked here. */}
           <div className="provenance-source">
-            <span>{copy.storage.verifyHint}</span>
+            <span id="storage-verify-hint">{copy.storage.verifyHint}</span>
             <label className="field">
               <span className="field-label">{copy.storage.verifyLabel}</span>
               <span className="field-control">
@@ -112,10 +112,17 @@ export function StoragePage({
                   {copy.storage.verifyAction}
                 </a>
               ) : (
-                <span className="button button-primary" aria-disabled="true">
+                // The describedby hint above is the disabled reason, so the
+                // control must stay a real (focusable, announced) button.
+                <button
+                  type="button"
+                  className="button button-primary"
+                  disabled
+                  aria-describedby="storage-verify-hint"
+                >
                   <ArrowRight size={14} />
                   {copy.storage.verifyAction}
-                </span>
+                </button>
               )}
             </div>
             <span>
@@ -147,7 +154,7 @@ export function StoragePage({
             <div className="storage-steps">
               {labels.map((label, index) => (
                 <div className="storage-step" key={label}>
-                  <span>{`0${index + 1}`}</span>
+                  <span>{String(index + 1).padStart(2, "0")}</span>
                   <strong>{label}</strong>
                   {index < labels.length - 1 && <i />}
                 </div>

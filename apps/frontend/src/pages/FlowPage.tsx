@@ -93,7 +93,6 @@ import {
   truncateHex,
   validateNumericInput,
 } from "../utils/format.js";
-import { toastError, toastSuccess } from "./shared.js";
 import { apiFetch, STREAM_TIMEOUT } from "../utils/apiFetch.js";
 import { encodeRelayTransaction } from "../utils/encodeRelay.js";
 import { openStreamSocket } from "../config/env.js";
@@ -121,13 +120,11 @@ const DEV_TOOLS = import.meta.env.MODE !== "production";
 
 type VaultWriteKind = "deposit" | "withdraw";
 
-const VAULT_WRITE: Record<
-  VaultWriteKind,
-  { label: string; endpoint: string; verb: string }
-> = {
-  deposit: { label: "Deposit", endpoint: "deposit", verb: "Deposit" },
-  withdraw: { label: "Withdraw", endpoint: "withdraw", verb: "Withdraw" },
-};
+const VAULT_WRITE: Record<VaultWriteKind, { label: string; endpoint: string }> =
+  {
+    deposit: { label: "Deposit", endpoint: "deposit" },
+    withdraw: { label: "Withdraw", endpoint: "withdraw" },
+  };
 
 /** Shared numeric rules for the amount field (deposit + withdraw alike). */
 const amountRules = (label: string) => ({
@@ -138,24 +135,13 @@ const amountRules = (label: string) => ({
   max: 1e12,
 });
 
-function useVaultWrite(
-  kind: VaultWriteKind,
-  tokenId: bigint,
-  opts?: {
-    /** Default true: toast on submit/error and swallow errors. Flow pages pass
-     * false so the OperationReviewSheet machine (submitting →
-     * recoverable-error → receipt) owns the UX instead of toasts; in that
-     * mode handleSubmit rethrows and resolves to the tx hash. */
-    toasts?: boolean;
-  },
-) {
+function useVaultWrite(kind: VaultWriteKind, tokenId: bigint) {
   const vd = useVaultData(tokenId);
   const { data: walletClient } = useWalletClient();
   const [amount, setAmount] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { label, endpoint, verb } = VAULT_WRITE[kind];
-  const toasts = opts?.toasts !== false;
+  const { label, endpoint } = VAULT_WRITE[kind];
 
   const error = validateNumericInput(amount, amountRules(label));
 
@@ -175,21 +161,14 @@ function useVaultWrite(
           `/v1/agents/${tokenId.toString()}/${endpoint}`,
           { amount: value },
         );
-        if (toasts) toastSuccess(`${verb} submitted (${hash.slice(0, 10)}…)`);
         setAmount("");
         await vd.refetch();
         return hash;
-      } catch (err) {
-        if (toasts) {
-          toastError(err);
-          return null;
-        }
-        throw err;
       } finally {
         setIsSubmitting(false);
       }
     },
-    [amount, error, label, walletClient, tokenId, endpoint, verb, vd, toasts],
+    [amount, error, label, walletClient, tokenId, endpoint, vd],
   );
 
   const isValid = amount.trim() !== "" && !error && Number(amount) > 0;
@@ -486,14 +465,29 @@ export function FlowPage({
   const payment = usePayment();
   const transfer = useTransfer();
   const tickHook = useOrchestratorTick();
+  // Set only when tickStream resolves — a cancel keeps streamedTokens, so the
+  // status node must not announce "complete" for a user-aborted stream.
+  const [tickDone, setTickDone] = useState(false);
 
   const requestedAgent = search.get("agent");
   const intent = search.get("intent");
   const requestedStage = search.get("stage");
   const requestedInstruction = search.get("instruction");
 
+  const agentOptions = useMemo(
+    () => agents.map((agent) => agent.tokenId.toString()),
+    [agents],
+  );
+
+  // A stale or hand-edited ?agent= id must not submit a different agent than
+  // the select shows: once the register settles, an unlisted id falls back
+  // to the first real option.
+  const fallbackTokenId = agentOptions[0] ?? "";
+  const requestedTokenId = requestedAgent ?? (draft.agent || fallbackTokenId);
   const selectedTokenId =
-    requestedAgent ?? (draft.agent || agents[0]?.tokenId.toString() || "");
+    agentOptions.length > 0 && !agentOptions.includes(requestedTokenId)
+      ? fallbackTokenId
+      : requestedTokenId;
   const selectedAgentName = selectedTokenId
     ? f.agentOption(selectedTokenId)
     : f.agentSelectPlaceholder;
@@ -512,7 +506,6 @@ export function FlowPage({
   const vaultWrite = useVaultWrite(
     kind === "withdraw" ? "withdraw" : "deposit",
     vaultTokenId,
-    { toasts: false },
   );
   const vaultBalanceWei = isVaultFlow
     ? vaultWrite.vaultData.depositsWei
@@ -978,8 +971,7 @@ export function FlowPage({
       } else if (kind === "deposit" || kind === "withdraw") {
         // Vault write via shared encode relay; receipt row + receipt phase ride the pipeline below.
         const txHash = await vaultWrite.handleSubmit(draft.value.trim());
-        if (!txHash)
-          throw new Error("Connect a wallet to submit this operation.");
+        if (!txHash) throw new Error(f.connectToSubmit);
         settleFlowTx(
           txHash,
           {
@@ -995,6 +987,7 @@ export function FlowPage({
           interpolate(flow.notice, { agent: selectedTokenId }),
         );
       } else {
+        setTickDone(false);
         const result = await tickHook.tickStream(
           {
             vault: getAxiomStrategyVaultAddress(chainId),
@@ -1003,14 +996,17 @@ export function FlowPage({
           },
           {},
         );
+        setTickDone(true);
         const hash = result.execution?.txHash ?? result.storage.rootHash;
         const outcome =
           result.recommendation.action === "act" ? f.tickActed : f.tickHeld;
+        const reason = result.recommendation.reason;
         addFlowReceipt(hash, {
           kind: flow.receiptKind,
           detail: interpolate(flow.detail, {
             action: outcome,
-            reason: result.recommendation.reason.slice(0, 48),
+            // Ellipsis on the cut so a truncated reason never reads as a complete sentence.
+            reason: reason.length > 48 ? `${reason.slice(0, 48)}…` : reason,
           }),
           route: "/tick",
           agent: selectedTokenId,
@@ -1030,6 +1026,7 @@ export function FlowPage({
   };
 
   const simulateFailure = (reason: "rejected" | "timeout") => {
+    setTickDone(false);
     tickHook.cancelTick();
     const error =
       reason === "timeout" ? f.simulateTimeoutError : f.simulateRejectedError;
@@ -1039,6 +1036,7 @@ export function FlowPage({
 
   const restart = () => {
     tickHook.resetStream();
+    setTickDone(false);
     setSubmitError(null);
     resetHandoff();
     dispatch({ type: "clear-draft", flow: kind });
@@ -1137,11 +1135,6 @@ export function FlowPage({
             : paymentApprovalNeeded
               ? f.confirmTwoApprovePay
               : f.confirmOneAllowance;
-
-  const agentOptions = useMemo(
-    () => agents.map((agent) => agent.tokenId.toString()),
-    [agents],
-  );
 
   // T3a: the agents poll is the only unknown at first paint — a settled-but-empty
   // register means every non-mint flow is blocked, so the form is replaced by the
@@ -1326,7 +1319,9 @@ export function FlowPage({
                   <select
                     className="axiom-field"
                     aria-label={f.agentA11y}
-                    aria-invalid={submitError?.field === "agent" ? "true" : undefined}
+                    aria-invalid={
+                      submitError?.field === "agent" ? "true" : undefined
+                    }
                     value={selectedTokenId}
                     disabled={isReviewOpen}
                     onChange={(event) => {
@@ -1378,9 +1373,19 @@ export function FlowPage({
 
           {kind === "tick" &&
             (tickHook.isStreaming || tickHook.streamedTokens) && (
-              <div className="tick-stream" aria-live="polite">
-                <span className="visually-hidden">{f.streamLabel}</span>
-                <pre className="mono">
+              <div className="tick-stream">
+                {/* Live region on the status node only; the 50ms token flush
+                    stays aria-hidden so screen readers are not re-announcing
+                    every chunk. Errors announce via role=alert below,
+                    completion via the receipt StatePill. */}
+                <span className="visually-hidden" role="status">
+                  {tickHook.isStreaming
+                    ? f.streamStarted
+                    : tickDone && !tickHook.streamingError
+                      ? f.streamComplete
+                      : ""}
+                </span>
+                <pre className="mono" aria-hidden="true">
                   {tickHook.streamedTokens || "…"}
                   {tickHook.isStreaming && (
                     <span className="caret-blink">▍</span>
@@ -1548,7 +1553,7 @@ export function FlowPage({
               draft={draft}
               agentName={
                 kind === "mint"
-                  ? draft.value.trim() || "Axiom agent"
+                  ? draft.value.trim() || f.mintAgentFallback
                   : selectedAgentName
               }
               busy={isBusy}
@@ -1680,7 +1685,7 @@ function OperationReviewSheet({
   // below, explicit X/"Edit details"; dismissing never submits. The trap keeps Tab inside the
   // sheet — this is the confirm surface for irreversible wallet ops.
   const sheetRef = useRef<HTMLElement>(null);
-  useModalDismiss(onClose, sheetRef);
+  useModalDismiss(onClose, sheetRef, { scrollLock: true });
   const paymentNeedsApproval =
     kind === "payment" && draft.phase === "approval-required";
   const paymentReady = kind === "payment" && draft.phase === "payment-required";
@@ -1920,7 +1925,7 @@ function OperationReviewSheet({
             {draft.error}
           </div>
         )}
-        <div className="review-actions" aria-label="Operation actions">
+        <div className="review-actions" aria-label={f.operationActions}>
           <button
             className="button button-primary"
             onClick={onPrimary}

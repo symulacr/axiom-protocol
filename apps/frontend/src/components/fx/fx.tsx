@@ -5,12 +5,7 @@
   `[data-reduce-motion="true"]` attribute uiStore sets on <html>. All motion
   is translateY-only (RTL-safe) and gated to paint cheaply (transform/opacity).
 */
-import {
-  useEffect,
-  useRef,
-  useState,
-  type ReactNode,
-} from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 /** True when either reduced-motion channel is active. */
 export function useReducedMotion(): boolean {
@@ -95,54 +90,6 @@ export function Reveal({
   );
 }
 
-/** Parallax wrapper: translateY proportional to the element's distance from
- *  the viewport center. translateY-only by design so RTL layouts are safe. */
-export function Parallax({
-  children,
-  strength = 40,
-}: {
-  children: ReactNode;
-  /** Max px of travel; negative value inverts direction. */
-  strength?: number;
-}) {
-  const ref = useRef<HTMLDivElement | null>(null);
-  const reduced = useReducedMotion();
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el || reduced) return;
-    let frame = 0;
-    const apply = () => {
-      frame = 0;
-      const rect = el.getBoundingClientRect();
-      const viewport = window.innerHeight;
-      // -1 (below center) … 0 (centered) … 1 (above center)
-      const progress =
-        (viewport / 2 - (rect.top + rect.height / 2)) / (viewport / 2);
-      el.style.transform = `translate3d(0, ${(progress * strength).toFixed(2)}px, 0)`;
-    };
-    const onScroll = () => {
-      if (frame) return;
-      frame = window.requestAnimationFrame(apply);
-    };
-    apply();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onScroll, { passive: true });
-    return () => {
-      window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onScroll);
-      if (frame) window.cancelAnimationFrame(frame);
-      el.style.transform = "";
-    };
-  }, [reduced, strength]);
-
-  return (
-    <div ref={ref} className="aw-parallax">
-      {children}
-    </div>
-  );
-}
-
 /** Fixed scroll-progress hairline (copper). Hidden entirely under reduced motion. */
 export function ScrollProgress() {
   const ref = useRef<HTMLDivElement | null>(null);
@@ -175,61 +122,6 @@ export function ScrollProgress() {
 
   if (reduced) return null;
   return <div ref={ref} className="aw-scroll-progress" aria-hidden="true" />;
-}
-
-/** Animated count-up that starts when scrolled into view; static under
- *  reduced motion or while the value is loading (null renders the fallback). */
-export function CountUp({
-  value,
-}: {
-  value: number | null;
-}) {
-  const ref = useRef<HTMLSpanElement | null>(null);
-  const reduced = useReducedMotion();
-  const [display, setDisplay] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (value === null) return;
-    if (reduced) {
-      setDisplay(value.toLocaleString());
-      return;
-    }
-    const el = ref.current;
-    const format = (n: number) => Math.round(n).toLocaleString();
-    if (!el || !("IntersectionObserver" in window)) {
-      setDisplay(format(value));
-      return;
-    }
-    let raf = 0;
-    let start = 0;
-    const durationMs = 1400;
-    const run = (now: number) => {
-      if (!start) start = now;
-      const t = Math.min(1, (now - start) / durationMs);
-      const eased = 1 - Math.pow(1 - t, 3);
-      setDisplay(format(value * eased));
-      if (t < 1) raf = requestAnimationFrame(run);
-    };
-    const io = new IntersectionObserver((entries) => {
-      for (const entry of entries) {
-        if (entry.isIntersecting) {
-          io.disconnect();
-          raf = requestAnimationFrame(run);
-        }
-      }
-    });
-    io.observe(el);
-    return () => {
-      io.disconnect();
-      if (raf) cancelAnimationFrame(raf);
-    };
-  }, [value, reduced]);
-
-  return (
-    <span ref={ref}>
-      {value === null ? "—" : (display ?? "0")}
-    </span>
-  );
 }
 
 /** Mouse-tracked spotlight surface — sets `--aw-spot-x/--aw-spot-y` so the
@@ -396,13 +288,7 @@ export function OrbsField() {
   }, [reduced]);
 
   if (reduced) return null;
-  return (
-    <canvas
-      ref={canvasRef}
-      className="aw-orbs"
-      aria-hidden="true"
-    />
-  );
+  return <canvas ref={canvasRef} className="aw-orbs" aria-hidden="true" />;
 }
 
 /** Discrete "thinking" dots for agent working states (aicss/orbs-inspired,

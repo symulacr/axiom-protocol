@@ -138,8 +138,7 @@
     transform var(--aw-dur) var(--aw-ease-out);
   /* R13 (baseline-ui): no standing will-change — this is a one-shot entrance;
      Chrome auto-promotes composited opacity/transform animations. The hint
-     would linger forever after the 500ms reveal. .aw-parallax keeps its
-     (continuously active while scrolling). */
+     would linger forever after the 500ms reveal. */
 }
 .aw-reveal.is-in {
   opacity: 1;
@@ -149,10 +148,6 @@
   opacity: 1;
   transform: none;
   transition: none;
-}
-
-.aw-parallax {
-  will-change: transform;
 }
 
 /* Orphan control on short-to-medium copy (headings already use balance). */
@@ -317,7 +312,7 @@
 }
 
 .landing-copy h1 {
-  font-family: Syne, sans-serif;
+  font-family: var(--font-display);
   font-weight: 800;
   font-size: clamp(2.9rem, 7vw, 5.6rem);
   line-height: 0.98;
@@ -342,7 +337,7 @@
 
 /* Hero meta + trust line stay quiet so the type leads. */
 .landing-copy .hero-meta {
-  font-family: "JetBrains Mono", monospace;
+  font-family: var(--font-mono);
   font-size: 0.78rem;
   letter-spacing: 0.04em;
   color: var(--aw-text-soft);
@@ -366,45 +361,6 @@
 }
 .landing-copy .trust-line .trust-item:hover {
   color: var(--aw-mist);
-}
-
-/* Cinematic proof plate: deepen the poster grade and float the receipt. */
-.landing-visual.hero-visual-modern {
-  position: relative;
-  isolation: isolate;
-  border: 1px solid var(--aw-line);
-  background:
-    linear-gradient(
-      160deg,
-      color-mix(in srgb, var(--aw-ink-2) 55%, transparent),
-      color-mix(in srgb, var(--aw-ink) 74%, transparent)
-    );
-  box-shadow:
-    var(--aw-shadow-plate),
-    var(--aw-hairline);
-}
-.landing-visual.hero-visual-modern .hero-visual-poster {
-  opacity: 0.5;
-}
-
-/* The only brand photo is a 1200×630 OG banner; cover-cropping it into the
-   portrait hero frame shows ~26% of its width and read as a truncated
-   screenshot under the receipt card. Blur + overscale turn it into ambient
-   texture — a backdrop, not a picture. Matches index.css's winning selector
-   (child combinator) so this last-loaded layer actually applies. */
-.landing-page .landing-visual.hero-visual-modern > img.hero-visual-poster {
-  filter: saturate(0.9) contrast(1.06) blur(16px);
-  transform: scale(1.25);
-}
-
-.floating-receipt {
-  background: color-mix(in srgb, var(--aw-ink-2) 78%, transparent);
-  backdrop-filter: var(--aw-blur-card);
-  -webkit-backdrop-filter: var(--aw-blur-card);
-  border: 1px solid var(--aw-line);
-  box-shadow:
-    var(--aw-shadow-float),
-    var(--aw-hairline);
 }
 
 /* Marquee ticker: the JSX renders one aria-hidden track duplicated for the
@@ -543,7 +499,7 @@
   position: absolute;
   inset-inline: 0;
   bottom: -0.24em;
-  font-family: Syne, sans-serif;
+  font-family: var(--font-display);
   font-weight: 800;
   font-size: clamp(7rem, 22vw, 20rem);
   line-height: 1;
@@ -564,10 +520,12 @@
 
 /* ─── Public hubs ───────────────────────────────────────────────── */
 
+/* Background is owned by axiom-seo-public.css (.seo-public → --canvas, the
+   L3-B9/L3-B10 dark lock): pinning var(--aw-ink) here won on chunk order and
+   went light under body.light. This rule keeps only the stacking contract. */
 .seo-public {
   position: relative;
   overflow-x: clip;
-  background: var(--aw-ink);
 }
 
 .seo-public-nav {
@@ -625,7 +583,7 @@
 }
 
 .seo-hero-copy h1 {
-  font-family: Syne, sans-serif;
+  font-family: var(--font-display);
   font-weight: 800;
   font-size: clamp(2.5rem, 5.6vw, 4.4rem);
   line-height: 1.02;
@@ -713,7 +671,7 @@
 }
 
 .page-head h1 {
-  font-family: Syne, sans-serif;
+  font-family: var(--font-display);
   letter-spacing: -0.02em;
 }
 
@@ -745,7 +703,6 @@
   transform: none;
 }
 .aw-reveal.is-in .principle:nth-child(2),
-.aw-reveal.is-in .aw-parallax:nth-child(2) .journey-card,
 .aw-reveal.is-in .seo-link-grid a:nth-child(2) {
   transition-delay: var(--aw-stagger);
 }
@@ -896,18 +853,10 @@
   z-index: 1;
 }
 
-/* R26: receipt card polish — Three.js copper seal beside the kind label and a
-   stiff perspective tilt on hover (the existing lift stays; rotate reads as
-   a solid slab, not a floaty card). */
+/* R26: receipt card polish — Three.js copper seal beside the kind label. */
 .receipt-kind { display: inline-flex; align-items: center; gap: 8px; }
 .receipt-seal { display: inline-block; width: 40px; height: 40px; flex: 0 0 auto; }
 .receipt-seal canvas { display: block; width: 40px; height: 40px; }
-.landing-visual.hero-visual-modern:hover .floating-receipt {
-  transform: perspective(700px) rotateX(1.5deg);
-}
-@media (prefers-reduced-motion: reduce) {
-  .landing-visual.hero-visual-modern:hover .floating-receipt { transform: none; }
-}
 
 /* R27 theme sweep: light-mode j-cta measured 4.3:1 (copper-strong on paper)
    — one step darker clears the 4.5 body-text bar. */
