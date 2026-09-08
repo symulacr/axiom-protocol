@@ -48,6 +48,7 @@ import {
 import { useEventStream } from "../hooks/useEventStream.js";
 import { useAgents } from "../hooks/useAgents.js";
 import { truncateHex, explorerTxUrl } from "../utils/format.js";
+import { APP_CHAIN, APP_CHAIN_ID } from "../config/wagmi.js";
 import { useModalDismiss } from "../hooks/useModalDismiss.js";
 
 function eventKindIcon(eventName: string) {
@@ -206,6 +207,18 @@ function ReceiptDrawer({
   // U5: chain rows without a txHash synthesize "—" — no explorer link for those.
   const explorerHref = explorerTx(tx.hash);
   const recover = isRecoverableTx(tx.state);
+  // The receipt's chain readout names the chain the app is configured for —
+  // the same source the flow review sheets interpolate (never a second
+  // explorer link: the header action row owns the single explorer leg).
+  const networkLabel = interpolate(copy.flowUi.networkFact, {
+    chainName: APP_CHAIN.name,
+    chainId: APP_CHAIN_ID,
+  });
+  // tx.agent is the raw token id. A digits value is a REAL id — "0" is the
+  // contract's first mint (ERC7857CloneableUpgradeable.nextTokenId starts at
+  // 0), printed as "#0", never a bare 0. The sentinels ("chain"/"new") and
+  // empty values mean the receipt carries no agent id and print "—".
+  const agentLabel = /^\d+$/.test(tx.agent) ? `#${tx.agent}` : "—";
   // intent params are consumed by the flow pages only — AgentPage reads no
   // intent, so /agents/ routes go without it instead of carrying a dead param.
   const withIntent = (route: string, intentValue: string) =>
@@ -293,11 +306,22 @@ function ReceiptDrawer({
         >
           <X size={16} />
         </button>
-        {/* the row under this
-            drawer already shows kind, detail, state and the truncated hash —
-            the drawer renders only what the row cannot: the full hash, the
-            explorer link, the agent and the event note. */}
-        <h2>{txCopy.drawerTitle}</h2>
+        {/* The ticket head is the receipt's printed identity: document type
+            (eyebrow), what ran (kind), its state pill and its age. The data
+            rows below stay the proof block. */}
+        <header className="receipt-ticket-head">
+          <div className="receipt-ticket-meta">
+            <span className="receipt-ticket-eyebrow">{txCopy.drawerTitle}</span>
+            <span className="receipt-ticket-age mono num">
+              {transactionAge(tx, copy.time)}
+            </span>
+            <StatePill state={tx.state} />
+          </div>
+          <h2>{tx.kind}</h2>
+          {tx.detail ? (
+            <p className="receipt-ticket-detail">{tx.detail}</p>
+          ) : null}
+        </header>
         <div className="receipt-primary-action">{primaryAction}</div>
         <MobileDisclosure
           className="receipt-proof-disclosure"
@@ -306,7 +330,7 @@ function ReceiptDrawer({
           <dl className="provenance-list drawer-list">
             <div>
               <dt>{txCopy.transactionHash}</dt>
-              <dd className="mono num">
+              <dd className="mono num receipt-hash-value">
                 {tx.hash}{" "}
                 <button
                   className="inline-copy"
@@ -319,28 +343,19 @@ function ReceiptDrawer({
             </div>
             <div>
               <dt>{txCopy.network}</dt>
-              <dd>
-                {explorerHref ? (
-                  <a
-                    className="text-link"
-                    href={explorerHref}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    {txCopy.viewOnExplorer} <ArrowRight size={14} />
-                  </a>
-                ) : (
-                  <span>{txCopy.viewOnExplorer}</span>
-                )}
-              </dd>
+              <dd className="mono">{networkLabel}</dd>
             </div>
             <div>
               <dt>{txCopy.agent}</dt>
-              <dd>{tx.agent}</dd>
+              <dd className="mono">{agentLabel}</dd>
             </div>
             <div>
               <dt>{txCopy.event}</dt>
-              <dd>
+              <dd
+                className={
+                  tx.state === "confirmed" ? "mono receipt-event-ok" : "mono"
+                }
+              >
                 {tx.state === "confirmed"
                   ? txCopy.decodedIndexed
                   : txCopy.awaitingFinalEvidence}

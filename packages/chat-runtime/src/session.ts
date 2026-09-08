@@ -282,6 +282,24 @@ function estimateTokens(text: string | number): number {
   return Math.ceil((typeof text === "string" ? text.length : text) / 4);
 }
 
+/**
+ * Snap a front-cut start index forward past `tool` messages. A tool result is
+ * only valid directly after the assistant message carrying its tool_calls —
+ * a payload that starts on (or jumps into) the middle of a tool block is
+ * rejected by providers with a 400 "Messages with role 'tool' must be a
+ * response to a preceding message with 'tool_calls'". Front-cuts only ever
+ * need this one rule: an assistant-with-tool_calls start is safe because its
+ * tool results immediately follow it in this app's message construction.
+ */
+export function snapHistoryStart<T extends { role: string }>(
+  messages: readonly T[],
+  start: number,
+): number {
+  let i = Math.max(0, start);
+  while (i < messages.length && messages[i]!.role === "tool") i++;
+  return i;
+}
+
 export function fitToContext(
   messages: ChatApiMessage[],
   opts: {
@@ -314,7 +332,7 @@ export function fitToContext(
     totalLen -= s.length + 1;
     drop++;
   }
-  return history.slice(drop);
+  return history.slice(snapHistoryStart(history, drop));
 }
 
 export function compactHistory<T extends ChatApiMessage>(
@@ -324,7 +342,10 @@ export function compactHistory<T extends ChatApiMessage>(
 ): T[] {
   if (!summary || messages.length === 0) return messages;
   const keep = Math.min(recentKeep, messages.length);
-  const recent = messages.slice(messages.length - keep);
+  // Never let the recent window open inside a tool block (see snapHistoryStart).
+  const recent = messages.slice(
+    snapHistoryStart(messages, messages.length - keep),
+  );
   const summaryMsg = {
     ...recent[0],
     role: "user" as const,

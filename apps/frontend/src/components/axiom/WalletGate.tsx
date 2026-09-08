@@ -9,7 +9,7 @@
   silently (wagmi persists the last wallet), and the 24h TTL only decides
   whether returning users re-walk this small path.
 */
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useAccount, useConnect, useConnectors, useSwitchChain } from "wagmi";
 import { AlertTriangle, LockKeyhole, Network, X } from "./icons.js";
 import { Button, ErrorNote } from "./Controls.js";
@@ -36,6 +36,47 @@ const WALLET_STATE_ICON_SIZE = 28;
 export function isSessionFresh(session: Session): boolean {
   if (session.status !== "authenticated" || !session.signedAt) return false;
   return Date.now() - Date.parse(session.signedAt) < SESSION_TTL_MS;
+}
+
+/** The config-declared generic injected() connector id (wagmi default). */
+const GENERIC_INJECTED_ID = "injected";
+
+/**
+ * The wagmi connector list mixes the config-declared generic injected()
+ * fallback (id "injected", resolves window.ethereum at connect time) with one
+ * mipd connector per EIP-6963 announcement (id = rdns, real wallet name).
+ * Rendered raw, that list shows the same "Browser wallet" row once per
+ * installed wallet. Chooser contract: each real option exactly once —
+ * announced wallets individually, the generic entry only when nothing
+ * announced, WalletConnect once and last (the mobile path). Dedupe by
+ * connector id and by rdns where present.
+ */
+export function dedupeGateConnectors<
+  T extends { id: string; type: string; rdns?: string | readonly string[] },
+>(connectors: readonly T[]): T[] {
+  const hasAnnounced = connectors.some(
+    (c) => c.type === "injected" && c.id !== GENERIC_INJECTED_ID,
+  );
+  const seen = new Set<string>();
+  const out: T[] = [];
+  for (const c of connectors) {
+    // The generic injected() is a fallback, not a wallet: once real
+    // announcements exist, keeping it would render a duplicate row.
+    if (hasAnnounced && c.type === "injected" && c.id === GENERIC_INJECTED_ID) {
+      continue;
+    }
+    const keys = [c.id, ...(c.rdns ? [c.rdns].flat() : [])].map(
+      (k) => `${c.type}:${k}`,
+    );
+    if (keys.some((k) => seen.has(k))) continue;
+    for (const k of keys) seen.add(k);
+    out.push(c);
+  }
+  // WalletConnect pins to the end; the rest keep declaration/announce order.
+  return [...out].sort(
+    (a, b) =>
+      Number(a.type === "walletConnect") - Number(b.type === "walletConnect"),
+  );
 }
 
 export function WalletGate({
@@ -65,8 +106,9 @@ export function WalletGate({
   const connectors = useConnectors();
   // Config-declared connectors — NOT an installed-wallet signal: wagmi always
   // lists the declared injected() connector even with no wallet installed
-  // (discovery happens at connect time). Real installs are detected via
-  // EIP-6963 announcements below.
+  // (discovery happens at connect time), and mipd appends one connector per
+  // EIP-6963 announcement. Real installs are detected via the announcements
+  // below; the chooser renders the deduped option list, never this raw list.
   const injected = connectors.filter((c) => c.type === "injected");
   const mobileConnector = connectors.find((c) => c.type === "walletConnect");
   // EIP-6963 announcements are the only reliable "wallet installed" signal.
@@ -90,6 +132,35 @@ export function WalletGate({
       window.removeEventListener("eip6963:announceProvider", onAnnounce);
   }, []);
   const hasInstalledWallet = announcedRef.current.length > 0;
+  // One row per real option: announced wallets by name (hint = the rdns id
+  // that dedupes them), the generic "Browser wallet" only when nothing
+  // announced, WalletConnect once. The label dedupe is the hard guarantee —
+  // two rows can never render the same label.
+  const options = useMemo(() => {
+    const seenLabels = new Set<string>();
+    return dedupeGateConnectors(connectors).flatMap((connector) => {
+      const isWalletConnect = connector.type === "walletConnect";
+      const named =
+        connector.type === "injected" && connector.id !== GENERIC_INJECTED_ID;
+      const label = isWalletConnect
+        ? copy.wallet.walletConnectLabel
+        : named
+          ? connector.name
+          : copy.wallet.browserWalletLabel;
+      const hint = isWalletConnect
+        ? copy.wallet.walletConnectHint
+        : named
+          ? connector.id
+          : copy.wallet.browserWalletHint;
+      if (seenLabels.has(label)) return [];
+      seenLabels.add(label);
+      return [{ connector, label, hint }];
+    });
+  }, [connectors, copy]);
+  const announcedOptions = options.filter(
+    (o) =>
+      o.connector.type === "injected" && o.connector.id !== GENERIC_INJECTED_ID,
+  );
   const { switchChainAsync } = useSwitchChain();
   const [error, setError] = useState<string | null>(null);
   const resumed = useRef(false);
@@ -185,7 +256,13 @@ export function WalletGate({
     }
   };
 
-  const connectInjected = () => connectWith(injected[0]);
+  // Prefer the announced wallet's own connector (targets its EIP-6963
+  // provider exactly); the generic injected() only when nothing announced.
+  const connectInjected = () =>
+    connectWith(
+      options.find((o) => o.connector.type === "injected")?.connector ??
+        injected[0],
+    );
 
   // R12: mobile path goes straight to the WalletConnect SDK connector. The
   // pairing URI arrives once as the connector emitter's "message" event
@@ -233,14 +310,17 @@ export function WalletGate({
     : "connect";
 
   // One click, zero interstitial: mounting continues the landing click
-  // gesture — the best path fires immediately (installed wallet → extension
-  // popup; none → WalletConnect). The popover only surfaces what needs
-  // attention: a conflict chooser, the pairing code, or an error.
+  // gesture — the best path fires immediately (one installed wallet → its
+  // own connector; none → WalletConnect). The popover only surfaces what
+  // needs attention: a conflict chooser (2+ announced wallets), the pairing
+  // code, or an error.
   const autoTried = useRef(false);
   useEffect(() => {
     if (view !== "connect" || autoTried.current) return;
     autoTried.current = true;
-    if (injected.length > 1) setShowOptions(true);
+    if (announcedOptions.length > 1) setShowOptions(true);
+    else if (announcedOptions.length === 1)
+      void connectWith(announcedOptions.at(0)?.connector);
     else if (hasInstalledWallet) void connectInjected();
     else if (mobileConnector) void connectMobile();
     else setError(copy.wallet.noWalletDetected);
@@ -279,33 +359,22 @@ export function WalletGate({
                   className="connect-options-inline"
                   aria-label={copy.wallet.connectTitle}
                 >
-                  {connectors.map((c) => {
-                    const isInjected = c.type === "injected";
-                    return (
-                      <Button
-                        key={c.uid}
-                        variant="secondary"
-                        busy={connecting}
-                        onClick={() => {
-                          setShowOptions(false);
-                          void connectWith(c);
-                        }}
-                      >
-                        <span className="connect-option">
-                          <strong>
-                            {isInjected
-                              ? copy.wallet.browserWalletLabel
-                              : copy.wallet.walletConnectLabel}
-                          </strong>
-                          {isInjected ? (
-                            <small>{copy.wallet.browserWalletHint}</small>
-                          ) : (
-                            <small>{copy.wallet.walletConnectHint}</small>
-                          )}
-                        </span>
-                      </Button>
-                    );
-                  })}
+                  {options.map((o) => (
+                    <Button
+                      key={o.connector.uid}
+                      variant="secondary"
+                      busy={connecting}
+                      onClick={() => {
+                        setShowOptions(false);
+                        void connectWith(o.connector);
+                      }}
+                    >
+                      <span className="connect-option">
+                        <strong>{o.label}</strong>
+                        <small>{o.hint}</small>
+                      </span>
+                    </Button>
+                  ))}
                 </div>
               )}
               {pairingUri && (

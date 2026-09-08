@@ -8,6 +8,7 @@ export {
   compactHistory,
   MAX_TOOL_LOOPS,
   summarizeConversation,
+  snapHistoryStart,
   detectPlan,
   matchPlan,
 } from "./session.js";

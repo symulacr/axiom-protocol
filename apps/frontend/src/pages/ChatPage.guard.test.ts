@@ -144,3 +144,55 @@ test("active-thread resume persists in localStorage with a thread cap (L1-L8)", 
     `resume cap must be between 1 and 10, got ${cap[1]}`,
   );
 });
+
+// 2026-09-08 incident: a history front-cut landing inside a tool block made
+// the provider reject the payload with a 400 (orphaned role:"tool" message),
+// which the UI then misreported as "Compute is unavailable". All three
+// front-cut sites must snap to a tool-block boundary via snapHistoryStart.
+test("history front-cuts snap to tool-block boundaries", () => {
+  assert.match(
+    src,
+    /snapHistoryStart\(msgs, msgs\.length - max\)/,
+    "capRecentMessages snaps the 50-message cap to a tool-block boundary",
+  );
+  assert.match(
+    src,
+    /capRecentMessages\(\s*fitToContext\(/,
+    "the chat payload caps via capRecentMessages, not a blind slice(-50)",
+  );
+  assert.doesNotMatch(
+    src,
+    /\)\.slice\(-50\)/,
+    "the blind .slice(-50) on the chat payload is gone",
+  );
+});
+
+// Same incident: one failed turn surfaced the same error three times —
+// a sticky banner, a persisted inline card, and one Infinity-duration toast
+// per retry (stacked bottom-right). Toasts dedupe by id; the banner re-arms
+// per run instead of sticking past recovery.
+test("compute failure surfaces dedupe and re-arm", () => {
+  assert.match(
+    src,
+    /id: `chat-error:\$\{msg\}`/,
+    "error toasts carry a stable id so repeats update instead of stacking",
+  );
+  const runStart = src.indexOf("isStreamingRef.current = true;");
+  assert.ok(runStart > 0);
+  const bannerClear = src.indexOf("setComputeHint(null);", runStart);
+  assert.ok(
+    bannerClear > runStart && bannerClear - runStart < 400,
+    "runAgent clears the stale compute banner at run start",
+  );
+});
+
+// Same incident, duplicated option card: steps dedupe identical tool_calls
+// (dedupeToolCalls) but asks were appended blindly — a repeated ask_user
+// result rendered the same AskUserCard twice in one turn.
+test("groupTurns dedupes ask_user results like steps", () => {
+  assert.match(
+    src,
+    /cur\.asks\.some\(\s*\(a\) =>\s*a\.content === msg\.content \|\|/,
+    "asks dedupe on identical content or tool_call_id",
+  );
+});

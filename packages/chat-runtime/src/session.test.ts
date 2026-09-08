@@ -8,6 +8,8 @@ import {
   groupParallelTools,
   detectPlan,
   matchPlan,
+  snapHistoryStart,
+  fitToContext,
 } from "./session.js";
 
 const mk = (role: string, content: string) => ({ role, content });
@@ -222,5 +224,108 @@ describe("groupParallelTools", () => {
     const batches = groupParallelTools(calls);
     assert.equal(batches.length, 3);
     assert.equal(batches[1]![0]!.function.name, "evm_tx");
+  });
+});
+
+// Live incident 2026-09-08: front-cuts (compactHistory window, fitToContext
+// drop, ChatPage's 50-message cap) landing inside a tool block produced a
+// payload whose first message had role "tool" — the provider rejects it with
+// 400 "Messages with role 'tool' must be a response to a preceding message
+// with 'tool_calls'", surfaced to users as a fake compute outage.
+describe("tool-block-safe history cuts", () => {
+  const tcAssistant = (id: string) => ({
+    role: "assistant" as const,
+    content: null,
+    tool_calls: [
+      {
+        id,
+        type: "function" as const,
+        function: { name: "vault_balance", arguments: "{}" },
+      },
+    ],
+  });
+  const toolMsg = (id: string) => ({
+    role: "tool" as const,
+    content: "{}",
+    tool_call_id: id,
+    name: "vault_balance",
+  });
+
+  it("snapHistoryStart skips leading tool messages only", () => {
+    const msgs = [
+      mk("user", "u0"),
+      tcAssistant("c1"),
+      toolMsg("c1"),
+      mk("assistant", "a2"),
+      mk("user", "u3"),
+    ];
+    assert.equal(snapHistoryStart(msgs, 0), 0); // user start: untouched
+    assert.equal(snapHistoryStart(msgs, 1), 1); // assistant w/ tool_calls: safe
+    assert.equal(snapHistoryStart(msgs, 2), 3); // orphan tool: snapped forward
+    assert.equal(snapHistoryStart(msgs, -4), 0); // clamped
+    assert.equal(snapHistoryStart([toolMsg("c1")], 0), 1); // all-tool tail
+  });
+
+  it("compactHistory never opens the recent window on a tool message", () => {
+    const msgs = [
+      mk("user", "u0"),
+      tcAssistant("c1"),
+      toolMsg("c1"),
+      mk("assistant", "a2"),
+      mk("user", "u3"),
+      mk("assistant", "a4"),
+      mk("user", "u5"),
+      mk("user", "u6"),
+    ];
+    const out = compactHistory(msgs as never, "SUMMARY", 6);
+    assert.equal(out[0]!.role, "user"); // summary lead
+    assert.match(String((out[0] as { content: string }).content), /SUMMARY/);
+    assert.notEqual(out[1]!.role, "tool");
+    assert.equal((out[1] as { content: string | null }).content, "a2");
+  });
+
+  it("compactHistory keeps an assistant-with-tool_calls boundary intact", () => {
+    const msgs = [
+      mk("user", "u0"),
+      tcAssistant("c1"),
+      toolMsg("c1"),
+      mk("assistant", "a2"),
+      mk("user", "u3"),
+      mk("user", "u4"),
+      mk("user", "u5"),
+      mk("user", "u6"),
+    ];
+    const out = compactHistory(msgs as never, "SUMMARY", 7);
+    assert.equal(out.length, 8); // summary + full 7-message window, no snap
+    assert.deepEqual(
+      (out[1] as { tool_calls?: Array<{ id: string }> }).tool_calls?.[0]?.id,
+      "c1",
+    );
+    assert.equal(out[2]!.role, "tool"); // its result rides along
+  });
+
+  it("fitToContext never drops into the middle of a tool block", () => {
+    const msgs = [
+      mk("user", "u0 ".repeat(40)),
+      tcAssistant("c1"),
+      toolMsg("c1"),
+      mk("assistant", "a2 ".repeat(40)),
+      mk("user", "u3 ".repeat(40)),
+      tcAssistant("c4"),
+      toolMsg("c4"),
+      mk("assistant", "a5"),
+      mk("user", "u6"),
+    ];
+    const out = fitToContext(msgs as never, {
+      model: "any",
+      system: "s",
+      contextWindow: 100, // negative budget → drop to the keep floor
+      recentKeep: 3,
+    });
+    assert.notEqual(out[0]!.role, "tool");
+    assert.deepEqual(
+      out.map((m) => m.role),
+      ["assistant", "user"],
+    );
   });
 });
