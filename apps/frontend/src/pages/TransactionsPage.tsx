@@ -62,6 +62,18 @@ function eventKindIcon(eventName: string) {
   return <Zap size={16} />;
 }
 
+/* B-L3 age ladder: minutes under 120, whole hours under 48h, then days —
+ * a 3-day-old receipt reads "3d ago", not "4320m ago". */
+function ageLabel(
+  minutes: number,
+  time: ReturnType<typeof getCopy>["time"],
+): string {
+  if (minutes < 120) return time.minutesAgo(minutes);
+  const hours = Math.floor(minutes / 60);
+  if (hours < 48) return time.hoursAgo(hours);
+  return time.daysAgo(Math.floor(hours / 24));
+}
+
 function eventToTransaction(
   event: AxiomEvent,
   time: ReturnType<typeof getCopy>["time"],
@@ -79,11 +91,12 @@ function eventToTransaction(
       : interpolate(tx.eventDetailBlockOnly, { block: event.blockNumber }),
     hash: event.txHash || "—",
     age: event.timestamp
-      ? time.minutesAgo(
+      ? ageLabel(
           Math.max(
             0,
             Math.round((Date.now() - event.timestamp * 1000) / 60000),
           ),
+          time,
         )
       : time.indexed,
     state: "confirmed",
@@ -100,8 +113,9 @@ function transactionAge(
   time: ReturnType<typeof getCopy>["time"],
 ): string {
   if (typeof tx.createdAt === "number") {
-    return time.minutesAgo(
+    return ageLabel(
       Math.max(0, Math.round((Date.now() - tx.createdAt) / 60000)),
+      time,
     );
   }
   return tx.age;

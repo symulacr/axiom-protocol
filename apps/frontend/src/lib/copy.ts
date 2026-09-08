@@ -44,12 +44,10 @@ export type GateHero = {
 export type GateSlug =
   | "overview"
   | "settings"
-  | "transactions"
   | "chat"
   | "mint"
   | "payment"
   | "transfer"
-  | "storage"
   | "agent"
   | "roster"
   | "tick"
@@ -273,12 +271,10 @@ export type Copy = {
   lockedHero: {
     app: GateHero;
     settings: GateHero;
-    transactions: GateHero;
     chat: GateHero;
     mint: GateHero;
     payment: GateHero;
     transfer: GateHero;
-    storage: GateHero;
     agent: GateHero;
     agentsList: GateHero;
     tick: GateHero;
@@ -293,6 +289,28 @@ export type Copy = {
     networkBody: string;
     retry: string;
     reload: string;
+  };
+  /** humanizeError's user-facing ladder (P-L6): the pattern match stays in
+   * utils/format.ts; the words live here per locale. */
+  errors: {
+    userRejected: string;
+    unknownDatahash: string;
+    signerMismatch: string;
+    receiverUnavailable: string;
+    acceptanceNotSigned: string;
+    computeOutOfCredits: string;
+    insufficientFunds: string;
+    rateLimited: string;
+    tankExhausted: string;
+    reserveExhausted: string;
+    sponsorRateLimited: string;
+    computeUpstream: string;
+    gasEstimate: string;
+    reverted: string;
+    revertedWithReason: (reason: string) => string;
+    networkError: string;
+    timeout: string;
+    nonceTooLow: string;
   };
   settings: {
     pageTitle: string;
@@ -425,8 +443,6 @@ export type Copy = {
    * this section — hardcoded English in ChatPage was the defect. */
   chat: {
     pageTitle: string;
-    /** Placeholder: `{chainName}` — status slot shows the TARGET network. */
-    statusOnline: string;
     /** Placeholder: `{chainName}`. */
     statusWrongNetwork: string;
     /** Placeholder: `{chainName}`. */
@@ -550,6 +566,8 @@ export type Copy = {
     rateLimited: string;
     /** Empty terminal answer from the model. */
     noResponse: string;
+    /** The chat service answered with no body at all (transport-level). */
+    errNoResponseBody: string;
     /** The model named an unregistered tool (run card + tool result). */
     unknownTool: (name: string) => string;
     /** openTransfer rejects a non-numeric id. */
@@ -760,7 +778,8 @@ export type Copy = {
     allowanceDetail: string;
     approveSentNotice: string;
     allowanceCoveredNotice: string;
-    /** Placeholder: {kind} — the localized flow receiptKind. */
+    /** Static review-sheet title; all locales keep it flow-agnostic (no
+     * {kind} token — strip.reviewTitle is the parameterized one). */
     reviewTitle: string;
     closeReviewA11y: string;
     factAgent: string;
@@ -810,7 +829,6 @@ export type Copy = {
     handoffApply: string;
     handoffAppliedTitle: string;
     handoffAppliedNote: string;
-    /** Placeholder: {receiver}. */
     handoffReceivedNotice: string;
     /** receiver page (/transfer/co-sign) — public, wallet-gated only by
      * the acceptance signature itself. */
@@ -836,7 +854,7 @@ export type Copy = {
     receiveAcceptBody: string;
     receiveSign: string;
     receiveSigning: string;
-    /** Placeholders: {connected}, {receiver}. */
+    /** Placeholder: {receiver}. */
     receiveWrongAccount: string;
     receiveDoneTitle: string;
     receiveDoneBody: string;
@@ -1208,7 +1226,7 @@ const english: Copy = {
         {
           icon: "shield",
           title: "Bounded by design.",
-          body: "An on-chain vault with a daily limit. Nothing can spend past it — not even us.",
+          body: "An on-chain vault with a daily limit. Your agent can never spend past it — and we can't spend at all.",
           link: "Read the spec",
         },
         {
@@ -1251,7 +1269,8 @@ const english: Copy = {
   },
   wallet: {
     wrongNetworkTitle: "Switch to {chainName}.",
-    wrongNetworkDescription: "Your wallet is on another network.",
+    wrongNetworkDescription:
+      "Your wallet is on another network. Switch networks before signing the access message.",
     switchNetwork: "Switch to {chainName}",
     networkMismatch: "Network mismatch",
     connectedChain: "Connected: chain {chainId}",
@@ -1287,7 +1306,7 @@ const english: Copy = {
     openSettings: "Open settings",
   },
   staking: {
-    pageTitle: "0G Stake",
+    pageTitle: "Staking on 0G",
     lede: "Staking isn\u0027t part of Axiom.",
     body: "Staking lives in the official 0G app: agents, vaults and receipts stay here.",
     openVault: "Go to my agents",
@@ -1322,6 +1341,43 @@ const english: Copy = {
       "Unable to load this section. Retry, or check your connection if it keeps failing.",
     retry: "Try again",
     reload: "Reload page",
+  },
+  errors: {
+    userRejected:
+      "Transaction cancelled — you rejected the request in your wallet.",
+    unknownDatahash:
+      "This agent's metadata is not registered with the oracle yet. Re-register it from the mint flow (or pick another agent), then retry the transfer.",
+    signerMismatch:
+      "The transfer acceptance must be signed by the recipient's own wallet. Go back and use the “Sign as receiver” step with the recipient account selected.",
+    receiverUnavailable:
+      "The receiving account is not available in the connected wallet. Add the receiver account to this wallet, or let the receiver accept the transfer from their own session.",
+    acceptanceNotSigned:
+      "This acceptance code was not signed by the receiver's wallet. Ask the receiver to sign the acceptance link again with the receiving account, then paste the new code.",
+    computeOutOfCredits:
+      "0G Compute is out of credits. Fund the compute account for AXIOM_COMPUTE_API_KEY, then retry.",
+    insufficientFunds:
+      "Insufficient balance to complete this transaction. Please add funds and try again.",
+    rateLimited:
+      "The compute provider is rate-limiting requests. Wait a few seconds and send again.",
+    tankExhausted:
+      "Your free gas grants are used up. Deposit via the GasTank UI, or connect a wallet to sign ops directly.",
+    reserveExhausted:
+      "The protocol gas reserve is temporarily empty. Sponsored ops pause until it's refunded — try again shortly.",
+    sponsorRateLimited:
+      "Too many sponsored ops in a row. Wait a moment and retry.",
+    computeUpstream:
+      "Compute is unavailable right now. Check backend compute keys and balance.",
+    gasEstimate:
+      "Transaction would fail on-chain. Check your inputs and wallet balance.",
+    reverted:
+      "Transaction reverted by the contract. Check your inputs and permissions.",
+    revertedWithReason: (reason) => `Transaction reverted: ${reason}`,
+    networkError:
+      "Network error — check your internet connection and try again.",
+    timeout:
+      "Request timed out. The network may be congested — please try again.",
+    nonceTooLow:
+      "Transaction nonce conflict. Please wait for pending transactions to confirm.",
   },
   settings: {
     pageTitle: "Settings",
@@ -1436,7 +1492,6 @@ const english: Copy = {
   },
   chat: {
     pageTitle: "Chat",
-    statusOnline: "Online, {chainName}",
     statusWrongNetwork: "Switch to {chainName}",
     wrongNetworkBanner: "Wrong network. Switch wallet to {chainName}.",
     newChat: "New chat",
@@ -1558,7 +1613,7 @@ const english: Copy = {
     historyRestore: "Restore server history",
     historyRestoreHint: "One free signature loads your saved chats.",
     historyOnChainNote:
-      "Your chats are saved on-chain. Restore them (1 signature)",
+      "Your chats are saved on 0G. Restore them (1 signature)",
     historyDelete: (title) => `Delete chat: ${title}`,
     untitledThread: "New chat",
     deletedToast: "Chat deleted",
@@ -1579,8 +1634,9 @@ const english: Copy = {
       `Turn limit hit after ${max} steps — send "continue" to keep going.`,
     rateLimited: "Rate limited: wait a moment and try again.",
     noResponse: "No response: try again.",
+    errNoResponseBody: "No response body from the chat service.",
     unknownTool: (name) => `Unknown tool: ${name}`,
-    invalidTokenId: (tokenId) => `invalid tokenId: ${tokenId}`,
+    invalidTokenId: (tokenId) => `Invalid token id: ${tokenId}`,
     transferCancelled: "Transfer cancelled: no transaction was submitted.",
     streamStarted: "Response started.",
     streamComplete: "Response complete.",
@@ -1652,7 +1708,7 @@ const english: Copy = {
     notIndexed: "not indexed",
     verifyTitle: "Verify on 0G",
     verifyHint:
-      "Paste a publication root hash to open the 0G storage indexer’s own record for it. Axiom never stores your files. Verification runs on 0G infrastructure.",
+      "Paste a publication root hash to open the 0G storage indexer's own record for it. Axiom never stores your files. Verification runs on 0G infrastructure.",
     verifyLabel: "Root hash to verify",
     verifyPlaceholder: "0x…",
     verifyAction: "Open 0G verification",
@@ -2148,12 +2204,10 @@ const english: Copy = {
     labels: {
       overview: "Console overview",
       settings: "Session settings",
-      transactions: enTxCenterName,
       chat: "Operator chat",
       mint: "Mint an agent",
       payment: "Payment route",
       transfer: "Transfer flow",
-      storage: "Storage proofs",
       agent: "Agent detail",
       roster: "Agent roster",
       tick: enTickName,
@@ -2168,10 +2222,6 @@ const english: Copy = {
       settings: [
         { label: "Display", value: "•••" },
         { label: "Session", value: "••• h" },
-      ],
-      transactions: [
-        { label: "Receipts", value: "••• indexed" },
-        { label: "Recovery", value: "ready" },
       ],
       chat: [
         { label: "Thread", value: "••• turns" },
@@ -2188,10 +2238,6 @@ const english: Copy = {
       transfer: [
         { label: "Co-sign", value: "receiver" },
         { label: "Expiry", value: "enforced" },
-      ],
-      storage: [
-        { label: "Proofs", value: "••• verified" },
-        { label: "Roots", value: "on-chain" },
       ],
       agent: [
         { label: "Identity", value: "ERC-7857" },
@@ -2229,11 +2275,6 @@ const english: Copy = {
       titleEmphasis: "on your terms.",
       copy: "Session, display and console preferences.",
     },
-    transactions: {
-      titleLead: "Track every payment",
-      titleEmphasis: "to its receipt.",
-      copy: "Every receipt, its state, and recovery.",
-    },
     chat: {
       titleLead: "Chat that knows",
       titleEmphasis: "your setup.",
@@ -2242,22 +2283,17 @@ const english: Copy = {
     mint: {
       titleLead: "Name your agent",
       titleEmphasis: "on-chain.",
-      copy: "Your name becomes an on-chain identity with a receipt.",
+      copy: "The name you pick becomes an on-chain identity with a receipt.",
     },
     payment: {
       titleLead: "Pay exactly",
       titleEmphasis: "what you approve.",
-      copy: "Approve exactly what you pay. Fees are shown up front.",
+      copy: "Approve exactly what you pay. Costs are clear before you sign.",
     },
     transfer: {
       titleLead: "Transfers your receiver",
       titleEmphasis: "co-signs.",
       copy: "Receiver co-signs. Expiry is enforced.",
-    },
-    storage: {
-      titleLead: "Storage you can",
-      titleEmphasis: "verify.",
-      copy: "Every storage step is verifiable, end to end.",
     },
     agent: {
       titleLead: "Every agent,",
@@ -2315,7 +2351,8 @@ const french: Copy = {
     howItWorks: "Comprendre Axiom",
     connectWallet: "Connecter le wallet",
     overview: "Vue d’ensemble",
-    groupOverview: "Aperçu",
+    storage: "Stockage",
+    groupOverview: "Console",
     groupOperations: "Opérations",
     groupResources: "Ressources",
     payment: "Paiement",
@@ -2385,7 +2422,7 @@ const french: Copy = {
     ...english.landing,
     title: "Des agents IA que vous possédez, sur 0G.",
     description:
-      "Mintez un agent avec un coffre plafonné. Il ne s'exécute que dans les règles que vous fixez, et chaque action laisse un reçu on-chain.",
+      "Mintez un agent avec un coffre plafonné. Il ne s’exécute que dans les règles que vous fixez, et chaque action laisse un reçu on-chain.",
     closingCta: "Mintez votre premier agent.",
     docTitle: "Axiom : possédez vos agents IA on-chain",
     menuGuideHint: "Comment fonctionnent signatures et reçus",
@@ -2404,19 +2441,19 @@ const french: Copy = {
         {
           icon: "shield",
           title: "Délimité par conception.",
-          body: "Un coffre on-chain avec une limite quotidienne. Rien ne peut dépenser au-delà — nous non plus.",
+          body: "Un coffre on-chain avec une limite quotidienne. Votre agent ne peut jamais dépenser au-delà — et nous ne pouvons rien dépenser.",
           link: "Lire la spec",
         },
         {
           icon: "receipt",
           title: "Reçus, pas promesses.",
-          body: "Chaque signature est indexée en reçu : quel agent, quel bloc, que s'est-il passé.",
+          body: "Chaque signature est indexée en reçu : quel agent, quel bloc, que s’est-il passé.",
           link: "Comment fonctionnent les reçus",
         },
         {
           icon: "wallet",
           title: "Votre wallet, vos clés.",
-          body: "Connectez le wallet que vous avez déjà. Pas de comptes, pas d'emails, pas de mots de passe.",
+          body: "Connectez le wallet que vous avez déjà. Pas de comptes, pas d’emails, pas de mots de passe.",
           link: "",
         },
       ],
@@ -2426,7 +2463,7 @@ const french: Copy = {
       steps: [
         {
           title: "Mintez.",
-          body: "Une transaction crée l'agent et son coffre.",
+          body: "Une transaction crée l’agent et son coffre.",
         },
         {
           title: "Financez.",
@@ -2434,7 +2471,7 @@ const french: Copy = {
         },
         {
           title: "Opérez.",
-          body: "Les ticks s'exécutent dans vos règles. Les reçus s'indexent on-chain.",
+          body: "Les ticks s’exécutent dans vos règles. Les reçus s’indexent on-chain.",
         },
       ],
     },
@@ -2465,7 +2502,7 @@ const french: Copy = {
     walletConnectHint: "Scannez le QR code ou ouvrez votre app wallet",
     pairingTitle: "Appairez votre wallet",
     pairingHint:
-      "Copiez le code dans l'écran WalletConnect de votre app wallet.",
+      "Copiez le code dans l’écran WalletConnect de votre app wallet.",
     noWalletDetected:
       "Aucun wallet de navigateur détecté. Installez-en un ou utilisez un wallet mobile.",
     unknownChain: "inconnue",
@@ -2489,7 +2526,7 @@ const french: Copy = {
     openSettings: "Ouvrir les réglages",
   },
   staking: {
-    pageTitle: "0G Stake",
+    pageTitle: "Le staking sur 0G",
     lede: "Le staking ne fait pas partie d’Axiom.",
     body: "Le staking passe par l’app officielle 0G : agents, coffres et reçus restent ici.",
     openVault: "Aller à mes agents",
@@ -2524,6 +2561,43 @@ const french: Copy = {
       "Impossible de charger cette section. Réessayez, ou vérifiez votre connexion si l’erreur persiste.",
     retry: "Réessayer",
     reload: "Recharger la page",
+  },
+  errors: {
+    userRejected:
+      "Transaction annulée : vous avez refusé la demande dans votre wallet.",
+    unknownDatahash:
+      "Les métadonnées de cet agent ne sont pas encore enregistrées auprès de l’oracle. Ré-enregistrez-le depuis le flow de mint (ou choisissez un autre agent), puis réessayez le transfert.",
+    signerMismatch:
+      "L’acceptation du transfert doit être signée par le wallet du destinataire. Revenez en arrière et utilisez l’étape « Signer comme destinataire » avec le compte du destinataire sélectionné.",
+    receiverUnavailable:
+      "Le compte destinataire n’est pas disponible dans le wallet connecté. Ajoutez le compte du destinataire à ce wallet, ou laissez le destinataire accepter le transfert depuis sa propre session.",
+    acceptanceNotSigned:
+      "Ce code d’acceptation n’a pas été signé par le wallet du destinataire. Demandez au destinataire de signer à nouveau le lien d’acceptation avec le compte destinataire, puis collez le nouveau code.",
+    computeOutOfCredits:
+      "0G Compute n’a plus de crédits. Rechargez le compte compute pour AXIOM_COMPUTE_API_KEY, puis réessayez.",
+    insufficientFunds:
+      "Solde insuffisant pour cette transaction. Ajoutez des fonds et réessayez.",
+    rateLimited:
+      "Le fournisseur de calcul limite le débit des requêtes. Patientez quelques secondes et renvoyez.",
+    tankExhausted:
+      "Vos subventions de gaz gratuites sont épuisées. Déposez via l’interface GasTank, ou connectez un wallet pour signer les opérations directement.",
+    reserveExhausted:
+      "La réserve de gaz du protocole est temporairement vide. Les opérations sponsorisées reprennent dès qu’elle est rechargée : réessayez dans un instant.",
+    sponsorRateLimited:
+      "Trop d’opérations sponsorisées d’affilée. Patientez un instant et réessayez.",
+    computeUpstream:
+      "Le calcul est indisponible pour le moment. Vérifiez les clés et le solde compute du backend.",
+    gasEstimate:
+      "La transaction échouerait on-chain. Vérifiez vos saisies et le solde du wallet.",
+    reverted:
+      "Transaction revertie par le contrat. Vérifiez vos saisies et autorisations.",
+    revertedWithReason: (reason) => `Transaction revertie : ${reason}`,
+    networkError:
+      "Erreur réseau : vérifiez votre connexion internet et réessayez.",
+    timeout:
+      "La requête a expiré. Le réseau est peut-être congestionné : réessayez.",
+    nonceTooLow:
+      "Conflit de nonce de transaction. Attendez la confirmation des transactions en cours.",
   },
   settings: {
     ...english.settings,
@@ -2570,8 +2644,7 @@ const french: Copy = {
     statusReady: "Prêt",
     statusOnline: "en ligne",
     shortcutTitle: "Carte clavier",
-    shortcutHint:
-      "Les raccourcis restent visibles ; ils ne contournent jamais les limites wallet, réseau ou signature.",
+    shortcutHint: "Les raccourcis naviguent. Ils ne signent jamais.",
     shortcutPalette: "Chercher actions, agents, reçus et routes",
     shortcutSurfaces: "Ouvrir les zones principales",
     shortcutFlows: "Ouvrir les flows d’exécution",
@@ -2589,7 +2662,7 @@ const french: Copy = {
     title: "Vos agents.",
     review: (count) =>
       count === 1
-        ? "1 agent n'est pas prêt"
+        ? "1 agent n’est pas prêt"
         : `${count} agents ne sont pas prêts`,
     refresh: "Actualiser",
     managedValue: "Argent détenu",
@@ -2619,7 +2692,7 @@ const french: Copy = {
       "Mintez un agent ou lancez un paiement pour créer le premier reçu.",
     registerUnavailable: "Registre d’agents indisponible",
     retryFetch: "Réessayer",
-    noAgents: "Vous n'avez pas encore d'agent",
+    noAgents: "Vous n’avez pas encore d’agent",
     noAgentsHint: "Créez-en un. Environ une minute.",
     mintAgent: "Créer un agent",
     noDescription: "sans description",
@@ -2636,7 +2709,6 @@ const french: Copy = {
   },
   chat: {
     ...english.chat,
-    statusOnline: "En ligne, {chainName}",
     statusWrongNetwork: "Passer sur {chainName}",
     wrongNetworkBanner: "Mauvais réseau. Basculez le wallet sur {chainName}.",
     newChat: "Nouveau chat",
@@ -2756,15 +2828,14 @@ const french: Copy = {
     historyNoMatch: "Aucun chat correspondant.",
     historyLoading: "Chargement de l’historique serveur…",
     historyRestore: "Restaurer l’historique serveur",
-    historyRestoreHint:
-      "Signez un message wallet pour charger les transcripts de ce wallet. Aucune transaction n’est envoyée.",
+    historyRestoreHint: "Une signature gratuite charge vos chats enregistrés.",
     historyOnChainNote:
-      "Vos chats sont sauvegardés on-chain. Restaurez-les (1 signature)",
+      "Vos chats sont sauvegardés sur 0G Storage. Restaurez-les (1 signature)",
     historyDelete: (title) => `Supprimer le chat : ${title}`,
     untitledThread: "Nouveau chat",
     deletedToast: "Chat supprimé",
     undo: "Annuler",
-    metricsShow: "métriques",
+    metricsShow: "Métriques",
     metricsHide: "masquer les métriques",
     stepsSummary: (count, seconds) =>
       `${seconds}s de travail · ${count} étape${count === 1 ? "" : "s"}`,
@@ -2776,11 +2847,12 @@ const french: Copy = {
     browseTools: (count) => `Parcourir les ${count} outils`,
     footHint: "Maj+Entrée pour un saut de ligne",
     storedOn0G: "Stocké sur 0G",
-    historyClose: "Fermer l'historique",
+    historyClose: "Fermer l’historique",
     turnLimit: (max) =>
       `Limite de tours atteinte après ${max} étapes : envoyez « continue » pour poursuivre.`,
     rateLimited: "Trop de requêtes : patientez un instant, puis réessayez.",
     noResponse: "Aucune réponse : réessayez.",
+    errNoResponseBody: "Pas de corps de réponse du service de chat.",
     unknownTool: (name) => `Outil inconnu : ${name}`,
     invalidTokenId: (tokenId) => `tokenId invalide : ${tokenId}`,
     transferCancelled: "Transfert annulé : aucune transaction n’a été soumise.",
@@ -2818,7 +2890,7 @@ const french: Copy = {
     depositAction: "Déposer",
     refillAction: "Réclamer une subvention de gaz",
     tankLowBanner:
-      "Votre réservoir de gaz est presque vide : les opérations continuent jusqu'à épuisement de vos subventions gratuites.",
+      "Votre réservoir de gaz est presque vide : les opérations continuent jusqu’à épuisement de vos subventions gratuites.",
     depositQueued: "Dépôt en file : suivez-le dans le centre des transactions.",
     refillDone: "Subvention de gaz réclamée. Solde du réservoir actualisé.",
     refillFailed:
@@ -2842,6 +2914,7 @@ const french: Copy = {
     ],
     note: "« Disponible » s’allume une fois les étapes ci-dessus terminées.",
     whatCanProve: "Ce que l’interface peut prouver",
+    rootHash: "Hash de racine",
     storageTx: "Transaction Storage",
     integrityProof: "Preuve d’intégrité",
     encryption: "Chiffrement",
@@ -2904,7 +2977,7 @@ const french: Copy = {
     transfer: {
       ...english.flows.transfer,
       title: "Donner un agent",
-      copy: "Challenge → signature → finalisation → reçu on-chain. L’expiration reste visible.",
+      copy: "Challenge → signature → finalisation → reçu on-chain. L’expiration ne disparaît jamais.",
       steps: ["Ils acceptent", "Vous envoyez", "Terminé"],
       receiptKind: "Transfert",
       consequence: "Envoyer la preuve revue à ce destinataire.",
@@ -2929,7 +3002,7 @@ const french: Copy = {
     },
     deposit: {
       title: "Déposer dans le vault",
-      copy: "Montant → revue → limite wallet → reçu on-chain. Le solde du vault reste visible avant le transfert.",
+      copy: "Montant → revue → reçu on-chain. Le solde du vault reste visible avant le transfert.",
       steps: ["Montant + solde", "Confirmation wallet", "Reçu indexé"],
       receiptKind: "Dépôt",
       consequence: "Déplacer le montant revu vers le vault de cet agent.",
@@ -2943,7 +3016,7 @@ const french: Copy = {
     },
     withdraw: {
       title: "Retirer du vault",
-      copy: "Montant → revue → limite wallet → reçu on-chain. Le solde restant est affiché avant la signature.",
+      copy: "Montant → revue → reçu on-chain. Le solde restant est affiché avant la signature.",
       steps: ["Solde vérifié", "Confirmation wallet", "Reçu indexé"],
       receiptKind: "Retrait",
       consequence: "Déplacer le montant revu hors du vault de cet agent.",
@@ -3364,12 +3437,10 @@ const french: Copy = {
     labels: {
       overview: "Vue d’ensemble de la console",
       settings: "Réglages de session",
-      transactions: frTxCenterName,
       chat: "Chat opérateur",
       mint: "Créer un agent",
       payment: "Route de paiement",
       transfer: "Flux de transfert",
-      storage: "Preuves de stockage",
       agent: "Détail de l’agent",
       roster: "Liste d’agents",
       tick: frTickName,
@@ -3384,10 +3455,6 @@ const french: Copy = {
       settings: [
         { label: "Affichage", value: "•••" },
         { label: "Session", value: "••• h" },
-      ],
-      transactions: [
-        { label: "Reçus", value: "••• indexés" },
-        { label: "Récupération", value: "prête" },
       ],
       chat: [
         { label: "Fil", value: "••• tours" },
@@ -3404,10 +3471,6 @@ const french: Copy = {
       transfer: [
         { label: "Co-signature", value: "destinataire" },
         { label: "Expiration", value: "appliquée" },
-      ],
-      storage: [
-        { label: "Preuves", value: "••• vérifiées" },
-        { label: "Racines", value: "on-chain" },
       ],
       agent: [
         { label: "Identité", value: "ERC-7857" },
@@ -3434,18 +3497,13 @@ const french: Copy = {
   lockedHero: {
     app: {
       titleLead: "Votre console,",
-      titleEmphasis: "en un coup d'œil.",
+      titleEmphasis: "en un coup d’œil.",
       copy: "Voyez ce que vos agents attendent ensuite.",
     },
     settings: {
       titleLead: "Réglages console,",
       titleEmphasis: "à votre main.",
       copy: "Session, affichage et préférences console.",
-    },
-    transactions: {
-      titleLead: "Chaque paiement suivi",
-      titleEmphasis: "jusqu'à son reçu.",
-      copy: "Chaque reçu, son état et sa récupération.",
     },
     chat: {
       titleLead: "Un chat qui connaît",
@@ -3455,22 +3513,17 @@ const french: Copy = {
     mint: {
       titleLead: "Nommez votre agent",
       titleEmphasis: "on-chain.",
-      copy: "Votre nom devient une identité on-chain avec reçu.",
+      copy: "Le nom choisi devient une identité on-chain avec reçu.",
     },
     payment: {
       titleLead: "Payez exactement",
       titleEmphasis: "ce que vous approuvez.",
-      copy: "Approuvez exactement ce que vous payez ; frais affichés d'avance.",
+      copy: "Approuvez exactement ce que vous payez ; coûts clairs avant signature.",
     },
     transfer: {
       titleLead: "Les transferts que",
       titleEmphasis: "votre destinataire co-signe.",
-      copy: "Le destinataire co-signe ; l'expiration est appliquée.",
-    },
-    storage: {
-      titleLead: "Un stockage",
-      titleEmphasis: "vérifiable.",
-      copy: "Chaque étape de stockage est vérifiable, de bout en bout.",
+      copy: "Le destinataire co-signe ; l’expiration est appliquée.",
     },
     agent: {
       titleLead: "Chaque agent,",
@@ -3483,19 +3536,19 @@ const french: Copy = {
       copy: "Connectez-vous pour voir vos agents, leurs vaults et leurs reçus.",
     },
     tick: {
-      titleLead: "Lance une tâche d'agent,",
+      titleLead: "Lancez une tâche d’agent,",
       titleEmphasis: "bornée.",
-      copy: "Donne une instruction à l'agent, il diffuse le résultat puis s'arrête.",
+      copy: "Donnez une instruction à l’agent, il diffuse le résultat puis s’arrête.",
     },
     deposit: {
-      titleLead: "Alimente le vault",
-      titleEmphasis: "d'un agent.",
-      copy: "Ajoute du gas natif au vault d'un agent avant son exécution.",
+      titleLead: "Alimentez le vault",
+      titleEmphasis: "d’un agent.",
+      copy: "Ajoutez du gas natif au vault d’un agent avant son exécution.",
     },
     withdraw: {
-      titleLead: "Retire des fonds du",
-      titleEmphasis: "vault d'un agent.",
-      copy: "Sors des fonds du vault d'un agent, solde affiché avant signature.",
+      titleLead: "Retirez des fonds du",
+      titleEmphasis: "vault d’un agent.",
+      copy: "Sortez des fonds du vault d’un agent, solde affiché avant signature.",
     },
   },
   checklist: {
@@ -3505,7 +3558,7 @@ const french: Copy = {
     steps: {
       mint: {
         label: "Créez votre agent",
-        hint: "Enregistrez un agent : aucun fonds requis pour l'instant.",
+        hint: "Enregistrez un agent : aucun fonds requis pour l’instant.",
       },
       deposit: {
         label: "Alimentez son vault",
@@ -3532,6 +3585,8 @@ const german: Copy = {
     groupOperations: "Vorgänge",
     groupResources: "Ressourcen",
     transactions: "Transaktionen",
+    storage: "Speicher",
+    mint: "Minten",
     payment: "Zahlung",
     tick: deTickName,
     deposit: "Einzahlen",
@@ -3599,7 +3654,7 @@ const german: Copy = {
     ...english.landing,
     title: "Eigene KI-Agenten, auf 0G.",
     description:
-      "Mint einen Agenten mit einem begrenzten Tresor. Er läuft nur innerhalb deiner Regeln, und jede Aktion hinterlässt einen On-Chain-Beleg.",
+      "Minte einen Agenten mit einem begrenzten Tresor. Er läuft nur innerhalb deiner Regeln, und jede Aktion hinterlässt einen On-Chain-Beleg.",
     closingCta: "Minte deinen ersten Agenten.",
     docTitle: "Axiom: Eigene KI-Agenten on-chain",
     menuGuideHint: "Wie Signatur und Beleg funktionieren",
@@ -3618,7 +3673,7 @@ const german: Copy = {
         {
           icon: "shield",
           title: "Grenzen durch Design.",
-          body: "Ein on-chain Tresor mit täglichem Limit. Nichts kann darüber hinaus ausgeben — wir auch nicht.",
+          body: "Ein On-Chain-Tresor mit Tageslimit. Dein Agent kann nie darüber hinaus ausgeben — und wir können gar nichts ausgeben.",
           link: "Spec lesen",
         },
         {
@@ -3667,7 +3722,7 @@ const german: Copy = {
     networkMismatch: "Falsches Netzwerk",
     connectedChain: "Verbunden: Chain {chainId}",
     requiredChain: "Erforderlich: {chainName}, Chain {chainId}",
-    profileHint: "Nur als lokale Prototyp-Einstellung gespeichert.",
+    profileHint: "Nur auf diesem Gerät gespeichert.",
     connectTitle: "Wähle ein Wallet.",
     connectingStatus: "Verbindung…",
     browserWalletLabel: "Browser-Wallet",
@@ -3699,7 +3754,7 @@ const german: Copy = {
     openSettings: "Einstellungen öffnen",
   },
   staking: {
-    pageTitle: "0G Stake",
+    pageTitle: "Staking auf 0G",
     lede: "Staking ist nicht Teil von Axiom.",
     body: "Staking läuft über die offizielle 0G-App: Agents, Vaults und Belege bleiben hier.",
     openVault: "Zu meinen Agents",
@@ -3723,8 +3778,8 @@ const german: Copy = {
       agents: "Agents",
       payments: "Zahlungen",
       proofs: "Nachweise",
-      storage: "Storage",
-      developers: "Developers",
+      storage: "Speicher",
+      developers: "Entwickler",
     },
   },
   errorBoundary: {
@@ -3734,6 +3789,43 @@ const german: Copy = {
       "Dieser Abschnitt ließ sich nicht laden. Versuche es erneut, oder prüfe deine Verbindung, wenn der Fehler bestehen bleibt.",
     retry: "Erneut versuchen",
     reload: "Seite neu laden",
+  },
+  errors: {
+    userRejected:
+      "Transaktion abgebrochen. Du hast die Anfrage in deinem Wallet abgelehnt.",
+    unknownDatahash:
+      "Die Metadaten dieses Agenten sind noch nicht beim Orakel registriert. Registriere sie erneut im Mint-Flow (oder wähle einen anderen Agenten) und versuche den Transfer dann erneut.",
+    signerMismatch:
+      "Die Transfer-Annahme muss vom Wallet des Empfängers signiert werden. Geh zurück und nutze den Schritt „Als Empfänger signieren“ mit dem Empfängerkonto.",
+    receiverUnavailable:
+      "Das Empfängerkonto ist im verbundenen Wallet nicht verfügbar. Füge das Empfängerkonto zu diesem Wallet hinzu oder lass den Empfänger den Transfer in seiner eigenen Sitzung annehmen.",
+    acceptanceNotSigned:
+      "Dieser Annahmecode wurde nicht vom Wallet des Empfängers signiert. Bitte den Empfänger, den Annahme-Link erneut mit dem Empfängerkonto zu signieren, und füge dann den neuen Code ein.",
+    computeOutOfCredits:
+      "0G Compute hat keine Guthaben mehr. Lade das Compute-Konto für AXIOM_COMPUTE_API_KEY auf und versuche es erneut.",
+    insufficientFunds:
+      "Unzureichendes Guthaben für diese Transaktion. Lade Guthaben auf und versuche es erneut.",
+    rateLimited:
+      "Der Compute-Provider begrenzt gerade die Anfragen. Warte ein paar Sekunden und sende erneut.",
+    tankExhausted:
+      "Deine Gratis-Gas-Zuschüsse sind aufgebraucht. Zahle über die GasTank-Oberfläche ein oder verbinde ein Wallet, um Vorgänge direkt zu signieren.",
+    reserveExhausted:
+      "Die Gas-Reserve des Protokolls ist vorübergehend leer. Gesponserte Vorgänge pausieren, bis sie wieder aufgefüllt ist. Versuche es gleich erneut.",
+    sponsorRateLimited:
+      "Zu viele gesponserte Vorgänge hintereinander. Warte kurz und versuche es erneut.",
+    computeUpstream:
+      "Compute ist gerade nicht verfügbar. Prüfe die Compute-Schlüssel und das Guthaben des Backends.",
+    gasEstimate:
+      "Die Transaktion würde on-chain fehlschlagen. Prüfe deine Eingaben und dein Wallet-Guthaben.",
+    reverted:
+      "Transaktion vom Contract rückgängig gemacht. Prüfe deine Eingaben und Berechtigungen.",
+    revertedWithReason: (reason) => `Transaktion rückgängig: ${reason}`,
+    networkError:
+      "Netzwerkfehler. Prüfe deine Internetverbindung und versuche es erneut.",
+    timeout:
+      "Zeitüberschreitung der Anfrage. Das Netzwerk ist möglicherweise überlastet. Versuche es erneut.",
+    nonceTooLow:
+      "Nonce-Konflikt bei der Transaktion. Warte, bis ausstehende Transaktionen bestätigt sind.",
   },
   settings: {
     ...english.settings,
@@ -3777,8 +3869,7 @@ const german: Copy = {
     statusChecking: "wird geprüft",
     statusReady: "Bereit",
     shortcutTitle: "Tastaturbelegung",
-    shortcutHint:
-      "Schnellpfade bleiben sichtbar; sie umgehen nie Wallet-, Netzwerk- oder Signaturgrenzen.",
+    shortcutHint: "Kurzbefehle navigieren. Sie signieren nie.",
     shortcutPalette: "Aktionen, Agents, Belege und Routen suchen",
     shortcutSurfaces: "Hauptbereiche öffnen",
     shortcutFlows: "Ausführungs-Flows öffnen",
@@ -3964,9 +4055,9 @@ const german: Copy = {
     historyLoading: "Server-Verlauf wird geladen…",
     historyRestore: "Server-Verlauf wiederherstellen",
     historyRestoreHint:
-      "Signiere eine Wallet-Nachricht, um die serverseitigen Transkripte dieses Wallets zu laden. Es wird keine Transaktion gesendet.",
+      "Eine kostenlose Signatur lädt deine gespeicherten Chats.",
     historyOnChainNote:
-      "Deine Chats werden on-chain gespeichert. Stelle sie wieder her (1 Signatur)",
+      "Deine Chats werden auf 0G Storage gespeichert. Stelle sie wieder her (1 Signatur)",
     historyDelete: (title) => `Chat löschen: ${title}`,
     untitledThread: "Neuer Chat",
     deletedToast: "Chat gelöscht",
@@ -3988,6 +4079,7 @@ const german: Copy = {
     rateLimited:
       "Zu viele Anfragen: einen Moment warten, dann erneut versuchen.",
     noResponse: "Keine Antwort: erneut versuchen.",
+    errNoResponseBody: "Keine Antwortdaten vom Chat-Dienst.",
     unknownTool: (name) => `Unbekanntes Tool: ${name}`,
     invalidTokenId: (tokenId) => `Ungültige tokenId: ${tokenId}`,
     transferCancelled:
@@ -4089,6 +4181,7 @@ const german: Copy = {
         "Eindeutigkeit wird bestätigt",
         "Beleg indexiert",
       ],
+      receiptKind: "Minten",
       consequence:
         "Nach der Bestätigung gehört dein neuer Agent für immer dir.",
       proofLine: "Speichert Metadaten-Hash und dessen On-Chain-Registrierung.",
@@ -4115,7 +4208,7 @@ const german: Copy = {
     transfer: {
       ...english.flows.transfer,
       title: "Einen Agenten weitergeben",
-      copy: "Challenge → Signatur → Abschluss → On-Chain-Beleg. Der Ablauf bleibt nachvollziehbar.",
+      copy: "Challenge → Signatur → Abschluss → On-Chain-Beleg. Der Ablauf verschwindet nie.",
       steps: ["Empfänger stimmt zu", "Du sendest", "Fertig"],
       consequence: "Den geprüften Nachweis an diesen Empfänger senden.",
       proofLine: "Bindet Empfänger-Challenge und Ablaufdatum.",
@@ -4141,7 +4234,7 @@ const german: Copy = {
     },
     deposit: {
       title: "In den Vault einzahlen",
-      copy: "Betrag → Prüfung → Wallet-Grenze → On-Chain-Beleg. Der Vault-Stand bleibt sichtbar, bevor Wert fließt.",
+      copy: "Betrag → Prüfung → On-Chain-Beleg. Der Vault-Stand bleibt sichtbar, bevor Wert fließt.",
       steps: ["Betrag + Guthaben", "Wallet-Bestätigung", "Beleg indexiert"],
       receiptKind: "Einzahlen",
       consequence: "Den geprüften Betrag in den Vault dieses Agenten bewegen.",
@@ -4155,7 +4248,7 @@ const german: Copy = {
     },
     withdraw: {
       title: "Aus dem Vault auszahlen",
-      copy: "Betrag → Prüfung → Wallet-Grenze → On-Chain-Beleg. Der Reststand wird vor dem Signieren gezeigt.",
+      copy: "Betrag → Prüfung → On-Chain-Beleg. Der Reststand wird vor dem Signieren gezeigt.",
       steps: ["Guthaben geprüft", "Wallet-Bestätigung", "Beleg indexiert"],
       receiptKind: "Auszahlen",
       consequence: "Den geprüften Betrag aus dem Vault dieses Agenten bewegen.",
@@ -4286,12 +4379,11 @@ const german: Copy = {
     confirmTwo: "Ja, zwei Wallet-Anfragen",
     confirmTwoApprovePay: "Ja, einmal jetzt, einmal zum Zahlen",
     confirmOneAllowance: "Nein, die Freigabe reicht",
-    confirmChecking: "Bis zu 2 Wallet-Anfragen (Freigabe wird geprüft…)",
+    confirmChecking: "Bis zu 2 Wallet-Anfragen (wird geprüft…)",
     confirmReceiverThenSubmit: "Zustimmung erforderlich: ja",
     transferKeyHint:
       "64 Byte Hex (0x…), der Verschlüsselungsschlüssel des neuen Eigentümers.",
-    transferPubkeyFallbackSummary:
-      "Erweitert, öffentlichen Schlüssel stattdessen einfügen",
+    transferPubkeyFallbackSummary: "Erweitert, Schlüssel selbst einfügen",
     transferPubkeyResolvePending: "Schlüssel für diese Adresse wird gesucht…",
     transferPubkeyResolveFailed:
       "Kein öffentlicher Schlüssel on-chain für diese Adresse gefunden. Füge ihn unten manuell ein.",
@@ -4575,12 +4667,10 @@ const german: Copy = {
     labels: {
       overview: "Konsolen-Übersicht",
       settings: "Sitzungseinstellungen",
-      transactions: deTxCenterName,
       chat: "Operator-Chat",
       mint: "Agent minten",
       payment: "Zahlungsroute",
       transfer: "Transfer-Flow",
-      storage: "Speicher-Nachweise",
       agent: "Agent-Detail",
       roster: "Agent-Liste",
       tick: deTickName,
@@ -4595,10 +4685,6 @@ const german: Copy = {
       settings: [
         { label: "Anzeige", value: "•••" },
         { label: "Sitzung", value: "••• Std." },
-      ],
-      transactions: [
-        { label: "Belege", value: "••• indexiert" },
-        { label: "Wiederherstellung", value: "bereit" },
       ],
       chat: [
         { label: "Thread", value: "••• Turns" },
@@ -4615,10 +4701,6 @@ const german: Copy = {
       transfer: [
         { label: "Co-Signatur", value: "Empfänger" },
         { label: "Ablauf", value: "erzwungen" },
-      ],
-      storage: [
-        { label: "Nachweise", value: "••• verifiziert" },
-        { label: "Roots", value: "on-chain" },
       ],
       agent: [
         { label: "Identität", value: "ERC-7857" },
@@ -4653,11 +4735,6 @@ const german: Copy = {
       titleEmphasis: "nach deinen Regeln.",
       copy: "Sitzung, Anzeige und Konsolen-Präferenzen.",
     },
-    transactions: {
-      titleLead: "Jede Zahlung verfolgt",
-      titleEmphasis: "bis zum Beleg.",
-      copy: "Jeder Beleg, sein Status und seine Wiederherstellung.",
-    },
     chat: {
       titleLead: "Ein Chat, der dein",
       titleEmphasis: "Setup kennt.",
@@ -4666,22 +4743,17 @@ const german: Copy = {
     mint: {
       titleLead: "Benenne deinen Agenten",
       titleEmphasis: "on-chain.",
-      copy: "Dein Name wird eine On-Chain-Identität mit Beleg.",
+      copy: "Der gewählte Name wird eine On-Chain-Identität mit Beleg.",
     },
     payment: {
       titleLead: "Zahle genau,",
       titleEmphasis: "was du freigibst.",
-      copy: "Gib exakt frei, was du zahlst; Gebühren vorab sichtbar.",
+      copy: "Gib exakt frei, was du zahlst; Kosten vor dem Signieren klar.",
     },
     transfer: {
       titleLead: "Transfers, die dein",
       titleEmphasis: "Empfänger co-signiert.",
       copy: "Der Empfänger co-signiert; der Ablauf wird erzwungen.",
-    },
-    storage: {
-      titleLead: "Storage, den du",
-      titleEmphasis: "verifizieren kannst.",
-      copy: "Jeder Storage-Schritt ist nachprüfbar, von Ende zu Ende.",
     },
     agent: {
       titleLead: "Jeder Agent,",
