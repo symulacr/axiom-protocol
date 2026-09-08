@@ -9,7 +9,6 @@ import {
 import { formatToolResult } from "@axiom/chat-runtime";
 import {
   AXIOM_ASSISTANT_NAME,
-  CHAT_TOOL_CLASS_LABELS,
   classOfTool,
   getChatToolSpec,
 } from "@axiom/config/chat-tools";
@@ -50,15 +49,18 @@ export function ToolClassBadge({
 }: {
   name: string;
 }): ReactElement | null {
+  const { state } = useUiStore();
+  const chatCopy = getCopy(state.settings.locale).chat;
   const cls = classOfTool(name);
   if (!cls) return null;
+  const classLabel = chatCopy.toolClassLabels[cls];
   return (
     <span
       className="tool-card__class"
-      aria-label={CHAT_TOOL_CLASS_LABELS[cls]}
+      aria-label={classLabel}
       title={getChatToolSpec(name)?.hint}
     >
-      ({CHAT_TOOL_CLASS_LABELS[cls]})
+      ({classLabel})
     </span>
   );
 }
@@ -94,7 +96,8 @@ export function MsgAvatar({
 }): ReactElement | null {
   if (role === "tool") return null;
   const first = (content ?? "").trim().match(/\p{L}/u)?.[0];
-  const glyph = role === "user" ? (first ?? "Y") : (AXIOM_ASSISTANT_NAME.charAt(0) || "A");
+  const glyph =
+    role === "user" ? (first ?? "Y") : AXIOM_ASSISTANT_NAME.charAt(0) || "A";
   return (
     <span className="msg-avatar" aria-hidden="true">
       {glyph.toUpperCase()}
@@ -234,7 +237,9 @@ export function AskUserCard({
             </Button>
           </div>
         ) : (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "var(--space-2)" }}>
+          <div
+            style={{ display: "flex", flexWrap: "wrap", gap: "var(--space-2)" }}
+          >
             {options.map((o, i) => (
               <Button key={i} variant="secondary" onClick={() => submit(o)}>
                 {o}
@@ -407,6 +412,8 @@ export function ToolCallCard({
   error?: string;
 }): ReactElement {
   const label = TOOL_LABELS[run.name] ?? run.name;
+  const { state } = useUiStore();
+  const chatCopy = getCopy(state.settings.locale).chat;
   const resultBody = result !== undefined ? result : run.result;
   const errorBody = error !== undefined ? error : run.error;
   const failed = run.status === "error";
@@ -441,9 +448,12 @@ export function ToolCallCard({
         <strong className="copper tool-card__label">{label}</strong>
         <ToolClassBadge name={run.name} />
         {sponsored ? (
-          <span className="tool-card__sponsored" aria-label="sponsored relay"
-            title="Executed gas-free via the protocol GasTank">
-            sponsored
+          <span
+            className="tool-card__sponsored"
+            aria-label={chatCopy.toolSponsoredA11y}
+            title={chatCopy.toolSponsoredTitle}
+          >
+            {chatCopy.toolSponsored}
           </span>
         ) : null}
         {/* T5 a11y: the ticking seconds re-announce every second on the
@@ -456,8 +466,8 @@ export function ToolCallCard({
           {run.status === "running"
             ? `${elapsedSec}s…`
             : run.status === "success"
-              ? "done"
-              : "failed"}
+              ? chatCopy.toolDone
+              : chatCopy.toolFailed}
         </span>
       </button>
       {expanded && (
@@ -465,12 +475,14 @@ export function ToolCallCard({
           <div className="tool-card__meta">
             <span aria-hidden={run.status === "running" || undefined}>
               {run.status === "running"
-                ? `running ${elapsedSec}s`
-                : `ran in ${elapsedSec}s`}
+                ? chatCopy.toolRunning(elapsedSec)
+                : chatCopy.toolRanIn(elapsedSec)}
             </span>
             {run.status !== "running" ? (
               <span className="visually-hidden">
-                {run.status === "success" ? "done" : "failed"}
+                {run.status === "success"
+                  ? chatCopy.toolDone
+                  : chatCopy.toolFailed}
               </span>
             ) : null}
           </div>
@@ -518,7 +530,11 @@ function StepIcon({ status }: { status: StepStatus }): ReactElement {
         <X size={13} />
       </span>
     );
-  return <span className="step__ic step__ic--pend" aria-hidden="true">·</span>;
+  return (
+    <span className="step__ic step__ic--pend" aria-hidden="true">
+      ·
+    </span>
+  );
 }
 
 /** Merged, collapsible "Worked for Ns · N steps" block: one row per tool call,
@@ -558,7 +574,9 @@ export function Steps({
     ? Math.max(0, Math.floor((Date.now() - started) / 1000))
     : 0;
   const summary =
-    (running ? copy.stepsWorking(steps.length) : copy.stepsSummary(steps.length, seconds)) +
+    (running
+      ? copy.stepsWorking(steps.length)
+      : copy.stepsSummary(steps.length, seconds)) +
     (failed > 0 ? copy.stepsFailedSuffix(failed) : "");
   return (
     <div className={`steps${failed > 0 ? " steps--failed" : ""}`}>
@@ -579,9 +597,14 @@ export function Steps({
             const label = TOOL_LABELS[step.name] ?? step.name;
             const errorBody =
               step.run?.error ??
-              (status === "error" && step.hasResult ? step.result ?? undefined : undefined);
+              (status === "error" && step.hasResult
+                ? (step.result ?? undefined)
+                : undefined);
             return (
-              <div key={step.id} className={`step${status === "error" ? " step--fail" : ""}`}>
+              <div
+                key={step.id}
+                className={`step${status === "error" ? " step--fail" : ""}`}
+              >
                 <button
                   type="button"
                   className="step__head"
@@ -626,7 +649,10 @@ export function Steps({
                         sendTransactionAsync={sendTransactionAsync}
                       />
                     ) : step.run?.result ? (
-                      <ToolResultBody name={step.name} content={step.run.result} />
+                      <ToolResultBody
+                        name={step.name}
+                        content={step.run.result}
+                      />
                     ) : null}
                   </div>
                 ) : null}
@@ -694,7 +720,6 @@ export function ToolResultBody({
     </pre>
   );
 }
-
 
 type EncodePreview = {
   encodeOnly?: boolean;
@@ -825,9 +850,7 @@ function EncodePreviewCard({
       {preview.value && preview.value !== "0" ? (
         <div className="num">value: {formatNativeValue(preview.value)}</div>
       ) : null}
-      {amountLabel ? (
-        <div className="num">amount: {amountLabel}</div>
-      ) : null}
+      {amountLabel ? <div className="num">amount: {amountLabel}</div> : null}
       {preview.data ? (
         <div style={{ wordBreak: "break-all", marginTop: "var(--space-1)" }}>
           data: {preview.data.slice(0, 66)}
@@ -971,6 +994,8 @@ function ArchiveResultCard({
   name: string;
   content: string | null;
 }): ReactElement {
+  const { state } = useUiStore();
+  const chatCopy = getCopy(state.settings.locale).chat;
   const obj = parseObj(content);
   const fallback = formatToolResult(name, content);
 
@@ -995,7 +1020,7 @@ function ArchiveResultCard({
               : "archive-result strong--muted"
           }
         >
-          {archived ? "Was archived" : "Not archived"}
+          {archived ? chatCopy.toolWasArchived : chatCopy.toolNotArchived}
         </strong>
         {obj.archivedAt ? (
           <div className="archive-muted-top">{String(obj.archivedAt)}</div>
