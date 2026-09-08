@@ -1148,7 +1148,7 @@ body.light .three-bg { opacity: .35; }
 .shortcut-map dt { color: var(--copper-bright); font: 500 var(--fs-mono)/1.35 var(--font-mono, monospace); }
 .shortcut-map dd { margin: 0; color: var(--muted); font-size: var(--fs-small); line-height: var(--support-leading); }
 
-.ops-summary-recovery { position: relative; display: grid; gap: .2rem; min-width: 0; padding: 0; text-align: start; color: inherit; background: var(--completion-panel); }
+.ops-summary-recovery { position: relative; display: grid; gap: .2rem; min-width: 0; padding: 0; border: 0; text-align: start; color: inherit; background: var(--completion-panel); }
 .ops-summary-recovery strong { color: var(--copper-bright); }
 .ops-summary-recovery svg { position: absolute; top: .3rem; right: 0; color: var(--copper); }
 .ops-summary-recovery:hover strong { color: var(--ink-bright); }
@@ -3851,7 +3851,9 @@ strong {
 }
 @media (min-width: 980px) {
   .landing-nav .nav-inline { display: flex; }
-  .landing-nav .landing-menu-trigger { display: none; }
+  /* 0,3,1 so the desktop hide actually beats the 40px base rule (0,2,1) —
+     the trigger collapses to mobile per the LandingPage header contract. */
+  body .landing-nav .icon-button.landing-menu-trigger { display: none; }
   .landing-nav .nav-connect { display: inline-flex; }
 }
 
@@ -3875,6 +3877,11 @@ strong {
 .principle p { margin: 0; color: var(--muted); font-size: var(--fs-body); line-height: 1.6; }
 .principle .p-link { display: inline-flex; align-items: center; gap: var(--space-1); font: 500 var(--fs-mono)/1 var(--font-mono); color: var(--copper-bright); text-decoration: none; transition: color var(--motion-fade-220); }
 .principle .p-link:hover { color: var(--ink); }
+/* Phones: three columns squeeze cards to ~100px and the last one clips behind
+   overflow-x:clip (QA F1). Single column below 700px; tablets keep 3. */
+@media (max-width: 700px) {
+  .principles-grid { grid-template-columns: 1fr; }
+}
 
 /* ---- L2-N8: landing footer ---- */
 /* Wave 5: same shared 1180px container as everything else (was 1420px). */
@@ -4851,6 +4858,8 @@ body.light .recovery-404 .button-primary {
   cursor: pointer;
 }
 .chat-empty__browse:hover { color: var(--copper-bright); text-decoration: underline; }
+/* --copper only reaches ~4.01:1 on paper; the deeper bright step passes AA. */
+body.light .chat-empty__browse { color: var(--copper-bright); }
 .chat-tools {
   width: 100%;
   max-width: 560px;

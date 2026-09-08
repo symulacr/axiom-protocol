@@ -128,6 +128,7 @@ export function StoragePage({
             <span>
               {copy.storage.verifyExplorerHint}{" "}
               <a
+                className="text-link"
                 href="https://docs.0g.ai/developer-hub/building-on-0g/storage/sdk"
                 target="_blank"
                 rel="noreferrer noopener"
