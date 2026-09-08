@@ -9,6 +9,29 @@
   color: var(--aw-text);
   /* V14: #0b0e0f ≡ --canvas (exact token match; rendered output unchanged). */
   background: var(--canvas);
+  /* Dark-lock enforcement: body.light (index.css) remaps these tokens for the
+     landing, and the remaps inherit into the hub. Re-pin the consumed set to
+     the dark :root values so the hub stays dark in both themes. The awwwards
+     copper ramp (--aw-copper-*) is never remapped, so it resolves dark here. */
+  --aw-text: oklch(91.6% 0.014 74.4);
+  --aw-text-dim: oklch(77.9% 0.015 74.4);
+  --aw-mist: oklch(96.2% 0.007 164.9);
+  --aw-text-soft: color-mix(in srgb, var(--aw-mist) 72%, transparent);
+  --aw-accent: var(--aw-copper-400);
+  --aw-accent-strong: var(--aw-copper-500);
+  --aw-phosphor: oklch(84.4% 0.137 164.1);
+  --aw-line: color-mix(in srgb, var(--aw-copper-500) 16%, transparent);
+  --aw-line-soft: color-mix(in srgb, white 7%, transparent);
+  --aw-glass: color-mix(in srgb, oklch(16.1% 0.005 219.8) 72%, transparent);
+  --aw-card-grad: linear-gradient(
+    170deg,
+    color-mix(in srgb, oklch(21.7% 0.014 239.4) 88%, transparent),
+    color-mix(in srgb, oklch(16.1% 0.005 219.8) 92%, transparent)
+  );
+  --copper: #d28b52;
+  --copper-bright: #efae6b;
+  --phosphor: #67e8b4;
+  --completion-bright: var(--copper-bright);
 }
 
 .seo-public-nav {
@@ -26,7 +49,7 @@
   min-height: var(--hit-area, 44px);
   gap: var(--space-2);
   color: var(--completion-bright);
-  font-family: Syne, sans-serif;
+  font-family: var(--font-display);
   font-weight: 800;
   letter-spacing: 0.16em;
   text-decoration: none;
@@ -43,7 +66,7 @@
   align-items: center;
   min-height: var(--hit-area, 44px);
   color: var(--aw-text-dim);
-  font: 500 var(--fs-mono)/1 "JetBrains Mono", monospace;
+  font: 500 var(--fs-mono)/1 var(--font-mono);
   letter-spacing: 0.05em;
   text-decoration: none;
 }
@@ -51,6 +74,8 @@
 .seo-public-nav nav a {
   padding: var(--space-2) 0;
   border-bottom: 1px solid transparent;
+  /* Links never wrap mid-label; below 900px the strip scrolls instead. */
+  white-space: nowrap;
 }
 
 .seo-public-nav nav a:hover,
@@ -90,7 +115,7 @@
   padding: 0;
   border-left: 2px solid var(--copper);
   color: var(--copper);
-  font-family: "JetBrains Mono", monospace;
+  font-family: var(--font-mono);
 }
 
 .seo-hero-copy {
@@ -103,8 +128,21 @@
 	max-inline-size: 11.5ch;
 	margin: var(--space-4) 0 var(--space-5);
 	color: var(--aw-text);
-	font: 800 clamp(48px, 5.25vw, 78px) / 0.94 Syne, sans-serif;
+	font: 800 clamp(48px, 5.25vw, 78px) / 0.94 var(--font-display);
 	letter-spacing: -0.055em;
+	text-wrap: balance;
+}
+
+/* The title's \n becomes span+<br> (MultilineHeading); a forced break
+   defeats h1-level text-wrap:balance, so each fragment balances as its own
+   block and the now-redundant <br> is hidden. */
+.seo-hero h1 span {
+  display: block;
+  text-wrap: balance;
+}
+
+.seo-hero h1 br {
+  display: none;
 }
 
 .seo-hero h1 span:last-child {
@@ -132,7 +170,7 @@
   min-height: var(--hit-area, 44px);
   gap: var(--space-2);
   padding: var(--space-3) var(--space-4);
-  font: 500 var(--fs-mono)/1 "JetBrains Mono", monospace;
+  font: 500 var(--fs-mono)/1 var(--font-mono);
   letter-spacing: 0.04em;
   text-decoration: none;
 }
@@ -163,14 +201,14 @@
   align-items: center;
   gap: var(--space-2);
   color: var(--phosphor);
-  font: 500 var(--fs-mono)/1 "JetBrains Mono", monospace;
+  font: 500 var(--fs-mono)/1 var(--font-mono);
   letter-spacing: 0.12em;
 }
 
 .seo-proof-card > strong {
   display: block;
   margin: 20px 0 var(--space-3);
-  font: 600 var(--fs-title)/1.1 Syne, sans-serif;
+  font: 600 var(--fs-title)/1.1 var(--font-display);
 }
 
 .seo-proof-card ul {
@@ -214,7 +252,7 @@
 
 .seo-link-field h2 {
   margin: var(--space-3) 0;
-  font: 700 clamp(30px, 4vw, 56px) / 0.96 Syne, sans-serif;
+  font: 700 clamp(30px, 4vw, 56px) / 0.96 var(--font-display);
   letter-spacing: -0.045em;
 }
 
@@ -262,11 +300,11 @@
 
 .seo-link-grid span {
   color: var(--copper);
-  font: 500 var(--fs-mono)/1 "JetBrains Mono", monospace;
+  font: 500 var(--fs-mono)/1 var(--font-mono);
 }
 
 .seo-link-grid strong {
-  font: var(--fw-title) var(--fs-title)/1.1 Syne, sans-serif;
+  font: var(--fw-title) var(--fs-title)/1.1 var(--font-display);
 }
 
 .seo-link-grid svg {
@@ -280,7 +318,7 @@
   padding: var(--space-4) 0 var(--space-5);
   border-top: 1px solid rgba(233, 226, 217, 0.16);
   color: #86817b;
-  font: var(--fs-mono)/1.4 "JetBrains Mono", monospace;
+  font: var(--fs-mono)/1.4 var(--font-mono);
   letter-spacing: 0.05em;
 }
 
@@ -292,9 +330,21 @@
 
 @media (max-width: 900px) {
   .seo-public { padding: 0 var(--space-5); }
-  .seo-public-nav { display: flex; gap: var(--space-4); }
-  .seo-public-nav nav { display: none; }
-  .seo-console-link { margin-left: auto; }
+  .seo-public-nav { display: flex; flex-wrap: wrap; gap: 0 var(--space-4); }
+  /* No JS menu on the hubs: the nav wraps to a full-width strip under the
+     brand row and scrolls horizontally when the five links overflow. */
+  .seo-public-nav nav {
+    order: 3;
+    flex: 1 0 100%;
+    justify-content: flex-start;
+    overflow-x: auto;
+    scrollbar-width: none;
+    border-top: 1px solid color-mix(in srgb, var(--aw-accent) 24%, transparent);
+    margin-inline: calc(var(--space-5) * -1);
+    padding-inline: var(--space-5);
+  }
+  .seo-public-nav nav::-webkit-scrollbar { display: none; }
+  .seo-console-link { order: 2; margin-left: auto; }
 	.seo-hero { grid-template-columns: minmax(0, 1fr); gap: var(--space-6); padding: 44px 0; }
 	.seo-route-rail { grid-column: 1; flex-direction: row; align-items: center; gap: var(--space-2); min-height: auto; padding: 0 0 var(--space-2); border-left: 0; border-bottom: 1px solid color-mix(in srgb, var(--aw-accent) 38%, transparent); }
 	.seo-hero-copy { grid-column: 1; }
@@ -307,6 +357,7 @@
 @media (max-width: 480px) {
   .seo-public { padding: 0 var(--space-4); }
   .seo-public-nav { min-height: 64px; }
+  .seo-public-nav nav { margin-inline: calc(var(--space-4) * -1); padding-inline: var(--space-4); }
   .seo-console-link { padding: var(--space-2) var(--space-2); font-size: var(--fs-mono) !important; }
   .seo-proof-card { padding: var(--space-5); }
   .seo-link-grid a { padding: var(--space-4) var(--space-3); }

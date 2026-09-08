@@ -8,8 +8,8 @@ import { getCopy } from "../lib/copy.js";
 import { routePath } from "../lib/routeRegistry.js";
 import type { Locale } from "../lib/copy.js";
 
-/** Empty-state glyph — semantic exception to the 14/16/18 icon scale. */
-const EMPTY_STATE_ICON_SIZE = 25;
+/** Empty-state glyph — 24px, on the standard 8px icon grid. */
+const EMPTY_STATE_ICON_SIZE = 24;
 
 export function StakingPage({
   go,
@@ -25,7 +25,7 @@ export function StakingPage({
           no rail item and is reachable by deep link — the header itself carries
           the return path so the page never floats parentless. */}
       <PageHead
-        title="0G Stake"
+        title={copy.pageTitle}
         lede={copy.lede}
         actions={
           <Button variant="ghost" onClick={() => go(routePath("dashboard"))}>

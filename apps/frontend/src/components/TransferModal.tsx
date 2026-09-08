@@ -31,25 +31,18 @@ import {
 import { ReceiverKeyUnknownError } from "../hooks/useTransfer.js";
 import { useUiStore } from "../lib/uiStore.js";
 import { getCopy } from "../lib/copy.js";
+import type { Copy } from "../lib/copy.js";
 
 /*
-  Shared overlay shell + Controls kit; title/co-sign localize via
-  copy.flowUi; body English per flow-body i18n deferral.
+  Shared overlay shell + Controls kit; title, co-sign step and the full body
+  localize via copy.flowUi (I4: the flow-body i18n deferral landed).
 */
 
 const RECEIVER_PUBKEY_HEX_LENGTH = 130;
 
-const PHASE_LABELS: Record<TransferPhase, string> = {
-  idle: "Ready",
-  challenge: "Preparing transfer…",
-  signing: "Waiting for signature…",
-  finalizing: "Securing data for the receiver…",
-  confirming: "Confirming on-chain…",
-};
-
 /** Every failed phase retries identically: Edit regenerates a fresh nonce
- * (single-use). Only the idle phase has no retry hint to offer. */
-const RETRY_HINT = "Failed. Tap Edit to retry.";
+ * (single-use). Only the idle phase has no retry hint to offer — the copy
+ * lives in flowUi.transferRetryHint, applied where the error renders. */
 
 type TransferModalProps = {
   tokenId: bigint;
@@ -58,11 +51,14 @@ type TransferModalProps = {
   onSuccess?: (txHash: `0x${string}`) => void;
 };
 
-function validatePubKey(value: string): string | null {
+/** Error codes only — the localized strings live in flowUi.transferErrKey*. */
+function validatePubKey(
+  value: string,
+): "required" | "prefix" | "length" | null {
   if (value.length === 0) return "required";
-  if (!value.startsWith("0x")) return "must be 0x-prefixed";
+  if (!value.startsWith("0x")) return "prefix";
   if (value.length !== RECEIVER_PUBKEY_HEX_LENGTH) {
-    return `must be ${RECEIVER_PUBKEY_HEX_LENGTH} chars (64 raw bytes, no 0x04 prefix)`;
+    return "length";
   }
   return null;
 }
@@ -70,10 +66,12 @@ function validatePubKey(value: string): string | null {
 /** Shared modal shell: the app's overlay layer with the dismiss trio via useModalDismiss. */
 function ModalSheet({
   title,
+  closeLabel,
   onClose,
   children,
 }: {
   title: string;
+  closeLabel: string;
   onClose: () => void;
   children: ReactNode;
 }): ReactElement {
@@ -101,7 +99,11 @@ function ModalSheet({
           <div>
             <h2 id={titleId}>{title}</h2>
           </div>
-          <button className="icon-button" onClick={onClose} aria-label="Close">
+          <button
+            className="icon-button"
+            onClick={onClose}
+            aria-label={closeLabel}
+          >
             <X size={16} />
           </button>
         </header>
@@ -114,12 +116,14 @@ function ModalSheet({
 
 function PhaseIndicator({
   transferPhase,
+  labels,
 }: {
   transferPhase: TransferPhase;
+  labels: Record<TransferPhase, string>;
 }): ReactElement {
   return (
     <Status
-      label={PHASE_LABELS[transferPhase] ?? transferPhase}
+      label={labels[transferPhase] ?? transferPhase}
       tone={transferPhase === "idle" ? "muted" : "live"}
     />
   );
@@ -138,6 +142,7 @@ function TransferFormPhase({
   pubkeyFallbackSummary,
   pubkeyResolvePending,
   pubkeyResolveFailed,
+  pubkeyResolveResolved,
   oldDataEncryptionKey,
   onOldDataKeyChange,
   oldDataUri,
@@ -148,6 +153,7 @@ function TransferFormPhase({
   canSubmit,
   isLoading,
   onSubmit,
+  f,
 }: {
   formId: string;
   receiverAddress: string;
@@ -159,10 +165,11 @@ function TransferFormPhase({
   /** P3 §(b)#4: the Advanced paste field only appears when the address has
    * no on-chain key (NO_ONCHAIN_KEY) — the normal path never asks for hex. */
   pubkeyFallback: boolean;
-  pubkeyResolveStatus: "idle" | "pending" | "failed";
+  pubkeyResolveStatus: "idle" | "pending" | "failed" | "resolved";
   pubkeyFallbackSummary: string;
   pubkeyResolvePending: string;
   pubkeyResolveFailed: string;
+  pubkeyResolveResolved: string;
   oldDataEncryptionKey: string;
   onOldDataKeyChange: (value: string) => void;
   oldDataUri: string;
@@ -173,16 +180,15 @@ function TransferFormPhase({
   canSubmit: boolean;
   isLoading: boolean;
   onSubmit: (e: FormEvent<HTMLFormElement>) => Promise<void>;
+  f: Copy["flowUi"];
 }): ReactElement {
   return (
     <form onSubmit={onSubmit}>
-      <p className="transfer-modal-lede">
-        You'll sign once to authorize, then confirm the on-chain transfer.
-      </p>
+      <p className="transfer-modal-lede">{f.transferLede}</p>
 
       <Field
         id={`${formId}-to`}
-        label="Receiver address"
+        label={f.transferReceiverLabel}
         value={receiverAddress}
         onChange={onAddressChange}
         placeholder="0x…"
@@ -199,10 +205,10 @@ function TransferFormPhase({
             <summary>{pubkeyFallbackSummary}</summary>
             <Field
               id={`${formId}-pubkey`}
-              label="Receiver public key"
+              label={f.transferPubkeyLabel}
               value={receiverPubKey}
               onChange={onPubKeyChange}
-              placeholder="0x…  (128 hex chars)"
+              placeholder={f.transferPubkeyPlaceholder}
               maxLength={RECEIVER_PUBKEY_HEX_LENGTH}
               multiline
               rows={3}
@@ -211,33 +217,32 @@ function TransferFormPhase({
             />
           </details>
         </>
+      ) : pubkeyResolveStatus === "pending" ? (
+        <p className="transfer-modal-lede">{pubkeyResolvePending}</p>
       ) : (
-        pubkeyResolveStatus === "pending" && (
-          <p className="transfer-modal-lede">{pubkeyResolvePending}</p>
+        pubkeyResolveStatus === "resolved" && (
+          <p className="transfer-modal-lede">{pubkeyResolveResolved}</p>
         )
       )}
 
       <details className="transfer-modal-details">
-        <summary>Re-encrypt for receiver (optional)</summary>
-        <p className="transfer-modal-lede">
-          Optional: AES key + storage URI so only the receiver can read the data
-          after the transfer. Blank = sign-only.
-        </p>
+        <summary>{f.transferRekeySummary}</summary>
+        <p className="transfer-modal-lede">{f.transferRekeyHint}</p>
         <Field
           id={`${formId}-oldkey`}
-          label="Old data encryption key (base64)"
+          label={f.transferOldKeyLabel}
           value={oldDataEncryptionKey}
           onChange={onOldDataKeyChange}
-          placeholder="base64 32-byte AES key"
+          placeholder={f.transferOldKeyPlaceholder}
           maxLength={256}
           mono
         />
         <Field
           id={`${formId}-olduri`}
-          label="Old data URI (0x…)"
+          label={f.transferOldUriLabel}
           value={oldDataUri}
           onChange={onOldDataUriChange}
-          placeholder="0x… storage root hash"
+          placeholder={f.transferOldUriPlaceholder}
           maxLength={128}
           mono
           error={rekeyError ?? undefined}
@@ -248,7 +253,7 @@ function TransferFormPhase({
 
       <div className="review-actions">
         <Button variant="ghost" onClick={cancel} disabled={isLoading}>
-          Cancel
+          {f.cancel}
         </Button>
         <Button
           type="submit"
@@ -256,7 +261,7 @@ function TransferFormPhase({
           busy={isLoading}
           icon={<ShieldCheck size={16} />}
         >
-          {isLoading ? "Signing…" : "Sign transfer authorization"}
+          {isLoading ? f.transferSigning : f.transferSignAction}
         </Button>
       </div>
     </form>
@@ -269,12 +274,14 @@ function ConfirmTransferPhase({
   isLoading,
   onEdit,
   onConfirm,
+  f,
 }: {
   signature: TransferResponse | null;
   mergedError: ReactNode;
   isLoading: boolean;
   onEdit: () => void;
   onConfirm: () => Promise<void>;
+  f: Copy["flowUi"];
 }): ReactElement {
   return (
     <form
@@ -283,25 +290,23 @@ function ConfirmTransferPhase({
         void onConfirm();
       }}
     >
-      <p className="transfer-modal-lede">
-        Confirm. Your wallet will ask for the final signature.
-      </p>
+      <p className="transfer-modal-lede">{f.transferConfirmLede}</p>
 
       {signature !== null && signature.rekeyed === true && (
         <div className="review-proof">
           <Check size={14} />
           <span>
-            <strong>Transfer authorized</strong>: the agent's data was
-            re-encrypted so only the new owner can read it.
+            <strong>{f.transferAuthorizedTitle}</strong>:{" "}
+            {f.transferAuthorizedBody}
             {signature.newDataHash !== undefined && (
               <details>
-                <summary>Proof details</summary>
-                New metadata hash:{" "}
+                <summary>{f.transferProofDetails}</summary>
+                {f.transferNewHashLabel}{" "}
                 <span className="mono">{signature.newDataHash}</span>
                 {signature.ownershipProof?.sealedKey !== undefined && (
                   <>
                     {" "}
-                    ; new sealed key:{" "}
+                    {f.transferSealedKeyLabel}{" "}
                     <span className="mono">
                       {truncateAddress(
                         signature.ownershipProof.sealedKey,
@@ -320,12 +325,12 @@ function ConfirmTransferPhase({
       {signature !== null && (
         <dl className="review-facts">
           <div>
-            <dt>Ownership proof</dt>
+            <dt>{f.transferOwnershipProof}</dt>
             <dd className="mono">{signature.signer ?? "—"}</dd>
           </div>
           {signature.ownershipProof !== undefined && (
             <div>
-              <dt>Valid until</dt>
+              <dt>{f.transferValidUntil}</dt>
               <dd className="mono">
                 {new Date(
                   Number(signature.ownershipProof.validUntil) * 1000,
@@ -335,7 +340,7 @@ function ConfirmTransferPhase({
           )}
           {signature.accessSigner !== undefined && (
             <div>
-              <dt>Accepted by</dt>
+              <dt>{f.transferAcceptedBy}</dt>
               <dd className="mono">{signature.accessSigner}</dd>
             </div>
           )}
@@ -346,7 +351,7 @@ function ConfirmTransferPhase({
 
       <div className="review-actions">
         <Button variant="ghost" onClick={onEdit} disabled={isLoading}>
-          Edit
+          {f.edit}
         </Button>
         <Button
           type="submit"
@@ -354,7 +359,7 @@ function ConfirmTransferPhase({
           busy={isLoading}
           icon={<ShieldCheck size={16} />}
         >
-          {isLoading ? "Submitting…" : "Confirm on-chain transfer"}
+          {isLoading ? f.transferSubmitting : f.transferConfirmAction}
         </Button>
       </div>
     </form>
@@ -384,6 +389,8 @@ function CoSignPhase({
     note: string;
     blockedTitle: string;
     blockedBody: string;
+    recipientLabel: string;
+    editLabel: string;
   };
   onSign: () => Promise<void>;
   onEdit: () => void;
@@ -406,7 +413,7 @@ function CoSignPhase({
 
       <dl className="review-facts">
         <div>
-          <dt>Receiver</dt>
+          <dt>{copy.recipientLabel}</dt>
           <dd className="mono">{receiver}</dd>
         </div>
       </dl>
@@ -423,7 +430,7 @@ function CoSignPhase({
 
       <div className="review-actions">
         <Button variant="ghost" onClick={onEdit} disabled={isLoading}>
-          Edit
+          {copy.editLabel}
         </Button>
         {!blocked && (
           <Button
@@ -466,17 +473,17 @@ export function TransferModal({
   const retryGuidance = useMemo(() => {
     if (!error) return null;
 
-    if (transferPhase !== "idle") return RETRY_HINT;
+    if (transferPhase !== "idle") return flowCopy.transferRetryHint;
 
     const msg = error.message.toLowerCase();
     if (msg.includes("challenge")) {
-      return "The request failed. Please try again.";
+      return flowCopy.transferErrChallenge;
     }
     if (msg.includes("final") || msg.includes("proof struct")) {
-      return "Submission failed. Nothing was sent. Tap Edit to retry.";
+      return flowCopy.transferErrSubmit;
     }
-    return "Something went wrong. Tap Edit to start over.";
-  }, [error, transferPhase]);
+    return flowCopy.transferErrGeneric;
+  }, [error, transferPhase, flowCopy]);
 
   const [receiverAddress, setReceiverAddress] = useState("");
   const [receiverPubKey, setReceiverPubKey] = useState("");
@@ -484,7 +491,7 @@ export function TransferModal({
   // field (spec-mandated fallback) is revealed; reset whenever the address changes.
   const [pubkeyFallback, setPubkeyFallback] = useState(false);
   const [pubkeyResolveStatus, setPubkeyResolveStatus] = useState<
-    "idle" | "pending" | "failed"
+    "idle" | "pending" | "failed" | "resolved"
   >("idle");
   const [oldDataEncryptionKey, setOldDataEncryptionKey] = useState("");
   const [oldDataUri, setOldDataUri] = useState("");
@@ -511,7 +518,7 @@ export function TransferModal({
       `/v1/registry/pubkey/${receiverAddress}`,
     )
       .then(() => {
-        if (!cancelled) setPubkeyResolveStatus("idle");
+        if (!cancelled) setPubkeyResolveStatus("resolved");
       })
       .catch((err: unknown) => {
         if (cancelled) return;
@@ -529,22 +536,26 @@ export function TransferModal({
   }, [receiverAddress]);
   const handleTransferred = useCallback(
     (txHash: `0x${string}`): void => {
-      toast.success(`Transfer ${txHash.slice(0, 10)}… confirmed`);
+      toast.success(flowCopy.transferConfirmedToast(txHash.slice(0, 10)));
       onSuccess?.(txHash);
     },
-    [onSuccess],
+    [onSuccess, flowCopy],
   );
 
-  const pubKeyError = useMemo(
-    () => (receiverPubKey.length > 0 ? validatePubKey(receiverPubKey) : null),
-    [receiverPubKey],
-  );
+  const pubKeyError = useMemo(() => {
+    if (receiverPubKey.length === 0) return null;
+    const code = validatePubKey(receiverPubKey);
+    if (code === null) return null;
+    if (code === "required") return flowCopy.transferErrKeyRequired;
+    if (code === "prefix") return flowCopy.transferErrKeyPrefix;
+    return flowCopy.transferErrKeyLength(RECEIVER_PUBKEY_HEX_LENGTH);
+  }, [receiverPubKey, flowCopy]);
   const addressError = useMemo(
     () =>
       receiverAddress.length > 0 && !isAddress(receiverAddress)
-        ? "not a valid EIP-55 address"
+        ? flowCopy.errRecipientAddress
         : null,
-    [receiverAddress],
+    [receiverAddress, flowCopy],
   );
   const canSubmit =
     isConnected &&
@@ -557,10 +568,10 @@ export function TransferModal({
     const hasKey = oldDataEncryptionKey.length > 0;
     const hasUri = oldDataUri.length > 0;
     if (hasKey !== hasUri) {
-      return "supply both old data key and old data URI to re-encrypt, or leave both blank";
+      return flowCopy.transferErrRekeyPair;
     }
     return null;
-  }, [oldDataEncryptionKey, oldDataUri]);
+  }, [oldDataEncryptionKey, oldDataUri, flowCopy]);
   const buildInput = useCallback((): TransferInput => {
     // P3 §(b)#4: no client nonce, no required pubkey — the hook resolves the
     // receiver key from the address at prepare time; a manual paste wins.
@@ -665,9 +676,13 @@ export function TransferModal({
   return (
     <ModalSheet
       title={flowCopy.transferAgentTitle(tokenId.toString())}
+      closeLabel={flowCopy.closeTransferA11y}
       onClose={cancel}
     >
-      <PhaseIndicator transferPhase={transferPhase} />
+      <PhaseIndicator
+        transferPhase={transferPhase}
+        labels={flowCopy.transferPhases}
+      />
 
       {phase === "form" ? (
         <TransferFormPhase
@@ -683,6 +698,7 @@ export function TransferModal({
           pubkeyFallbackSummary={flowCopy.transferPubkeyFallbackSummary}
           pubkeyResolvePending={flowCopy.transferPubkeyResolvePending}
           pubkeyResolveFailed={flowCopy.transferPubkeyResolveFailed}
+          pubkeyResolveResolved={flowCopy.transferPubkeyResolveResolved}
           oldDataEncryptionKey={oldDataEncryptionKey}
           onOldDataKeyChange={setOldDataEncryptionKey}
           oldDataUri={oldDataUri}
@@ -693,6 +709,7 @@ export function TransferModal({
           canSubmit={canSubmit}
           isLoading={isLoading}
           onSubmit={onSubmit}
+          f={flowCopy}
         />
       ) : phase === "co-sign" && coSignReceiver !== null ? (
         <>
@@ -709,6 +726,8 @@ export function TransferModal({
               blockedBody: flowCopy.coSignBlockedBody(
                 truncateAddress(coSignReceiver),
               ),
+              recipientLabel: flowCopy.receiveReceiver,
+              editLabel: flowCopy.edit,
             }}
             onSign={onCoSign}
             onEdit={onEdit}
@@ -722,6 +741,7 @@ export function TransferModal({
           isLoading={isLoading}
           onEdit={onEdit}
           onConfirm={onConfirm}
+          f={flowCopy}
         />
       )}
     </ModalSheet>

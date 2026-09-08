@@ -36,7 +36,7 @@ import {
 } from "../components/axiom/Controls.js";
 import { StatePill } from "../components/StatePill.js";
 import { getCopy, interpolate, type Locale } from "../lib/copy.js";
-import { routePath } from "../lib/routeRegistry.js";
+import { NOT_FOUND_PATH, routePath } from "../lib/routeRegistry.js";
 import { useAgents } from "../hooks/useAgents.js";
 import {
   useEventHistory,
@@ -92,13 +92,13 @@ const AGENT_MARK_SIZE = 28;
 
 const axiomAgentNftAbiParsed = toViemAbi(AGENT_NFT_ABI);
 
-/** Fact/activity value: local clock/date via Intl — block numbers mean nothing to a first-time user. */
-function eventTimeLabel(event: AxiomEvent): string {
+/** Fact/activity value: local clock/date via Intl in the app locale — block numbers mean nothing to a first-time user. */
+function eventTimeLabel(event: AxiomEvent, locale: Locale): string {
   const ts = event.timestamp ?? event.receivedAt;
   const date = new Date(ts);
   return date.toDateString() === new Date().toDateString()
-    ? date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-    : date.toLocaleDateString([], { month: "short", day: "numeric" });
+    ? date.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" })
+    : date.toLocaleDateString(locale, { month: "short", day: "numeric" });
 }
 
 type AgentMetadata = {
@@ -294,6 +294,16 @@ export function AgentPage({
   const localReceipts = consoleState.transactions.filter(
     (tx) => tx.agent === agentId,
   );
+  // One time-sorted activity list: chain events and local receipts interleave
+  // by timestamp (both ms — event.timestamp is the indexer's Date.now()
+  // stamp), so a fresh receipt never stacks below older chain events.
+  const activityRows = [
+    ...events.map((event) => ({
+      sortTs: event.timestamp ?? event.receivedAt,
+      event,
+    })),
+    ...localReceipts.map((tx) => ({ sortTs: tx.createdAt ?? 0, tx })),
+  ].sort((a, b) => b.sortTs - a.sortTs);
   const { metrics } = usePerformance(tokenId);
   const vault = useVaultData(tokenId);
   const payment = usePayment();
@@ -347,11 +357,9 @@ export function AgentPage({
   const agentKnown = agents.some((agent) => agent.tokenId === tokenId);
   const agentMissing = agentsSettled && agents.length > 0 && !agentKnown;
   useEffect(() => {
-    if (agentMissing) go("/this-path-does-not-exist-404");
+    if (agentMissing) go(NOT_FOUND_PATH);
     // hooks: one navigation per concluded-missing id
   }, [agentMissing, go]);
-
-  if (agentMissing) return null;
 
   const [moreOpen, setMoreOpen] = useState(false);
   const primaryActions: {
@@ -473,9 +481,18 @@ export function AgentPage({
     }
   };
 
-  const copyDataHash = () => {
-    if (metadata?.dataHash) navigator.clipboard?.writeText(metadata.dataHash);
-    action(agentCopy.copiedNotice);
+  const copyDataHash = async () => {
+    // Guarded write (ui.tsx CopyButton pattern): no hash, no clipboard API or
+    // a denied write must not raise the copied notice.
+    const hash = metadata?.dataHash;
+    const clipboard = navigator.clipboard;
+    if (!hash || !clipboard?.writeText) return;
+    try {
+      await clipboard.writeText(hash);
+      action(agentCopy.copiedNotice);
+    } catch {
+      // clipboard denied — no copied notice for a copy that did not happen
+    }
   };
 
   // W3-C: Permit2 pay panel — amount input + sign-and-pay; the hook picks the
@@ -621,12 +638,18 @@ export function AgentPage({
     }
   };
 
+  // hooks: this early return stays below every hook call — agentMissing
+  // flipping after the agents read settles must not change the hook count.
+  if (agentMissing) return null;
+
   return (
     <div className="ops-page agent-page">
       <PageHead title={agentName}>
         <div className="page-head-actions">
           <Status
-            label={strategyBound ? "online" : "attention"}
+            label={
+              strategyBound ? agentCopy.statusOnline : agentCopy.statusAttention
+            }
             tone={strategyBound ? "success" : "warning"}
           />
           <Button
@@ -697,20 +720,22 @@ export function AgentPage({
                 {metadata?.dataHash
                   ? truncateHex(metadata.dataHash, 8, 6)
                   : "—"}{" "}
-                <button
-                  className="inline-copy"
-                  onClick={copyDataHash}
-                  aria-label={agentCopy.copyHashA11y}
-                >
-                  <Copy size={14} />
-                </button>
+                {metadata?.dataHash && (
+                  <button
+                    className="inline-copy"
+                    onClick={() => void copyDataHash()}
+                    aria-label={agentCopy.copyHashA11y}
+                  >
+                    <Copy size={14} />
+                  </button>
+                )}
               </Fact>
               <Fact label={agentCopy.descriptionLabel}>
                 {metadata?.dataDescription || "—"}
               </Fact>
               <Fact label={agentCopy.lastEvent}>
                 {lastEvent
-                  ? eventTimeLabel(lastEvent)
+                  ? eventTimeLabel(lastEvent, locale)
                   : agentCopy.noActivityYet}
               </Fact>
               {lastEvent?.txHash && (
@@ -734,7 +759,7 @@ export function AgentPage({
             )}
             <Button
               variant="secondary"
-              onClick={() => go("/storage")}
+              onClick={() => go(routePath("storage"))}
               icon={<Database size={16} />}
             >
               {agentCopy.openStorage}
@@ -1013,7 +1038,7 @@ export function AgentPage({
                           <Fact label={agentCopy.delegationExpiryLabel}>
                             {new Date(
                               Number(delegation.delegation.expiresAt) * 1000,
-                            ).toLocaleString()}
+                            ).toLocaleString(locale)}
                           </Fact>
                         </>
                       )}
@@ -1102,44 +1127,68 @@ export function AgentPage({
                 {!eventsLoading && <span>{agentCopy.activityEmptyHint}</span>}
               </div>
             )}
-            {[...events].reverse().map((event) => (
-              <button
-                key={`${event.txHash}:${event.logIndex}`}
-                className="activity-row"
-                onClick={() =>
-                  window.open(explorerTx(event.txHash), "_blank", "noreferrer")
-                }
-              >
-                <span>
-                  <Zap size={16} />
-                </span>
-                <span>
-                  <strong>{event.eventName}</strong>
-                  <small>
-                    {eventTimeLabel(event)} · {truncateHex(event.txHash, 10, 6)}
-                  </small>
-                </span>
-                <StatePill state="confirmed" />
-                <ArrowRight size={14} />
-              </button>
-            ))}
-            {localReceipts.map((tx) => (
-              <button
-                key={tx.id}
-                className="activity-row"
-                onClick={() =>
-                  go(`/transactions?tx=${encodeURIComponent(tx.id)}`)
-                }
-              >
-                <span>{tx.icon}</span>
-                <span>
-                  <strong>{tx.kind}</strong>
-                  <small>{tx.detail}</small>
-                </span>
-                <StatePill state={tx.state} />
-                <ArrowRight size={14} />
-              </button>
-            ))}
+            {activityRows.map((row) => {
+              if ("tx" in row) {
+                const tx = row.tx;
+                return (
+                  <button
+                    key={tx.id}
+                    className="activity-row"
+                    onClick={() =>
+                      go(`/transactions?tx=${encodeURIComponent(tx.id)}`)
+                    }
+                  >
+                    <span>{tx.icon}</span>
+                    <span>
+                      <strong>{tx.kind}</strong>
+                      <small>{tx.detail}</small>
+                    </span>
+                    <StatePill state={tx.state} />
+                    <ArrowRight size={14} />
+                  </button>
+                );
+              }
+              const event = row.event;
+              // Real href: middle-click / copy-link work; an empty hash
+              // degrades to a disabled row instead of a blank explorer tab.
+              const cells = (
+                <>
+                  <span>
+                    <Zap size={16} />
+                  </span>
+                  <span>
+                    <strong>{event.eventName}</strong>
+                    <small>
+                      {eventTimeLabel(event, locale)} ·{" "}
+                      {truncateHex(event.txHash, 10, 6)}
+                    </small>
+                  </span>
+                  <StatePill state="confirmed" />
+                  <ArrowRight size={14} />
+                </>
+              );
+              const eventKey = `${event.txHash}:${event.logIndex}`;
+              return event.txHash ? (
+                <a
+                  key={eventKey}
+                  className="activity-row"
+                  href={explorerTx(event.txHash)}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  {cells}
+                </a>
+              ) : (
+                <button
+                  key={eventKey}
+                  type="button"
+                  className="activity-row"
+                  disabled
+                >
+                  {cells}
+                </button>
+              );
+            })}
           </div>
         </section>
       )}

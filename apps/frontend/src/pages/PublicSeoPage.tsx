@@ -57,14 +57,31 @@ function setProperty(property: string, content: string) {
   meta.setAttribute("content", content);
 }
 
-/** Multiline heading body: one <span> per line, break after the first. */
+/** Head keys the hub effect overwrites, captured before mutation and restored
+ *  on unmount so hub metadata never leaks into the console head. robots is
+ *  deliberately absent: main.tsx's pushState/popstate indexing policy owns it
+ *  and re-applies per navigation — a stale restore would clobber the
+ *  console's noindex. */
+const HEAD_META_NAMES = ["description"] as const;
+const HEAD_PROPERTIES = [
+  "og:title",
+  "og:description",
+  "og:url",
+  "og:type",
+  "og:site_name",
+  "og:image",
+  "twitter:image",
+] as const;
+
+/** Multiline heading body: one <span> per line, a break between lines. */
 function MultilineHeading({ text }: { text: string }) {
+  const lines = text.split("\n");
   return (
     <>
-      {text.split("\n").map((line, index) => (
+      {lines.map((line, index) => (
         <span key={line}>
           {line}
-          {index === 0 && <br />}
+          {index < lines.length - 1 && <br />}
         </span>
       ))}
     </>
@@ -227,14 +244,20 @@ export function PublicSeoPage({ slug }: { slug: PublicSeoSlug }) {
   const page = pages[slug];
   const Icon = page.icon;
   useEffect(() => {
+    // Capture every head value this effect overwrites; the cleanup restores
+    // them (index.html shell defaults) so the console head stays clean.
+    const priorTitle = document.title;
+    const readContent = (selector: string) =>
+      document.head.querySelector(selector)?.getAttribute("content") ?? null;
+    const priors = [
+      ...HEAD_META_NAMES.map((name) => `meta[name="${name}"]`),
+      ...HEAD_PROPERTIES.map((property) => `meta[property="${property}"]`),
+    ].map((selector) => [selector, readContent(selector)] as const);
     document.title = page.metaTitle;
     setMeta("description", page.metaDescription);
     setMeta("robots", "index,follow");
     // L1-M7: PUBLIC_HUB_PATHS IS the short canonical path — no prefix hack.
-    const canonicalHref = new URL(
-      PUBLIC_HUB_PATHS[slug],
-      location.origin,
-    ).href;
+    const canonicalHref = new URL(PUBLIC_HUB_PATHS[slug], location.origin).href;
     setCanonical(canonicalHref);
     // Audit critique-3 C2: the five crawlable hubs shared the shell's single
     // OG card. Each hub now owns its OG title/description/url/image.
@@ -243,8 +266,14 @@ export function PublicSeoPage({ slug }: { slug: PublicSeoSlug }) {
     setProperty("og:url", canonicalHref);
     setProperty("og:type", "website");
     setProperty("og:site_name", "Axiom");
-    setProperty("og:image", new URL("/brand/og-1200.jpg", location.origin).href);
-    setProperty("twitter:image", new URL("/brand/og-1200.jpg", location.origin).href);
+    setProperty(
+      "og:image",
+      new URL("/brand/og-1200.jpg", location.origin).href,
+    );
+    setProperty(
+      "twitter:image",
+      new URL("/brand/og-1200.jpg", location.origin).href,
+    );
     const schemaId = "axiom-public-schema";
     document.getElementById(schemaId)?.remove();
     const schema = document.createElement("script");
@@ -276,6 +305,12 @@ export function PublicSeoPage({ slug }: { slug: PublicSeoSlug }) {
       schema.remove();
       // Keep the console's head clean when navigating out of the public hubs.
       document.getElementById("axiom-public-canonical")?.remove();
+      document.title = priorTitle;
+      for (const [selector, content] of priors) {
+        const el = document.head.querySelector(selector);
+        if (content === null) el?.remove();
+        else el?.setAttribute("content", content);
+      }
     };
   }, [page]);
   return (
@@ -291,6 +326,7 @@ export function PublicSeoPage({ slug }: { slug: PublicSeoSlug }) {
           {(Object.keys(pages) as PublicSeoSlug[]).map((navSlug) => (
             <a
               className={navSlug === slug ? "is-active" : undefined}
+              aria-current={navSlug === slug ? "page" : undefined}
               href={PUBLIC_HUB_PATHS[navSlug]}
               key={navSlug}
             >
@@ -306,38 +342,38 @@ export function PublicSeoPage({ slug }: { slug: PublicSeoSlug }) {
         <OrbsField />
         <div className="seo-route-rail" role="presentation" />
         <Reveal>
-        <div className="seo-hero-copy">
-          <h1>
-            <MultilineHeading text={page.title} />
-          </h1>
-          <p>{page.accent}</p>
-          <div className="seo-hero-actions">
-            <a className="seo-action-primary" href={page.next.href}>
-              {page.next.label}
-              <ArrowRight size={16} />
-            </a>
-            <a className="seo-action-secondary" href="/">
-              Return to product overview
-            </a>
+          <div className="seo-hero-copy">
+            <h1>
+              <MultilineHeading text={page.title} />
+            </h1>
+            <p>{page.accent}</p>
+            <div className="seo-hero-actions">
+              <a className="seo-action-primary" href={page.next.href}>
+                {page.next.label}
+                <ArrowRight size={16} />
+              </a>
+              <a className="seo-action-secondary" href="/">
+                Return to product overview
+              </a>
+            </div>
           </div>
-        </div>
         </Reveal>
         <Reveal delay={140}>
-        <aside className="seo-proof-card">
-          <div className="seo-proof-card-head">
-            <Icon size={18} />
-          </div>
-          <strong>{page.evidenceTitle}</strong>
-          <ul>
-            {page.evidence.map((item) => (
-              <li key={item}>
-                <CircleCheck size={16} />
-                {item}
-              </li>
-            ))}
-          </ul>
-          <p>{page.boundary}</p>
-        </aside>
+          <aside className="seo-proof-card">
+            <div className="seo-proof-card-head">
+              <Icon size={18} />
+            </div>
+            <strong>{page.evidenceTitle}</strong>
+            <ul>
+              {page.evidence.map((item) => (
+                <li key={item}>
+                  <CircleCheck size={16} />
+                  {item}
+                </li>
+              ))}
+            </ul>
+            <p>{page.boundary}</p>
+          </aside>
         </Reveal>
       </section>
       <section className="seo-link-field" aria-labelledby="related-title">
@@ -347,14 +383,14 @@ export function PublicSeoPage({ slug }: { slug: PublicSeoSlug }) {
           </h2>
         </div>
         <Reveal>
-        <div className="seo-link-grid">
-          {page.links.map((link) => (
-            <a key={link.href} href={link.href}>
-              <strong>{link.label}</strong>
-              <ArrowRight size={16} />
-            </a>
-          ))}
-        </div>
+          <div className="seo-link-grid">
+            {page.links.map((link) => (
+              <a key={link.href} href={link.href}>
+                <strong>{link.label}</strong>
+                <ArrowRight size={16} />
+              </a>
+            ))}
+          </div>
         </Reveal>
       </section>
       <footer className="seo-public-footer">

@@ -188,26 +188,27 @@ export function WalletGate({
   const connectInjected = () => connectWith(injected[0]);
 
   // R12: mobile path goes straight to the WalletConnect SDK connector. The
-  // pairing URI is captured from the connector's message event and shown
-  // inline in this panel — one action, no second modal.
+  // pairing URI arrives once as the connector emitter's "message" event
+  // ({ type: "display_uri", data: uri }) and is shown inline in this panel.
+  // One subscription per connector — a per-attempt emitter.on stacked a
+  // duplicate listener on every retry.
+  useEffect(() => {
+    if (!mobileConnector) return;
+    const onMessage = (payload: { data?: unknown }) => {
+      const uri = (payload.data as { uri?: string } | undefined)?.uri;
+      if (typeof uri === "string" && uri.startsWith("wc:")) {
+        setPairingUri(uri);
+      }
+    };
+    mobileConnector.emitter.on("message", onMessage);
+    return () => mobileConnector.emitter.off("message", onMessage);
+  }, [mobileConnector]);
+
   const connectMobile = async () => {
     if (!mobileConnector) return;
     setError(null);
     setConnecting(true);
     try {
-      const emitter = mobileConnector as unknown as {
-        on?: (
-          event: string,
-          cb: (payload: { type?: string; data?: unknown }) => void,
-        ) => void;
-      };
-      emitter.on?.("message", (payload) => {
-        const data = payload.data as { uri?: string } | undefined;
-        const uri = data?.uri;
-        if (typeof uri === "string" && uri.startsWith("wc:")) {
-          setPairingUri(uri);
-        }
-      });
       await connectAsync({ connector: mobileConnector });
     } catch (err) {
       setError(humanizeError(err));
@@ -337,7 +338,7 @@ export function WalletGate({
                 <span>{copy.wallet.networkMismatch}</span>
                 <strong>
                   {interpolate(copy.wallet.connectedChain, {
-                    chainId: String(chainId ?? "unknown"),
+                    chainId: String(chainId ?? copy.wallet.unknownChain),
                   })}
                 </strong>
                 <small>

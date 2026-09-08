@@ -40,8 +40,13 @@ import type { AppState, UiSettings } from "../lib/models.js";
 import type { ConsoleAction } from "../lib/consoleStore.js";
 import { useHealth } from "../hooks/useHealth.js";
 import { useModalDismiss } from "../hooks/useModalDismiss.js";
-import { APP_CHAIN, APP_CHAIN_ID } from "../config/wagmi.js";
+import {
+  APP_CHAIN,
+  APP_CHAIN_DEFAULT_RPC,
+  APP_CHAIN_ID,
+} from "../config/wagmi.js";
 import { BACKEND_URL } from "../config/env.js";
+import { truncateAddress } from "../utils/format.js";
 
 function SettingsDisclosure({
   title,
@@ -116,10 +121,11 @@ function ResetConfirmDialog({
         role="dialog"
         aria-modal="true"
         aria-label={labels.resetConfirmTitle}
+        aria-describedby="settings-reset-confirm-body"
         onMouseDown={(event) => event.stopPropagation()}
       >
         <h2>{labels.resetConfirmTitle}</h2>
-        <p>{labels.resetConfirmBody}</p>
+        <p id="settings-reset-confirm-body">{labels.resetConfirmBody}</p>
         <div className="settings-confirm-actions">
           <Button variant="ghost" onClick={onCancel}>
             {labels.resetCancel}
@@ -162,57 +168,71 @@ export function SettingsPage({
   const { address, connector } = useAccount();
   const chainId = useChainId();
   const { data: health } = useHealth();
-  const rpc = APP_CHAIN.rpcUrls.default.http[0] ?? "https://evmrpc.0g.ai";
-  const walletRows: [string, string, string][] = [
-    [
-      labels.rowWallet,
-      address
-        ? `${state.session.profile || copy.topbar.operator} / ${address}`
+  const rpc = APP_CHAIN_DEFAULT_RPC;
+  // Rows carry their semantic kind so pill tone never derives from the
+  // localized label string (a copy edit must never recolor a status).
+  type WalletRowKind = "ok" | "fault" | "pending" | "ready";
+  const walletRows: {
+    label: string;
+    value: string;
+    status: string;
+    kind: WalletRowKind;
+  }[] = [
+    {
+      label: labels.rowWallet,
+      value: address
+        ? `${state.session.profile || copy.topbar.operator} / ${truncateAddress(address)}`
         : copy.topbar.notConnected,
-      address ? labels.statusConnected : labels.statusOffline,
-    ],
-    [
-      labels.rowChain,
-      `${APP_CHAIN.name} / ${APP_CHAIN_ID}`,
-      chainId === APP_CHAIN_ID ? labels.statusSelected : labels.statusMismatch,
-    ],
-    [
-      labels.rowRpc,
-      rpc,
-      health?.ok ? copy.topbar.oracleLive : labels.statusChecking,
-    ],
-    [
-      labels.rowConnector,
-      connector?.name ?? state.session.wallet ?? "—",
-      address ? labels.statusReady : "—",
-    ],
-    [
-      labels.rowApi,
-      BACKEND_URL.replace(/^https?:\/\//, ""),
+      status: address ? labels.statusConnected : labels.statusOffline,
+      kind: address ? "ok" : "fault",
+    },
+    {
+      label: labels.rowChain,
+      value: `${APP_CHAIN.name} / ${APP_CHAIN_ID}`,
+      status:
+        chainId === APP_CHAIN_ID
+          ? labels.statusSelected
+          : labels.statusMismatch,
+      kind: chainId === APP_CHAIN_ID ? "ok" : "fault",
+    },
+    {
+      label: labels.rowRpc,
+      value: rpc,
+      status: health?.ok ? copy.topbar.oracleLive : labels.statusChecking,
+      kind: health?.ok ? "ok" : "pending",
+    },
+    {
+      label: labels.rowConnector,
+      value: connector?.name ?? state.session.wallet ?? "—",
+      status: address ? labels.statusReady : "—",
+      kind: address ? "ready" : "pending",
+    },
+    {
+      label: labels.rowApi,
+      value: BACKEND_URL.replace(/^https?:\/\//, ""),
       // Honest readout: the health read is still in flight → "checking",
       // never a premature "Offline" (critique-2: statuses degrade silently).
-      health === undefined
-        ? labels.statusChecking
-        : health.ok
-          ? labels.statusOnline
-          : labels.statusOffline,
-    ],
+      status:
+        health === undefined
+          ? labels.statusChecking
+          : health.ok
+            ? labels.statusOnline
+            : labels.statusOffline,
+      kind: health === undefined ? "pending" : health.ok ? "ok" : "fault",
+    },
   ];
   // Status-pill tones key off the semantic kind, not the localized label.
   // W5-B (critique-4): the old fallback mapped everything unread to "live"
   // (green) — Offline/Mismatch rendered as healthy. Faults → warning,
   // in-flight/unknown reads → muted; only the positive kinds go green.
-  const toneFor = (status: string) =>
-    status === labels.statusSelected ||
-    status === labels.statusConnected ||
-    status === labels.statusOnline ||
-    status === copy.topbar.oracleLive
+  const toneFor = (kind: WalletRowKind) =>
+    kind === "ok"
       ? "success"
-      : status === labels.statusOffline || status === labels.statusMismatch
+      : kind === "fault"
         ? "warning"
-        : status === labels.statusChecking || status === "—"
-          ? "muted"
-          : "live";
+        : kind === "ready"
+          ? "live"
+          : "muted";
 
   const toggleRow = (
     key: "railCollapsed" | "reducedMotion" | "railHidden",
@@ -287,11 +307,11 @@ export function SettingsPage({
             />
           }
         >
-          {walletRows.map(([label, value, status]) => (
+          {walletRows.map(({ label, value, status, kind }) => (
             <div className="settings-row" key={label}>
               <span>{label}</span>
               <strong>{value}</strong>
-              <Status label={status} tone={toneFor(status)} />
+              <Status label={status} tone={toneFor(kind)} />
             </div>
           ))}
           {/* V3 W5-B: GasTank status card mount (disabled-when-unset). */}
@@ -454,7 +474,7 @@ export function SettingsPage({
                 <dd>{labels.shortcutPalette}</dd>
               </div>
               <div>
-                <dt>Alt 1 / 3–5</dt>
+                <dt>Alt 1 / 3–4</dt>
                 <dd>{labels.shortcutSurfaces}</dd>
               </div>
               <div>
