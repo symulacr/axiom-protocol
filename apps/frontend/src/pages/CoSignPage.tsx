@@ -42,17 +42,25 @@ import { humanizeError, truncateAddress } from "../utils/format.js";
 function ReviewError({
   testId,
   title,
+  pageHeading = false,
   children,
 }: {
   testId?: string;
   title?: string;
+  /** Set when this alert is the whole document (H-L6): the title becomes the page h1. */
+  pageHeading?: boolean;
   children: ReactNode;
 }): ReactElement {
   return (
     <div className="review-error" role="alert" data-testid={testId}>
       <AlertTriangle size={14} />
       <div>
-        {title !== undefined && <strong>{title}</strong>}
+        {title !== undefined &&
+          (pageHeading ? (
+            <h1 className="review-error-title">{title}</h1>
+          ) : (
+            <strong>{title}</strong>
+          ))}
         {children}
       </div>
     </div>
@@ -160,7 +168,8 @@ export function CoSignPage({ go }: { go: (path: string) => void }) {
             <div className="review-cosign" data-testid="cosign-no-link">
               <ShieldCheck size={14} />
               <div>
-                <h2 className="review-cosign-title">{f.receiveNoLinkTitle}</h2>
+                {/* h1: this branch is the whole document (H-L6); payload branches carry PageHead's h1. */}
+                <h1 className="review-cosign-title">{f.receiveNoLinkTitle}</h1>
                 <p>{f.receiveNoLinkBody}</p>
               </div>
             </div>
@@ -179,7 +188,7 @@ export function CoSignPage({ go }: { go: (path: string) => void }) {
     return (
       <div className={wrapperClass}>
         <div className="panel cosign-panel">
-          <ReviewError title={f.receiveBadTitle}>
+          <ReviewError title={f.receiveBadTitle} pageHeading>
             <p>{f.receiveBadBody}</p>
           </ReviewError>
           <Button

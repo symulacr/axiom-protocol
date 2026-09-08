@@ -576,6 +576,10 @@ function ChatPageInner(): ReactElement {
   const { state: uiState } = useUiStore();
   const chatCopy = getCopy(uiState.settings.locale).chat;
   const a11y = getCopy(uiState.settings.locale).a11y;
+  // P-L6: the thrown no-wallet guard reuses the flow submit-guard string,
+  // matching FlowPage's `throw new Error(f.connectToSubmit)` pattern.
+  const connectToSubmit = getCopy(uiState.settings.locale).flowUi
+    .connectToSubmit;
   // network name and native token unit come from chain config.
   const chainVars = { chainName: APP_CHAIN.name, chainId: APP_CHAIN_ID };
   const nativeSymbol = APP_CHAIN.nativeCurrency.symbol;
@@ -773,7 +777,7 @@ function ChatPageInner(): ReactElement {
       lastTokenId: session.lastTokenId,
       writeContractAsync: (writeContractAsync ??
         (async () => {
-          throw new Error("Wallet not connected");
+          throw new Error(connectToSubmit);
         })) as ToolContext["writeContractAsync"],
       sendTransactionAsync: walletClient
         ? async ({ to, data, value }) =>
@@ -794,6 +798,7 @@ function ChatPageInner(): ReactElement {
       publicClient,
       signTypedDataAsync,
       openTransfer,
+      connectToSubmit,
     ],
   );
   const handlers = useToolHandlers(toolCtx);
@@ -806,7 +811,7 @@ function ChatPageInner(): ReactElement {
       lastTokenId: lastTokenIdRef.current,
       writeContractAsync: (writeContractAsyncRef.current ??
         (async () => {
-          throw new Error("Wallet not connected");
+          throw new Error(connectToSubmit);
         })) as ToolContext["writeContractAsync"],
       sendTransactionAsync: walletClientRef.current
         ? async ({ to, data, value }) =>
@@ -818,7 +823,7 @@ function ChatPageInner(): ReactElement {
       publicClient: publicClientRef.current,
       openTransfer,
     }),
-    [openTransfer],
+    [openTransfer, connectToSubmit],
   );
   /** Retry-with-same-args on a failed tool card: re-invokes
    * the handler (wallet tools re-prompt the wallet) and updates the run. */
@@ -1131,7 +1136,7 @@ function ChatPageInner(): ReactElement {
           );
 
           const body = response.body;
-          if (!body) throw new Error("No response body from chat service");
+          if (!body) throw new Error(chatCopy.errNoResponseBody);
           const reader = body.getReader();
           const decoder = new TextDecoder();
           let buffer = "";

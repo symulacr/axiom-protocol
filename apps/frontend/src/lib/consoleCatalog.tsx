@@ -2,10 +2,7 @@
 import {
   Activity,
   Bot,
-  Clock3,
   CreditCard,
-  Database,
-  FileCheck2,
   Gauge,
   KeyRound,
   LayoutDashboard,
@@ -88,12 +85,6 @@ export const lockedGates: Record<string, LockedGate | undefined> = {
     hero: "settings",
     rowIcons: [<Settings2 size={16} />, <KeyRound size={16} />],
   },
-  "/transactions": {
-    slug: "transactions",
-    media: MEDIA.transfer,
-    hero: "transactions",
-    rowIcons: [<ReceiptText size={16} />, <Clock3 size={16} />],
-  },
   "/chat": {
     slug: "chat",
     media: MEDIA.onboarding,
@@ -117,12 +108,6 @@ export const lockedGates: Record<string, LockedGate | undefined> = {
     media: MEDIA.transfer,
     hero: "transfer",
     rowIcons: [<ShieldCheck size={16} />, <Timer size={16} />],
-  },
-  "/storage": {
-    slug: "storage",
-    media: MEDIA.proof,
-    hero: "storage",
-    rowIcons: [<Database size={16} />, <FileCheck2 size={16} />],
   },
   "/agents/": {
     slug: "agent",

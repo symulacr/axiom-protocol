@@ -1,5 +1,21 @@
 import { formatUnits } from "viem";
 import { resolveBlockExplorerUrl } from "@axiom/config/networks";
+import { getCopy, type Locale } from "../lib/copy.js";
+
+/** P-L6: the ladder's words live in copy.errors per locale; the locale comes
+ * from the persisted settings (humanizeError runs outside React — toasts and
+ * catch blocks — so the store context is unreachable here). */
+function errorLocale(): Locale {
+  try {
+    const raw = globalThis.localStorage?.getItem("axiom-ui-settings");
+    const locale = raw
+      ? (JSON.parse(raw) as { locale?: string }).locale
+      : undefined;
+    return locale === "fr" || locale === "de" ? locale : "en";
+  } catch {
+    return "en";
+  }
+}
 
 const ELLIPSIS = "\u2026";
 
@@ -66,26 +82,27 @@ export function humanizeError(err: unknown): string {
   // Known-message ladders all test "lower contains any of these heads".
   const has = (...needles: string[]) =>
     needles.some((needle) => lower.includes(needle));
+  const errors = getCopy(errorLocale()).errors;
 
   if (has("user rejected", "user denied", "rejected the request")) {
-    return "Transaction cancelled — you rejected the request in your wallet.";
+    return errors.userRejected;
   }
 
   // Oracle dataHash answer targets developers — users get state + remedy, never an HTTP instruction.
   if (lower.includes("unknown datahash")) {
-    return "This agent's metadata is not registered with the oracle yet. Re-register it from the mint flow (or pick another agent), then retry the transfer.";
+    return errors.unknownDatahash;
   }
 
   // Backend signer check names a protocol rule — translate it into requirement + remedy (co-sign step).
   if (
     has("signer does not match recipient", "does not match recipient address")
   ) {
-    return "The transfer acceptance must be signed by the recipient's own wallet. Go back and use the \u201cSign as receiver\u201d step with the recipient account selected.";
+    return errors.signerMismatch;
   }
 
   // Wallet cannot expose the receiver account at all — name the blocker and the two real remedies.
   if (lower.includes("is not available in the connected wallet")) {
-    return "The receiving account is not available in the connected wallet. Add the receiver account to this wallet, or let the receiver accept the transfer from their own session.";
+    return errors.receiverUnavailable;
   }
 
   // Non-signature or wrong-recoverer acceptance code — only remedy is a fresh receiver signature.
@@ -95,42 +112,42 @@ export function humanizeError(err: unknown): string {
       "does not recover to the receiver address",
     )
   ) {
-    return "This acceptance code was not signed by the receiver's wallet. Ask the receiver to sign the acceptance link again with the receiving account, then paste the new code.";
+    return errors.acceptanceNotSigned;
   }
 
   if (
     has("insufficient_balance", "compute account has no balance") ||
     (lower.includes("insufficient balance") && lower.includes("compute"))
   ) {
-    return "0G Compute is out of credits. Fund the compute account for AXIOM_COMPUTE_API_KEY, then retry.";
+    return errors.computeOutOfCredits;
   }
 
   if (has("insufficient funds", "exceeds the balance")) {
-    return "Insufficient balance to complete this transaction. Please add funds and try again.";
+    return errors.insufficientFunds;
   }
 
   if (has("rate_limit_exceeded", "rate-limiting requests")) {
-    return "The compute provider is rate-limiting requests. Wait a few seconds and send again.";
+    return errors.rateLimited;
   }
 
   // GasTank (V3 W5-B): distinguish user-side remedy (deposit/refill) from the
   // operator-side one (reserve funding) and the throttle (just wait).
   if (has("gas tank exhausted", "tank_exhausted")) {
-    return "Your free gas grants are used up. Deposit via the GasTank UI, or connect a wallet to sign ops directly.";
+    return errors.tankExhausted;
   }
   if (has("reserve exhausted", "reserve_depleted")) {
-    return "The protocol gas reserve is temporarily empty. Sponsored ops pause until it's refunded — try again shortly.";
+    return errors.reserveExhausted;
   }
   if (has("sponsor_rate_limited", "sponsor rate limit")) {
-    return "Too many sponsored ops in a row. Wait a moment and retry.";
+    return errors.sponsorRateLimited;
   }
 
   if (lower.includes("compute upstream")) {
-    return "Compute is unavailable right now. Check backend compute keys and balance.";
+    return errors.computeUpstream;
   }
 
   if (has("gas required exceeds", "cannot estimate gas")) {
-    return "Transaction would fail on-chain. Check your inputs and wallet balance.";
+    return errors.gasEstimate;
   }
 
   if (lower.includes("execution reverted") || lower.includes("revert")) {
@@ -139,9 +156,7 @@ export function humanizeError(err: unknown): string {
       raw.match(/reverted with reason string '(.+?)'/i) ??
       raw.match(/error=\{[^}]*"message":"([^"]+)"/i);
     const reason = reasonMatch?.[1]?.trim();
-    return reason
-      ? `Transaction reverted: ${reason}`
-      : "Transaction reverted by the contract. Check your inputs and permissions.";
+    return reason ? errors.revertedWithReason(reason) : errors.reverted;
   }
 
   if (
@@ -153,15 +168,15 @@ export function humanizeError(err: unknown): string {
       "load failed",
     )
   ) {
-    return "Network error — check your internet connection and try again.";
+    return errors.networkError;
   }
 
   if (has("timeout", "timed out", "aborterror")) {
-    return "Request timed out. The network may be congested — please try again.";
+    return errors.timeout;
   }
 
   if (has("nonce") && lower.includes("too low")) {
-    return "Transaction nonce conflict. Please wait for pending transactions to confirm.";
+    return errors.nonceTooLow;
   }
 
   return raw.length > 200 ? `${raw.slice(0, 200)}…` : raw;
