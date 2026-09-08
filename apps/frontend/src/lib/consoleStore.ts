@@ -116,17 +116,10 @@ export const defaultSettings: UiSettings = {
   locale: "en",
 };
 
-/** Unset theme follows the OS, matching the index.html boot script;
- * falls back to "dark". */
+/** Unset theme defaults to Dark Forge (the R1 landing default), matching the
+ * index.html boot script; a stored choice always wins. */
 export function defaultTheme(): UiSettings["theme"] {
-  try {
-    return typeof window !== "undefined" &&
-      window.matchMedia?.("(prefers-color-scheme: light)").matches
-      ? "light"
-      : "dark";
-  } catch {
-    return "dark";
-  }
+  return "dark";
 }
 
 export const defaultSession: Session = {
