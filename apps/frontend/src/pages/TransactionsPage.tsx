@@ -33,7 +33,7 @@ import {
 import { SkeletonRows } from "../components/ui.js";
 import { StatePill } from "../components/StatePill.js";
 import { MobileDisclosure } from "../components/MobileDisclosure.js";
-import { getCopy } from "../lib/copy.js";
+import { getCopy, interpolate } from "../lib/copy.js";
 import { routePath } from "../lib/routeRegistry.js";
 import type { AppState, Transaction, TxState } from "../lib/models.js";
 import { isInFlightTx, isRecoverableTx } from "../lib/models.js";
@@ -65,14 +65,18 @@ function eventKindIcon(eventName: string) {
 function eventToTransaction(
   event: AxiomEvent,
   time: ReturnType<typeof getCopy>["time"],
+  tx: ReturnType<typeof getCopy>["transactions"],
 ): Transaction {
   const tokenId = eventTokenId(event);
   return {
     id: `${event.txHash}:${event.logIndex}`,
-    kind: event.eventName || "Chain event",
+    kind: event.eventName || tx.chainEvent,
     detail: tokenId
-      ? `agent #${tokenId}, block ${event.blockNumber}`
-      : `block ${event.blockNumber}`,
+      ? interpolate(tx.eventDetail, {
+          agent: tokenId,
+          block: event.blockNumber,
+        })
+      : interpolate(tx.eventDetailBlockOnly, { block: event.blockNumber }),
     hash: event.txHash || "—",
     age: event.timestamp
       ? time.minutesAgo(
@@ -413,7 +417,7 @@ export function TransactionsPage({
       merged.set(eventDedupeKey(event), event);
     }
     const chainEvents = [...merged.values()].map((event) =>
-      eventToTransaction(event, copy.time),
+      eventToTransaction(event, copy.time, copy.transactions),
     );
     const seen = new Set(chainEvents.map((tx) => tx.id));
     const local = state.transactions.filter((tx) => !seen.has(tx.id));
