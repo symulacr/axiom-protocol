@@ -65,7 +65,7 @@ export function StoragePage({
         )}
         <Button
           variant="secondary"
-          onClick={() => go("/chat")}
+          onClick={() => go(routePath("chat"))}
           icon={<MessageSquare size={16} />}
         >
           {copy.storage.openChat}
@@ -154,7 +154,7 @@ export function StoragePage({
             <div className="storage-steps">
               {labels.map((label, index) => (
                 <div className="storage-step" key={label}>
-                  <span>{`0${index + 1}`}</span>
+                  <span>{String(index + 1).padStart(2, "0")}</span>
                   <strong>{label}</strong>
                   {index < labels.length - 1 && <i />}
                 </div>

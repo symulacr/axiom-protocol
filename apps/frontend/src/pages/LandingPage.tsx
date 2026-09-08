@@ -6,7 +6,7 @@
   hero copy + buttons, principles, how-it-works and footer. All kicker /
   eyebrow / numbered-label spans removed per the no-noise design law.
 */
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   CircleHelp,
   Globe2,
@@ -62,7 +62,7 @@ const PRINCIPLE_HREFS: Record<"shield" | "receipt" | "wallet", string> = {
 
 /** Mobile menu: same dismiss contract as the console overlays — Esc + Tab
  *  trap + initial focus + focus restore via useModalDismiss; the transparent
- *  fixed backdrop (filters-backdrop recipe) carries the outside-click leg. */
+ *  fixed backdrop (popover-backdrop recipe) carries the outside-click leg. */
 function LandingMobileMenu({
   copy,
   onClose,
@@ -82,7 +82,7 @@ function LandingMobileMenu({
   };
   return (
     <>
-      <div className="filters-backdrop" onMouseDown={onClose} />
+      <div className="popover-backdrop" onMouseDown={onClose} />
       <nav
         ref={menuRef}
         id="landing-mobile-menu"
@@ -136,6 +136,27 @@ export function Landing({
   const copy = getCopy(locale);
   const [menuOpen, setMenuOpen] = useState(false);
 
+  // Scroll-spy: the inline nav highlights the section currently crossing the
+  // viewport band (same inline-observer pattern as fx.tsx Reveal) instead of
+  // a static is-active that lies after the first anchor jump.
+  const [activeSection, setActiveSection] = useState("hero");
+  useEffect(() => {
+    const sections = ["hero", "principles", "how", "footer"]
+      .map((id) => document.getElementById(id))
+      .filter((el): el is HTMLElement => el !== null);
+    if (sections.length === 0) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) setActiveSection(entry.target.id);
+        }
+      },
+      { rootMargin: "-45% 0px -50% 0px" },
+    );
+    for (const el of sections) io.observe(el);
+    return () => io.disconnect();
+  }, []);
+
   return (
     <div className="landing-page">
       <ScrollProgress />
@@ -153,12 +174,32 @@ export function Landing({
         <div className="landing-nav">
           <Logo glyph />
           <nav className="nav-inline" aria-label={copy.landing.nav.overview}>
-            <a className="is-active" href="#hero">
+            <a
+              className={activeSection === "hero" ? "is-active" : undefined}
+              href="#hero"
+            >
               {copy.landing.nav.overview}
             </a>
-            <a href="#principles">{copy.landing.nav.principles}</a>
-            <a href="#how">{copy.landing.nav.howItWorks}</a>
-            <a href="#footer">{copy.landing.nav.start}</a>
+            <a
+              className={
+                activeSection === "principles" ? "is-active" : undefined
+              }
+              href="#principles"
+            >
+              {copy.landing.nav.principles}
+            </a>
+            <a
+              className={activeSection === "how" ? "is-active" : undefined}
+              href="#how"
+            >
+              {copy.landing.nav.howItWorks}
+            </a>
+            <a
+              className={activeSection === "footer" ? "is-active" : undefined}
+              href="#footer"
+            >
+              {copy.landing.nav.start}
+            </a>
           </nav>
           <div className="nav-right">
             <ThemeToggle locale={locale} />
@@ -167,6 +208,7 @@ export function Landing({
               {copy.landing.nav.connect}
             </button>
             <button
+              type="button"
               className="icon-button landing-menu-trigger"
               onClick={() => setMenuOpen((value) => !value)}
               aria-label={copy.a11y.explorePublicPaths}
@@ -226,8 +268,8 @@ export function Landing({
         </header>
         <Reveal>
           <div className="principles-grid">
-            {copy.landing.principles.items.map((p, i) => (
-              <SpotlightCard key={i} className="principle">
+            {copy.landing.principles.items.map((p) => (
+              <SpotlightCard key={p.title} className="principle">
                 <span className="p-icon" aria-hidden="true">
                   <PrincipleIcon name={p.icon} />
                 </span>
@@ -264,8 +306,8 @@ export function Landing({
         </header>
         <Reveal>
           <div className="principles-grid how-grid">
-            {copy.landing.how.steps.map((step, i) => (
-              <SpotlightCard key={i} className="principle how-step">
+            {copy.landing.how.steps.map((step) => (
+              <SpotlightCard key={step.title} className="principle how-step">
                 <h3 dangerouslySetInnerHTML={{ __html: step.title }} />
                 <p dangerouslySetInnerHTML={{ __html: step.body }} />
               </SpotlightCard>

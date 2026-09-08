@@ -4,6 +4,7 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react";
@@ -49,10 +50,6 @@ import { truncateAddress, trapTabFocus } from "../../utils/format.js";
 import { APP_CHAIN, APP_CHAIN_ID } from "../../config/wagmi.js";
 import { getCopy, type Copy, type NavGroupKey } from "../../lib/copy.js";
 
-/** Nav anchors wear button-era classes whose rules carry no text-decoration
- *  reset (buttons never needed one) — strip the UA underline inline. */
-const ANCHOR_RESET: React.CSSProperties = { textDecoration: "none" };
-
 /** Primary-nav anchors: href restores middle-click / open-in-new-tab /
  *  copy-link; the plain-click leg stays client-side through go() (SPA nav +
  *  scroll-to-top); modified clicks keep native browser behavior. */
@@ -68,18 +65,44 @@ const navClick =
 export function Logo({
   compact = false,
   glyph = false,
+  href,
+  onClick,
 }: {
   compact?: boolean;
   glyph?: boolean;
+  /** Set only where a real destination exists (sidebar → /app); gate and
+   *  lock-screen logos stay static. */
+  href?: string;
+  onClick?: (event: React.MouseEvent<HTMLAnchorElement>) => void;
 }) {
-  return (
-    <div
-      className={`brand ${compact ? "brand-compact" : ""} ${glyph ? "brand--glyph" : ""}`.trim()}
-    >
+  const className =
+    `brand ${compact ? "brand-compact" : ""} ${glyph ? "brand--glyph" : ""}`.trim();
+  const content = (
+    <>
       {glyph && <span className="glyph" aria-hidden="true" />}
       <AxiomBrandMark />
       <span>AXIOM</span>
-    </div>
+    </>
+  );
+  return href ? (
+    <a className={className} href={href} onClick={onClick}>
+      {content}
+    </a>
+  ) : (
+    <div className={className}>{content}</div>
+  );
+}
+
+/** Live media query — render-time matchMedia reads go stale across
+ *  breakpoint crossings; the change subscription re-reads on every flip. */
+function useMediaQuery(query: string): boolean {
+  return useSyncExternalStore(
+    (onChange) => {
+      const mq = window.matchMedia(query);
+      mq.addEventListener("change", onChange);
+      return () => mq.removeEventListener("change", onChange);
+    },
+    () => window.matchMedia(query).matches,
   );
 }
 
@@ -250,12 +273,9 @@ function Sidebar({
   return (
     <aside
       className={`sidebar ${settings.railCollapsed ? "is-collapsed" : ""}`}
-      style={
-        { "--rail-width": `${settings.railWidth}px` } as React.CSSProperties
-      }
     >
       <div className="side-head">
-        <Logo />
+        <Logo href="/app" onClick={navClick(go, "/app")} />
         <div className="rail-controls">
           {/* R16: ONE rail control (expand/hide cycle). The separate
               rail-hide button was removed — two buttons for one job. */}
@@ -283,7 +303,6 @@ function Sidebar({
                 onClick={navClick(go, item.path)}
                 aria-current={item.active ? "page" : undefined}
                 data-label={item.label}
-                style={ANCHOR_RESET}
               >
                 {item.icon}
                 <span>{item.label}</span>
@@ -302,7 +321,7 @@ function Sidebar({
               oracle earns a mention only when it is DOWN (healthy plumbing is
               never announced). */}
           <small className="mono">
-            chain {APP_CHAIN_ID}
+            {copy.topbar.chainLabel(String(APP_CHAIN_ID))}
             {health && !health.ok ? `, ${copy.topbar.oracleDown}` : ""}
           </small>
         </div>
@@ -316,7 +335,6 @@ function Sidebar({
         href="/settings"
         onClick={navClick(go, "/settings")}
         aria-current={route === "settings" ? "page" : undefined}
-        style={ANCHOR_RESET}
       >
         <span className="avatar">
           {(identified
@@ -496,7 +514,7 @@ function routeItemsFor(copy: Copy): CommandItem[] {
 const focusedElement = (): HTMLElement | null =>
   document.activeElement instanceof HTMLElement ? document.activeElement : null;
 
-function isEditableTarget(target: EventTarget | null) {
+export function isEditableTarget(target: EventTarget | null) {
   return (
     target instanceof HTMLElement &&
     Boolean(target.closest("input, textarea, select, [contenteditable='true']"))
@@ -607,6 +625,16 @@ function CommandCenter({
 
   useEffect(() => setActiveIndex(0), [query, open]);
 
+  // Arrow-key nav moves the highlight without scrolling — keep the active
+  // option visible in long filtered lists (no-op when already in view).
+  const currentId = current?.id;
+  useEffect(() => {
+    if (!open || currentId === undefined) return;
+    document
+      .getElementById(`command-${currentId}`)
+      ?.scrollIntoView({ block: "nearest" });
+  }, [open, currentId]);
+
   const handlePanelKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
     if (event.key === "ArrowDown") {
       event.preventDefault();
@@ -678,6 +706,8 @@ function CommandCenter({
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
                   placeholder={cmd.placeholder}
+                  role="combobox"
+                  aria-expanded={true}
                   aria-controls="command-results"
                   aria-activedescendant={
                     current ? `command-${current.id}` : undefined
@@ -786,6 +816,7 @@ function Topbar({
   const copy = getCopy(state.settings.locale);
   // Identity + session pill render only when authenticated — never a stale profile after disconnect.
   const identified = session.status === "authenticated";
+  const desktop = useMediaQuery("(min-width: 701px)");
   return (
     <header className="topbar">
       <div className="topbar-route">
@@ -794,16 +825,14 @@ function Topbar({
           /* R16: one trigger, two contexts — desktop with a hidden rail
              restores it inline; narrow viewports open the drawer. */
           onClick={() => {
-            if (railHidden && window.matchMedia("(min-width: 701px)").matches) {
+            if (railHidden && desktop) {
               onRestoreRail();
             } else {
               onOpenMobileNav();
             }
           }}
           aria-label={
-            railHidden && window.matchMedia("(min-width: 701px)").matches
-              ? copy.topbar.openRail
-              : copy.a11y.openNav
+            railHidden && desktop ? copy.topbar.openRail : copy.a11y.openNav
           }
           aria-haspopup="dialog"
         >
@@ -818,7 +847,6 @@ function Topbar({
           href="/settings"
           onClick={navClick(go, "/settings")}
           aria-current={route === "settings" ? "page" : undefined}
-          style={ANCHOR_RESET}
         >
           <Wallet size={14} />
           {/* W5-B (browser-2 Fix 2): one connection indicator per chip. The

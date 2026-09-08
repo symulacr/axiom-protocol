@@ -37,6 +37,12 @@ function resolveChainId(): AppChainId {
 export const APP_CHAIN_ID = resolveChainId();
 export const APP_CHAIN = CHAINS[APP_CHAIN_ID as keyof typeof CHAINS];
 
+/** Default RPC endpoint for the selected chain — the single source readout
+ *  surfaces (e.g. Settings connection rows) consume instead of duplicating
+ *  the literal. */
+export const APP_CHAIN_DEFAULT_RPC =
+  APP_CHAIN.rpcUrls.default.http[0] ?? "https://evmrpc.0g.ai";
+
 /** Chain ids the app is configured for, derived from the chain registry. */
 export type AppChainId = keyof typeof CHAINS;
 

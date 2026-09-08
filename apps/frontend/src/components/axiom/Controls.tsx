@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useId, type ReactNode } from "react";
 
 type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
 
@@ -93,8 +93,12 @@ export function Field({
   /** e.g. "decimal" — picks the mobile keypad; ignored for multiline. */
   inputMode?: "none" | "text" | "tel" | "url" | "email" | "numeric" | "decimal";
 }) {
+  // Label-only ids collide when two Fields share a label — the useId prefix
+  // keeps them unique while the label slug stays as a readable suffix.
+  const generatedId = useId();
   const fieldId =
-    id || `field-${label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
+    id ||
+    `field-${generatedId}-${label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
   const messageId = `${fieldId}-message`;
   return (
     <label

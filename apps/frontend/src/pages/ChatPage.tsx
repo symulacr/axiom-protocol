@@ -1957,7 +1957,9 @@ function ChatPageInner(): ReactElement {
                   {q.length > 40 ? `${q.slice(0, 40)}…` : q}
                   <button
                     type="button"
-                    aria-label={chatCopy.removeQueued}
+                    aria-label={chatCopy.removeQueued(
+                      q.length > 40 ? `${q.slice(0, 40)}…` : q,
+                    )}
                     className="icon-button icon-button--sm icon-button--ghost chat-queue-remove"
                     onClick={() => {
                       const next = queueRef.current.filter(
@@ -2458,6 +2460,7 @@ function ChatHistorySection({
               {/^0x[0-9a-fA-F]{40}$/.test(t.id) ? (
                 <span
                   className="chat-history__badge"
+                  role="img"
                   title={copy.storedOn0G}
                   aria-label={copy.storedOn0G}
                 />

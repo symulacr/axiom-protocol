@@ -138,7 +138,7 @@ function AdvancedFiltersPopover({
   useModalDismiss(onClose, popoverRef);
   return createPortal(
     <>
-      <div className="filters-backdrop" onMouseDown={onClose} />
+      <div className="popover-backdrop" onMouseDown={onClose} />
       <div
         ref={popoverRef}
         className="filters-popover"
@@ -184,7 +184,7 @@ function ReceiptDrawer({
   const txCopy = copy.transactions;
   // Dismiss contract: Esc + Tab trap + initial focus + focus restore added here; backdrop and X already existed.
   const drawerRef = useRef<HTMLElement>(null);
-  useModalDismiss(onClose, drawerRef);
+  useModalDismiss(onClose, drawerRef, { scrollLock: true });
   // U5: chain rows without a txHash synthesize "—" — no explorer link for those.
   const explorerHref = explorerTx(tx.hash);
   const recover = isRecoverableTx(tx.state);
@@ -232,10 +232,22 @@ function ReceiptDrawer({
           {txCopy.viewOnExplorer}
         </a>
       ) : (
-        <span className="button button-primary" aria-disabled="true">
-          <ArrowRight size={16} />
-          {txCopy.viewOnExplorer}
-        </span>
+        // U5: no hash yet — a real disabled button (focusable, announced) plus
+        // the one-line reason, never an inert span.
+        <>
+          <button
+            type="button"
+            className="button button-primary"
+            disabled
+            aria-describedby="receipt-explorer-pending"
+          >
+            <ArrowRight size={16} />
+            {txCopy.viewOnExplorer}
+          </button>
+          <small id="receipt-explorer-pending" className="field-hint">
+            {txCopy.awaitingFinalEvidence}
+          </small>
+        </>
       )}
       <Button
         variant="ghost"
@@ -247,14 +259,14 @@ function ReceiptDrawer({
     </>
   );
   return createPortal(
-    <div className="drawer-layer" onClick={onClose}>
+    <div className="drawer-layer" onMouseDown={onClose}>
       <aside
         ref={drawerRef}
         className="receipt-drawer"
         role="dialog"
         aria-modal="true"
         aria-label={`${txCopy.drawerTitle}: ${tx.kind}`}
-        onClick={(event) => event.stopPropagation()}
+        onMouseDown={(event) => event.stopPropagation()}
       >
         <button
           className="icon-button drawer-close"

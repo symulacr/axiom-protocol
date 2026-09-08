@@ -226,12 +226,13 @@ export function CoSignPage({ go }: { go: (path: string) => void }) {
             <Fact label={f.receiveReceiver} mono>
               {truncateAddress(receiver)}
             </Fact>
-            <Fact label={f.receiveExpiry}>{expiryDate.toLocaleString()}</Fact>
+            <Fact label={f.receiveExpiry}>
+              {expiryDate.toLocaleString(state.settings.locale)}
+            </Fact>
             <Fact label={f.receiveNetwork}>
-              {interpolate(f.networkFact, {
-                chainName: "",
+              {interpolate(f.networkFactId, {
                 chainId: payload.typedData.domain.chainId,
-              }).replace(/^, /, "")}
+              })}
             </Fact>
           </dl>
 

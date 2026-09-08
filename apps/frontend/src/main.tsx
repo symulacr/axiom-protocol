@@ -1,4 +1,4 @@
-import { StrictMode, useEffect } from "react";
+import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -7,7 +7,7 @@ import { Toaster } from "sonner";
 import { App } from "./App";
 import { WagmiConfigProvider } from "./config/wagmi";
 import { UiStoreProvider } from "./lib/uiStore";
-import { getShortcutPath, isIndexablePath } from "./lib/routeRegistry";
+import { isIndexablePath } from "./lib/routeRegistry";
 import "./styles/index.css";
 import "./styles/axiom-awwwards.css";
 
@@ -47,39 +47,6 @@ window.history.pushState = ((...args: Parameters<History["pushState"]>) => {
 window.addEventListener("popstate", applyIndexingPolicy);
 applyIndexingPolicy();
 
-/** Alt+1..5 / M / P / T / K route shortcuts — skip editable targets. */
-function CommandShortcuts() {
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      const target = event.target as HTMLElement | null;
-      const isEditing = Boolean(
-        target?.closest("input, textarea, select, [contenteditable='true']"),
-      );
-      if (
-        isEditing ||
-        !event.altKey ||
-        event.ctrlKey ||
-        event.metaKey ||
-        event.shiftKey
-      )
-        return;
-
-      const path = getShortcutPath(event.key);
-      if (!path) return;
-
-      event.preventDefault();
-      window.history.pushState({}, "", path);
-      window.dispatchEvent(new PopStateEvent("popstate"));
-      window.scrollTo({ top: 0, behavior: "auto" });
-    };
-
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, []);
-
-  return null;
-}
-
 // QueryClientProvider must wrap WagmiConfigProvider — wagmi's data hooks
 // resolve their react-query client internally.
 createRoot(rootEl).render(
@@ -89,7 +56,6 @@ createRoot(rootEl).render(
         <UiStoreProvider>
           <BrowserRouter>
             <App />
-            <CommandShortcuts />
           </BrowserRouter>
         </UiStoreProvider>
       </WagmiConfigProvider>
