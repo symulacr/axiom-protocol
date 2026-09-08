@@ -480,8 +480,11 @@ body:has(.flow-action) .notice-toast { bottom:96px; }
   border-color: var(--line);
 }
 
-/* Paper-theme inks: graphite-calibrated accents measured 1.3-4.0:1 on paper. */
-.app-shell.light { --phosphor: #0a6b43; }
+/* Paper-theme inks: graphite-calibrated accents measured 1.3-4.0:1 on paper.
+   plan-003 R2: phosphor pinned to the editorial #0a684a — the value body.light
+   (:3069) already declares, so console and Light Editorial landing share one
+   signal green. (Was #0a6b43, a pre-editorial graphite calibration.) */
+.app-shell.light { --phosphor: #0a684a; }
 .app-shell.light .button-primary { color: var(--panel); }
 .app-shell.light .field-message,
 .app-shell.light .state-reverted,
@@ -5473,4 +5476,38 @@ body .landing-page .icon-button.landing-design-switch { display: grid; width: va
   .forge-btn-hero { font-size: 14px; padding: 15px 24px; }
   .forge-closing .forge-btn-primary { font-size: 15px; padding: 17px 30px; }
   .landing-footer-row { flex-direction: column; align-items: flex-start; }
+}
+
+/* ====================================================================== *
+ * plan-003 R2 — console theme alignment with the dual-variant landing.   *
+ * The light console speaks the Light Editorial voice: page + section     *
+ * headings set in Fraunces (the self-hosted serif — 500 roman is the     *
+ * heaviest shipped weight, so the Syne-era 600/800 heading weights drop  *
+ * to 500; no synthetic faux-bold). Dark keeps Syne via the unchanged     *
+ * base rules. Data values (stat/ops numbers, agent names) and the chat   *
+ * surface keep the console face in both themes; the dark-locked gates    *
+ * and 404 are out of scope by their brand lock. Tail placement is load-  *
+ * bearing: .ops-page .page-head h1 (:3838) ties this specificity and     *
+ * loses only on source order.                                            *
+ * ====================================================================== */
+
+.app-shell.light .page-head h1 {
+  font-family: var(--font-serif-display);
+  font-weight: 500;
+  letter-spacing: -0.022em;
+}
+
+.app-shell.light .panel-head h2,
+.app-shell.light .agent-identity-card h2,
+.app-shell.light .agent-command-card h2,
+.app-shell.light .tab-panel h2,
+.app-shell.light .settings-card h2,
+.app-shell.light .storage-stage h2,
+.app-shell.light .provenance-panel h2,
+.app-shell.light .flow-stage-top h2,
+.app-shell.light .flow-context h2,
+.app-shell.light .not-integrated h2 {
+  font-family: var(--font-serif-display);
+  font-weight: 500;
+  letter-spacing: -0.018em;
 }
