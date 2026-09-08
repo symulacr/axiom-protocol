@@ -107,6 +107,10 @@ type PublicPage = {
   journey: string;
 };
 
+/* Hub content is English-only by decision (QA P-H2): these are public SEO
+ * crawl surfaces for an English-first developer ecosystem; the console and
+ * landing carry the locale-keyed experience. Do not "fix" by translating
+ * piecemeal — a localized hub set is a routing+hreflang project of its own. */
 const pages: Record<PublicSeoSlug, PublicPage> = {
   agents: {
     title: "Agents with a\nvisible track record.",
