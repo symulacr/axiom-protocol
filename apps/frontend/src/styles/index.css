@@ -193,14 +193,9 @@
 .ops-summary { display:grid; gap:1px; margin-bottom:var(--space-5); border:1px solid var(--completion-line); background:var(--completion-line); }.ops-summary>div { display:grid; gap:var(--space-2); padding:var(--space-4); background:var(--completion-panel); }.ops-summary strong { font:var(--fw-strong) var(--fs-title) var(--font-display); }.ops-summary-value { margin:0; font:var(--fw-strong) var(--fs-title) var(--font-display); }.ops-summary-recovery .ops-summary-value { color:var(--copper-bright); }.ops-summary small { color:var(--completion-dim); font:var(--fs-mono) var(--font-mono); }.ops-summary-note { display:flex!important; align-items:center; gap:var(--space-2); color:var(--completion-muted); font-size:var(--fs-small); line-height:1.5; }.ops-summary-note svg { flex:0 0 auto; color:var(--completion-phosphor); }.filters { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:var(--space-1); }.filter { padding:var(--space-2) var(--space-2); font-size:var(--fs-mono); border-bottom-width:1px; }.transaction-panel { overflow:hidden; }.transaction-table-head,.transaction-row { display:grid; /* the pill track floors at min-content: the longest localized nowrap pill (fr "Confirmation en cours", 21ch ≈ 152px) always renders in full — below that, the table's overflow-x:auto scroll contract carries the overflow, never a clipped pill */ grid-template-columns:minmax(260px,1.35fr) 1fr .55fr minmax(min-content,.8fr) 15px; gap:var(--space-3); align-items:center; }.transaction-table-head { padding:var(--space-3) var(--space-4); color:var(--completion-dim); font:500 var(--fs-mono) var(--font-mono); letter-spacing:.08em; }.transaction-row { width:100%; }.transaction-kind { display:flex; align-items:center; gap:var(--space-2); min-width:0; }.transaction-kind>i { display:grid; place-items:center; width:28px; height:28px; color:var(--completion-copper); border:1px solid var(--completion-line); font-style:normal; }.transaction-row .mono { color:var(--completion-dim); font-size:var(--fs-small); overflow-wrap:anywhere; }.drawer-layer,.command-palette-layer { position:fixed; inset:0; background:rgba(7,9,10,.72); backdrop-filter:blur(12px); }.receipt-drawer { position:absolute; inset-block:0; inset-inline:auto 0; width:min(470px,100%); /* top = --space-7 + --space-6 = 80px: clears the 72px sticky topbar; the old 78px off-scale literal snapped +2px onto the ladder */ padding:calc(var(--space-7) + var(--space-6)) var(--space-6) var(--space-6); overflow:auto; border-inline-start:1px solid var(--completion-copper); background:var(--completion-panel); box-shadow: var(--shadow-drawer); }.drawer-close { position:absolute; top:var(--space-5); right:var(--space-5); }.drawer-list { margin-top:var(--space-6); }.command-palette-layer { display:grid; place-items:start center; padding-top:15vh; }.command-palette { border:1px solid var(--completion-copper); background:var(--completion-panel); box-shadow: var(--shadow-modal); }.command-input { display:flex; align-items:center; gap:var(--space-2); padding:var(--space-4); border-bottom:1px solid var(--completion-line); color:var(--completion-copper); }.command-input input { flex:1; border:0; outline:0; background:transparent; color:var(--ink); font:var(--fs-body) var(--font-mono); }.command-input kbd { color:var(--completion-dim); font:500 var(--fs-mono) var(--font-mono); }.empty-state { padding:var(--space-5); color:var(--completion-dim); font-size:var(--fs-small); }
 .storage-grid { grid-template-columns:1.12fr .88fr; }.storage-file { display:grid; grid-template-columns:38px 1fr auto; align-items:center; gap:var(--space-3); padding:var(--space-4) 0; border-bottom:1px solid var(--completion-line); }.file-icon { display:grid; place-items:center; width:34px; height:34px; color:var(--completion-phosphor); border:1px solid color-mix(in srgb,var(--phosphor) 25%,transparent); }.storage-file strong,.storage-file span { display:block; }.storage-file strong { font-size:var(--fs-body); font-weight:var(--fw-label); }.storage-file div span { margin-top:var(--space-1); color:var(--completion-dim); font-size:var(--fs-small); }.storage-steps { display:grid; gap:0; padding:var(--space-5) 0; }.storage-step { position:relative; display:grid; grid-template-columns:28px 1fr; align-items:center; min-height:39px; color:var(--completion-dim); }.storage-step>span { display:grid; place-items:center; width:22px; height:22px; border:1px solid var(--completion-line); font:500 var(--fs-mono) var(--font-mono); }.storage-step strong { font-size:var(--fs-body); font-weight:var(--fw-label); }.storage-step i { position:absolute; top:31px; left:10px; width:1px; height:17px; background:var(--completion-line); }.storage-step.done { color:var(--completion-phosphor); }.storage-step.done>span { border-color:var(--completion-phosphor); }.storage-note,.diagnostic-note,.provenance-source { display:flex; gap:var(--space-2); align-items:flex-start; margin-top:var(--space-5); padding:var(--space-3); border-inline-start:2px solid var(--completion-phosphor); background:color-mix(in srgb,var(--phosphor) 5%,transparent); color:var(--completion-muted); font-size:var(--fs-small); line-height:1.5; }.storage-note svg,.diagnostic-note svg { flex:0 0 auto; color:var(--completion-phosphor); }.provenance-source { display:grid; gap:var(--space-1); border-inline-start-color:var(--completion-copper); }.provenance-source strong { font-size:var(--fs-body); font-weight:var(--fw-label); }.flow-layout { display:grid; grid-template-columns:minmax(0,1.2fr) minmax(280px,.8fr); gap:var(--space-5); }.flow-stage { min-width:0; padding:0; border:1px solid var(--completion-line); background:var(--completion-panel); }.flow-stage-top { display:flex; align-items:center; gap:var(--space-3); padding:var(--space-5); border-bottom:1px solid var(--completion-line); }.flow-symbol { display:grid; place-items:center; width:36px; height:36px; color:var(--completion-copper); border:1px solid var(--completion-copper); }.flow-stage-top h2 { margin-top:var(--space-1); font:var(--fw-title) var(--fs-title) var(--font-display); letter-spacing:-.02em; }.flow-stage-top>.state-pill { margin-inline-start:auto; }.flow-visual { position:relative; min-height:240px; overflow:hidden; background:var(--surface-elevated); }.flow-visual img { width:100%; height:260px; object-fit:cover; opacity:.56; mix-blend-mode:screen; }.flow-form { display:grid; grid-template-columns:1fr 1fr; gap:var(--space-4); padding:var(--space-5); }.flow-action { display:flex; gap:var(--space-2); padding:var(--space-5); border-top:1px solid var(--completion-line); }.flow-context { align-self:start; padding:var(--space-5); border-top:2px solid var(--completion-copper); }.flow-context h2 { margin:var(--space-3) 0 var(--space-5); font:var(--fw-title) var(--fs-title)/1 var(--font-display); letter-spacing:-.02em; }.flow-context .provenance-list { margin-bottom:0; }
 .thread-list { align-self:start; }.settings-grid { grid-template-columns:.88fr 1.12fr; }/* .settings-card padding dup removed — owned by the :106 grouped padding rule. */.settings-toggle-row { display:flex; align-items:center; justify-content:space-between; gap:var(--space-4); padding:var(--space-4) 0; border-top:1px solid var(--completion-line); }.settings-toggle-row>div { display:grid; gap:var(--space-1); }.settings-toggle-row strong,.range-control strong { font-size:var(--fs-body); font-weight:var(--fw-label); }.settings-toggle-row small,.range-control small { color:var(--completion-dim); font-size:var(--fs-small); line-height:1.4; }.toggle { width:40px; height:22px; padding:var(--space-1); border:1px solid var(--completion-line); border-radius:20px; background:var(--bg-2); }.toggle i { display:block; width:14px; height:14px; border-radius:50%; background:var(--completion-dim); transition:transform var(--dur-fast) var(--completion-ease),background var(--dur-fast) var(--completion-ease); }.toggle.on { border-color:var(--completion-copper); background:color-mix(in srgb,var(--completion-copper) 16%,transparent); }.toggle.on i { background:var(--completion-bright); transform:translateX(16px); }.range-control { display:flex; justify-content:space-between; align-items:center; gap:var(--space-4); padding:var(--space-4) 0; border-top:1px solid var(--completion-line); }.range-control span { display:grid; gap:var(--space-1); }.range-control input { width:150px; accent-color:var(--completion-copper); }.settings-select-row { display:grid; grid-template-columns:1fr 1fr; padding:var(--space-4) 0; gap:var(--space-4); }.settings-select-row label { display:grid; gap:var(--space-2); color:var(--completion-muted); font:500 var(--fs-mono) var(--font-mono); }.settings-select-row select { min-height:36px; border:1px solid var(--completion-line); background:var(--bg-2); color:var(--completion-text); padding:0 var(--space-2); font:16px var(--font-mono); }.settings-control-actions { display:flex; flex-wrap:wrap; gap:var(--space-2); margin-top:var(--space-5); }.not-integrated { display:grid; grid-template-columns:68px minmax(0,700px); gap:var(--space-5); padding:var(--space-6); border:1px solid color-mix(in srgb,var(--warning) 35%,transparent); background:linear-gradient(130deg,color-mix(in srgb,var(--warning) 9%,transparent),transparent),var(--completion-panel); }.not-integrated-icon { display:grid; place-items:center; width:54px; height:54px; border:1px solid var(--completion-warning); color:var(--completion-warning); }.not-integrated h2 { margin:var(--space-3) 0; font:var(--fw-title) var(--fs-title) var(--font-display); letter-spacing:-.02em; }.not-integrated p { color:var(--completion-muted); font-size:var(--fs-body); line-height:1.7; }.not-integrated-actions { display:flex; gap:var(--space-2); margin-top:var(--space-5); }
-.public-locked { /* Intentional brand lock; see ledger L3-B9 — dark canvas regardless of light preference. */ min-height:100dvh; background:var(--canvas); }.public-locked .locked-route-main { min-height:100dvh; }.public-locked .locked-topbar { padding:0 clamp(20px,5vw,70px); }.recovery-404 { /* Intentional brand lock; see ledger L3-B9 (dark-locked art slab). */ min-height:100dvh; display:grid; grid-template-columns:1.1fr .9fr; background:var(--canvas); color:var(--ink); }.recovery-404-art { min-height:100dvh; overflow:hidden; border-inline-end:1px solid var(--completion-line); }.recovery-404-art img { width:100%; height:100%; object-fit:cover; opacity:.7; mix-blend-mode:screen; }.recovery-404-copy { display:flex; flex-direction:column; justify-content:center; align-items:flex-start; gap:var(--space-4); padding:clamp(28px,7vw,90px); }.recovery-404-copy h1 { margin:var(--space-4) 0 var(--space-1); font:800 clamp(54px,7vw,100px)/.84 var(--font-display); letter-spacing:-.08em; text-wrap:balance; }.recovery-404-copy h1 i { color:var(--completion-bright); font-style:normal; }.recovery-404-copy p { max-width:390px; color:var(--completion-muted); font-size:var(--fs-body); line-height:1.7; }.landing-nav { display:flex; align-items:center; justify-content:space-between; padding:var(--space-5) clamp(20px,5vw,76px); }.landing-main { display:grid; grid-template-columns:minmax(0,720px); align-items:center; margin:0 auto; }.landing-copy h1 { margin:var(--space-4) 0 var(--space-5); letter-spacing:-.09em; }.landing-copy h1 i { color:var(--completion-bright); font-style:normal; }
-/* R1: Fraunces hero — wins over the Syne base above via cascade order.
-   font: shorthand resets size/line-height/family; tracking + features come last. */
-.landing-copy h1 { font: 500 clamp(34px, 6vw, 60px)/.98 var(--font-serif-display); letter-spacing: -0.025em; font-feature-settings: "ss01","ss02","cv11"; text-wrap: balance; }
-.landing-copy h1 i { font-style: italic; font-weight: 400; font-feature-settings: "ss01"; }
-/* R4: eyebrow pill — phosphor dot + mono caps above the h1.
-   Sits inside .landing-copy so it inherits the grid alignment. */
-.landing-copy>p { max-width:440px; color:var(--completion-muted); font-size:var(--fs-body); line-height:1.7; }
+.public-locked { /* Intentional brand lock; see ledger L3-B9 — dark canvas regardless of light preference. */ min-height:100dvh; background:var(--canvas); }.public-locked .locked-route-main { min-height:100dvh; }.public-locked .locked-topbar { padding:0 clamp(20px,5vw,70px); }.recovery-404 { /* Intentional brand lock; see ledger L3-B9 (dark-locked art slab). */ min-height:100dvh; display:grid; grid-template-columns:1.1fr .9fr; background:var(--canvas); color:var(--ink); }.recovery-404-art { min-height:100dvh; overflow:hidden; border-inline-end:1px solid var(--completion-line); }.recovery-404-art img { width:100%; height:100%; object-fit:cover; opacity:.7; mix-blend-mode:screen; }.recovery-404-copy { display:flex; flex-direction:column; justify-content:center; align-items:flex-start; gap:var(--space-4); padding:clamp(28px,7vw,90px); }.recovery-404-copy h1 { margin:var(--space-4) 0 var(--space-1); font:800 clamp(54px,7vw,100px)/.84 var(--font-display); letter-spacing:-.08em; text-wrap:balance; }.recovery-404-copy h1 i { color:var(--completion-bright); font-style:normal; }.recovery-404-copy p { max-width:390px; color:var(--completion-muted); font-size:var(--fs-body); line-height:1.7; }/* plan-003 R1: the v3 landing rules here were replaced by the dual-variant landing (see the plan-003 R1 section at the end of this file). */
+/* R1: the Fraunces hero rules for the v3 landing were removed with it
+   (plan-003 R1 dual-variant landing). */
 
 /* ---- inlined: axiom-review-pass.css ---- */
 /* Axiom Copper Command Deck review pass.
@@ -280,13 +275,7 @@
 .locked-schematic-row span { color:var(--completion-dim); font:500 var(--fs-mono) var(--font-mono); text-transform:uppercase; letter-spacing:.08em; overflow-wrap:anywhere; }
 .locked-schematic-row em { color:var(--completion-bright); font:var(--fs-mono) var(--font-mono); font-style:normal; white-space:nowrap; }
 
-.landing-main, .landing-copy { min-width:0; }
-/* Wave 5 (2026-09-02 re-audit): `white-space:nowrap` on both headline spans
-   let the 78px italic line run ~405px under the hero visual plate (right
-   edge 1102px vs plate left edge 697px). The nowrap is gone — the h1 wraps
-   inside its grid column again and text-wrap:balance (base rule) shapes it. */
-.landing-copy h1 { max-width:100%; overflow:visible; }
-.landing-copy h1 span, .landing-copy h1 i { display:inline-block; }
+/* plan-003 R1: v3 .landing-main/.landing-copy rules removed with the old landing. */
 
 @media (max-width: 900px) {
   .public-locked .locked-route-content { grid-template-columns:46px minmax(0,1fr); gap:var(--space-5); width:min(860px,calc(100% - 40px)); }
@@ -311,20 +300,12 @@
      content box exactly — a fixed 150px here overflowed by the 1px border. */
   .locked-preview { min-height:150px; height:150px; }
   .locked-preview img { height:100%; }
-  .landing-main { min-width:0; }
-  .landing-copy h1 { max-width:100%; letter-spacing:-.08em; overflow-wrap:normal; }
-  /* Wave 5: the mobile `white-space:normal` reset is gone with the desktop
-     nowrap — nothing to reset anymore. */
 }
 
 /* Copper Command Deck / visual edit pass: generated mark, decisive wallet CTA, and a restrained ambient hero loop. */
 /* R2: CTA halo replaces the 450ms skew sheen.
    pill radius + layered shadow + static copper radial highlight + hover lift. */
-.wallet-cta { position: relative; overflow: hidden; border-radius: 999px; box-shadow: 0 8px 24px color-mix(in srgb, var(--copper) 14%, transparent), inset 0 1px 0 rgba(255,248,225,.08); transition: transform var(--motion-fade-220), box-shadow var(--motion-fade-220); }
-.wallet-cta::after { content: ""; position: absolute; inset: 0; background: radial-gradient(60% 100% at 50% 50%, rgba(255,248,225,.10), transparent 70%); transition: opacity var(--motion-fade-220); }
-.wallet-cta:hover { transform: translateY(-1px); box-shadow: 0 12px 28px color-mix(in srgb, var(--copper) 22%, transparent), inset 0 1px 0 rgba(255,248,225,.14); }
-.wallet-cta:hover::after { opacity: 1.4; }
-.wallet-cta-hero { min-height:44px; padding-inline:var(--btn-pad-lg); }
+/* plan-003 R1: .wallet-cta/.wallet-cta-hero removed — only the old landing used them; the forge CTA buttons own their chrome now. */
 
 /* Hardening pass: resilient content, accessible form sizing, and direction-safe layout. */
 .ops-page, .panel, .flow-stage, .flow-context, .thread-list, .receipt-drawer { min-width:0; min-height:0; }
@@ -456,11 +437,8 @@ body:has(.flow-action) .notice-toast { bottom:96px; }
   .transaction-kind { align-items:flex-start; }
 }
 
-/* Landing overflow fix: nav padding and hero readout tags must not push past viewport at 390 px. */
-@media (max-width: 480px) {
-  .landing-nav { padding:var(--space-4) var(--space-3); }
-  .landing-copy h1 { font-size:clamp(42px,13vw,56px); letter-spacing:-.09em; }
-}
+/* Landing overflow fix (v3) removed with the old landing — the dual-variant
+   landing owns its own small-viewport rules (plan-003 R1). */
 /* ---- inlined: axiom-theme-accessibility.css ---- */
 /*
   Axiom Copper Command Deck — theme and stability reinforcement.
@@ -806,11 +784,9 @@ body:has(.flow-action) .notice-toast { bottom:96px; }
 .axiom-brand-mark b { inset: 12px; background: var(--copper-bright); transform: rotate(45deg); }
 .axiom-brand-mark em { inset: 0; border: 1px solid color-mix(in srgb, var(--copper) 18%, transparent); transform: rotate(45deg) scale(.72); }
 
-.landing-nav .axiom-brand-mark,
 .locked-topbar .axiom-brand-mark { inline-size: 38px; block-size: 38px; flex-basis: 38px; }
 .seo-public-brand .axiom-brand-mark { inline-size: 24px; block-size: 24px; flex-basis: 24px; }
 
-.landing-nav .brand,
 .locked-topbar .brand {
   gap: var(--space-3);
 }
@@ -885,65 +861,10 @@ body:has(.flow-action) .notice-toast { bottom:96px; }
   overscroll-behavior-inline: contain;
 }
 
-.landing-page {
-  display: block;
-  min-block-size: 100svh;
-  position: relative;
-  /* L2 (2026-09): removed the fixed 3-row grid + overflow:hidden so the
-     principles / footer sections can flow below the hero. */
-  /* R12: horizontal scrollbar can never appear — fixed elements and the
-     marquee clip at the page root instead of growing scrollWidth. */
-  overflow-x: clip;
-}
-
-/* R12: ThreeBackground host — sits behind every landing child. */
-.three-bg { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
-/* Additive sparks wash out on paper — keep them faint in light mode. */
-body.light .three-bg { opacity: .35; }
-.three-bg canvas { display: block; width: 100%; height: 100%; }
-/* The skip link stays excluded: position:relative here would keep the <a>
-   inline, and transforms do not apply to inline boxes — its translateY(-200%)
-   hide would no-op and the link would paint at rest. */
-.landing-page > *:not(.three-bg):not(.skip-link) { position: relative; z-index: 1; }
-
-.landing-nav {
-  min-block-size: 68px;
-  padding-block: 0;
-}
-
-.landing-page .landing-main {
-  min-block-size: 0;
-  block-size: auto;
-  /* Top-align the hero instead of centering it: centering inside the flexible
-     row produced a ~240px empty band above the headline (R1 dead-space audit). */
-  align-items: start;
-  /* Wave 5 (re-audit): one content container — the same clamp(20px,5vw,76px)
-     inline padding as .scroll-section / .landing-footer, so hero, sections
-     and footer share a single left edge. Bottom padding joins the spacing
-     scale (96px) instead of the old 66/80px literals. */
-  /* One track, capped at a 720px measure: .landing-copy is the only child,
-     and an uncapped 1fr would put the whole h1 on one ~1300px line. */
-  grid-template-columns: minmax(0, 720px);
-  padding: clamp(28px, 4.5vh, 44px) clamp(20px, 5vw, 76px) 96px;
-  position: relative;
-}
-
-/* F2/R2 #5: the "vertical index" pseudo-rails were reverted to `content: none`
-   (no-op) while keeping their full typography declared; deleted as dead code
-   rather than re-wired. The mobile `display: none` for the same selectors was
-   removed with them. */
-
-.landing-copy h1 {
-  margin-block: var(--space-3) var(--space-4);
-  /* Wave 5: 78px max only fit because the spans were nowrap-clipped under
-     the hero plate; 64px max lets "Own an AI agent." hold one line inside
-     the copy column and the italic line wrap to two balanced rows. */
-  font-size: clamp(44px, 4.4vw, 64px);
-}
-
-.landing-copy > p {
-  margin-block: 0 var(--space-4);
-}
+/* plan-003 R1: the v3 .landing-page/.landing-main/.landing-copy rules and the
+   .three-bg host (ThreeBackground) were replaced by the dual-variant landing —
+   see the plan-003 R1 section at the end of this file. The page-root
+   stacking contract survives there: fixed canvas under, content above. */
 
 /* Locked routes use an explicit proof rail rather than a decorative seam. */
 .locked-route-main {
@@ -958,12 +879,6 @@ body.light .three-bg { opacity: .35; }
 
 .locked-preview {
   position: relative;
-}
-
-@media (max-width: 1120px) and (min-width: 701px) {
-  .landing-copy h1 {
-    font-size: clamp(46px, 6.8vw, 64px);
-  }
 }
 
 @media (max-width: 1120px) {
@@ -991,26 +906,6 @@ body.light .three-bg { opacity: .35; }
 @media (max-width: 700px) {
   .app-shell {
     grid-template-columns: minmax(0, 1fr);
-  }
-
-  .landing-page {
-    min-block-size: 100svh;
-  }
-
-  .landing-main {
-    grid-template-columns: 1fr;
-    padding: var(--space-5);
-  }
-
-  /* Top-align mobile hero too: centering put ~293px of empty canvas above the
-     h1 on an 844px budget (R1 dead-space audit). */
-  .landing-copy {
-    align-self: start;
-  }
-
-  .landing-copy h1 {
-    font-size: clamp(42px, 12.2vw, 54px);
-    overflow-wrap: anywhere;
   }
 
   .app-shell .ops-page {
@@ -1395,28 +1290,25 @@ button, input, textarea, select { line-height: var(--support-leading); }
   .public-locked .locked-preview small { max-width: 29ch; }
 }
 
-/* Landing nav menu: the hamburger is the only nav on every viewport, so the
-   dropdown panel styles are viewport-independent (they were wrongly trapped
-   in the ≤640px block, rendering an unpositioned full-width strip on
-   desktop). Mobile goes full-bleed; desktop is right-anchored and capped. */
-.landing-nav { position: relative; }
-/* body-scoped so the 40px geometry outranks the 32px `body .icon-button`
-   base (0,1,1) — Wave 5's intent was a 40px hamburger on every viewport. */
+/* plan-003 R1: landing mobile menu — the hamburger collapses to mobile
+   (<980px; the ≥980px hide lives in the plan-003 R1 section at the end of
+   this file, next to the nav it pairs with). Both landing designs share this
+   panel as the fallback menu; the editorial variant upgrades it to the
+   liquid-gooey island when motion is allowed. Dismiss contract (Esc + Tab
+   trap + focus restore) is useModalDismiss in LandingPage. */
 body .icon-button.landing-menu-trigger { display: grid; width: var(--icon-hit-lg); height: var(--icon-hit-lg); min-width: var(--icon-hit-lg); min-height: var(--icon-hit-lg); border-color: var(--line); transition: border-color var(--motion-fade-220), color var(--motion-fade-220), background-color var(--motion-fade-220); }
 .landing-menu-trigger:hover,
 .landing-menu-trigger[aria-expanded="true"] { border-color: var(--copper); color: var(--copper-bright); background: color-mix(in srgb, var(--copper) 10%, transparent); }
-.landing-mobile-menu { position: absolute; z-index: var(--layer-popover, 60); top: calc(100% - var(--space-2)); inset-inline-end: var(--space-3); width: min(420px, calc(100vw - 2 * var(--space-3))); display: grid; gap: 1px; padding: var(--space-2); border: 1px solid var(--completion-line); background: color-mix(in srgb, var(--completion-panel) 95%, black); box-shadow: var(--shadow-modal); backdrop-filter: blur(20px) saturate(140%); -webkit-backdrop-filter: blur(20px) saturate(140%); animation: landing-menu-rise var(--motion-rise-180) both; transform-origin: top right; }
-.landing-mobile-menu > button:not(.button) { position: relative; display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; align-items: center; gap: var(--space-3); width: 100%; min-height: var(--hit-area); padding: var(--space-3) var(--space-6) var(--space-3) var(--space-3); color: var(--completion-text); text-align: start; border: 0; background: transparent; }
-.landing-mobile-menu > button:not(.button) svg { color: var(--completion-copper); }
-.landing-mobile-menu > button:not(.button) span { display: grid; gap: var(--space-1); }
-.landing-mobile-menu > button:not(.button) strong { font-size: var(--fs-body); font-weight: var(--fw-label); }
-.landing-mobile-menu > button:not(.button) small { color: var(--completion-dim); font-size: var(--fs-small); line-height: var(--support-leading); }
-/* R8: ↵ kbd affordance on menu items — visible on hover/focus only. */
-.landing-mobile-menu > button:not(.button)::after { content: "↵"; position: absolute; right: var(--space-3); top: 50%; transform: translateY(-50%); opacity: 0; transition: opacity var(--dur-fast) var(--motion-ease); font: 500 var(--fs-mono)/1 var(--font-mono); color: var(--dim); }
-.landing-mobile-menu > button:not(.button):hover::after,
-.landing-mobile-menu > button:not(.button):focus-visible::after { opacity: 0.7; }
-.landing-mobile-menu .button { width: 100%; }
-/* R7: menu rise animation (matches .operation-review-sheet vibe). */
+.landing-mobile-menu { position: absolute; z-index: calc(var(--layer-popover, 60) + 1); top: calc(100% + 12px); inset-inline-end: 0; width: min(320px, calc(100vw - 2 * var(--space-3))); display: grid; gap: 1px; padding: var(--space-2); border: 1px solid var(--completion-line); border-radius: var(--radius-lg); background: color-mix(in srgb, var(--completion-panel) 95%, black); box-shadow: var(--shadow-modal); backdrop-filter: blur(20px) saturate(140%); -webkit-backdrop-filter: blur(20px) saturate(140%); animation: landing-menu-rise var(--motion-rise-180) both; transform-origin: top right; }
+.landing-mobile-item { position: relative; display: grid; grid-template-columns: 22px minmax(0, 1fr); align-items: center; gap: var(--space-3); width: 100%; min-height: var(--hit-area); padding: var(--space-3); color: var(--completion-text); text-align: start; border: 0; background: transparent; border-radius: var(--radius-md); text-decoration: none; }
+.landing-mobile-item svg { color: var(--completion-copper); }
+.landing-mobile-item:not(:has(svg)) { grid-template-columns: minmax(0, 1fr); }
+.landing-mobile-item span { display: grid; gap: var(--space-1); }
+.landing-mobile-item strong { font-size: var(--fs-body); font-weight: var(--fw-label); }
+.landing-mobile-item small { color: var(--completion-dim); font-size: var(--fs-small); line-height: var(--support-leading); }
+.landing-mobile-item:hover,
+.landing-mobile-item:focus-visible { background: color-mix(in srgb, var(--copper) 8%, transparent); }
+/* Menu rise (matches the old landing-menu-rise contract). */
 @keyframes landing-menu-rise {
   from { opacity: 0; transform: scale(0.96) translateY(-4px); }
   to   { opacity: 1; transform: scale(1) translateY(0); }
@@ -1424,39 +1316,9 @@ body .icon-button.landing-menu-trigger { display: grid; width: var(--icon-hit-lg
 @media (prefers-reduced-motion: reduce) {
   .landing-mobile-menu { animation: none; }
 }
-/* R9: subtle entrance animations on Landing hero.
-   Gated behind prefers-reduced-motion: no-preference so the OS preference is honored. */
-@media (prefers-reduced-motion: no-preference) {
-  .landing-copy > * { animation: landing-rise var(--dur-slow) var(--ease-standard) both; }
-  .landing-copy > *:nth-child(2) { animation-delay: 80ms; }
-  .landing-copy > *:nth-child(3) { animation-delay: 160ms; }
-  .landing-copy > *:nth-child(4) { animation-delay: 240ms; }
-}
-@keyframes landing-rise {
-  from { opacity: 0; transform: translateY(12px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-/* Wave-11A (critique-3 RM-3; MASTER-SUMMARY §4.10): the in-app Reduced-motion
-   setting previously never reached this page — landing renders outside
-   .app-shell, so the .operator-preferences.reduce-motion kill-switch could
-   not cover it. The setting is now mirrored to
-   documentElement.dataset.reduceMotion (uiStore persistence effect + AppShell
-   effect + index.html boot script, same pattern as data-theme), and this
-   rule gates the landing ENTRANCE animations on it. The OS-level
-   prefers-reduced-motion gate above (no-preference wrapping) is untouched.
-   Scoped to the animated landing region (.landing-copy children) — not a
-   blanket kill, so the reduced-motion contract stays minimal. */
-[data-reduce-motion="true"] .landing-copy * {
-  animation: none !important;
-  transition: none !important;
-}
 @media (max-width: 700px) {
-  .landing-mobile-menu { left: var(--space-3); width: auto; }
+  .landing-mobile-menu { inset-inline: 0; width: auto; }
 }
-
-/* Modern hero artifact: one clear material focal point, with copy held in a calm safe area. */
-
-/* The editorial landing statement remains singular; the artifact carries state, not another slogan. */
 
 /* Chat is an operating surface: threads, messages, and the composer keep independent readable tracks. */
 .thread-list { display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
@@ -2123,7 +1985,7 @@ a.account:active, a.session-top:active { transform: scale(0.96); }
    default gray tap flash on interactive surfaces — the design's own press
    and hover accents are the feedback. */
 a, .button, .icon-button, .nav-item, .filter, .transaction-row, .agent-row,
-.activity-row, .chat-history__item, .prompt-card, .text-link, .nav-connect {
+.activity-row, .chat-history__item, .prompt-card, .text-link {
   -webkit-tap-highlight-color: transparent; touch-action: manipulation;
 }
 
@@ -3780,21 +3642,7 @@ strong {
   margin-bottom: var(--space-5);
 }
 
-@media (max-width: 700px) {
-  .landing-page {
-    min-block-size: 100svh;
-  }
-
-}
-
-/* ====================================================================== *
- * L2 round (2026-09) — Landing After-HTML gaps: top nav expansion,
- * principles + footer sections (hero chrome, ticker and journey since
- * removed in plan-003).
- * All un-layered so they win the cascade. Tokens only — no new variables.
- * ====================================================================== */
-
-/* ---- L2-N1: top nav — phosphor dot on Logo + inline links + Connect + responsive hamburger ---- */
+/* ---- L2-N1: phosphor dot on the glyph Logo (landing + lock screens) ---- */
 .brand--glyph .glyph {
   display: inline-grid;
   place-items: center;
@@ -3804,158 +3652,6 @@ strong {
   background: var(--phosphor);
   box-shadow: 0 0 10px var(--phosphor);
   margin-right: var(--space-2);
-}
-.landing-nav .nav-inline { display: none; gap: var(--space-1); align-items: center; }
-.landing-nav .nav-inline a {
-  position: relative;
-  padding: var(--space-2) var(--space-3);
-  font: 500 var(--fs-mono)/1 var(--font-mono);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--muted);
-  border-radius: var(--radius-md);
-  text-decoration: none;
-  transition: color var(--motion-fade-220);
-}
-.landing-nav .nav-inline a::after {
-  content: "";
-  position: absolute;
-  left: var(--space-2); right: var(--space-2); bottom: 4px;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, var(--copper-bright), transparent);
-  transform: scaleX(0);
-  transition: transform 220ms var(--motion-ease);
-}
-.landing-nav .nav-inline a:hover { color: var(--ink); }
-.landing-nav .nav-inline a:hover::after,
-.landing-nav .nav-inline a.is-active::after { transform: scaleX(1); }
-.landing-nav .nav-inline a.is-active { color: var(--ink); }
-.landing-nav .nav-right { display: flex; align-items: center; gap: var(--space-2); margin-inline-start: auto; }
-.landing-nav .nav-connect {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  min-height: 36px;
-  padding: 0 var(--space-4);
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: transparent;
-  color: var(--ink);
-  font: 500 var(--fs-mono)/1 var(--font-mono);
-  letter-spacing: 0.02em;
-  cursor: pointer;
-  transition: border-color var(--motion-fade-220), color var(--motion-fade-220), background-color var(--motion-fade-220);
-}
-.landing-nav .nav-connect:hover {
-  border-color: var(--copper);
-  color: var(--copper-bright);
-  background: color-mix(in srgb, var(--copper) 8%, transparent);
-}
-@media (min-width: 980px) {
-  .landing-nav .nav-inline { display: flex; }
-  /* 0,3,1 so the desktop hide actually beats the 40px base rule (0,2,1) —
-     the trigger collapses to mobile per the LandingPage header contract. */
-  body .landing-nav .icon-button.landing-menu-trigger { display: none; }
-  .landing-nav .nav-connect { display: inline-flex; }
-}
-
-/* ---- L2-N6: principles section (shared section chrome) ---- */
-/* Wave 5 (re-audit): rhythm on the spacing scale — sections stop carrying
-   their own vertical padding (that produced 96+96=192px dead bands between
-   neighbors) and take explicit 96/128px margins instead: hero→principles 96,
-   principles→footer 128. */
-
-/* R12: full-viewport fluid — the clamp padding is the only reserved edge. */
-.scroll-section { margin: 0 auto; padding: 0 clamp(20px, 5vw, 76px); }
-.principles-section { margin-top: 96px; }
-.scroll-section .section-head { display: flex; flex-direction: column; gap: var(--space-2); margin-bottom: var(--space-6); }
-.scroll-section h2 { margin: 0; font: 500 clamp(28px, 4vw, 48px)/1.1 var(--font-serif-display); letter-spacing: -0.025em; font-feature-settings: "ss01", "cv11"; color: var(--ink); text-wrap: balance; }
-.scroll-section h2 em { font-style: italic; color: var(--copper-bright); font-weight: 400; }
-.principles-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-4); }
-.principle { display: grid; gap: var(--space-3); padding: var(--space-5); border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--panel); transition: background-color var(--motion-fade-220); }
-.principle:hover { background: color-mix(in srgb, var(--copper) 4%, var(--panel)); }
-.principle .p-icon { display: inline-grid; place-items: center; width: 32px; height: 32px; border: 1px solid var(--line); border-radius: var(--radius-md); color: var(--copper); }
-.principle h3 { margin: 0; font: italic 400 var(--fs-title)/1.15 var(--font-serif-display); font-feature-settings: "ss01"; color: var(--ink); }
-.principle p { margin: 0; color: var(--muted); font-size: var(--fs-body); line-height: 1.6; }
-.principle .p-link { display: inline-flex; align-items: center; gap: var(--space-1); font: 500 var(--fs-mono)/1 var(--font-mono); color: var(--copper-bright); text-decoration: none; transition: color var(--motion-fade-220); }
-.principle .p-link:hover { color: var(--ink); }
-/* Phones: three columns squeeze cards to ~100px and the last one clips behind
-   overflow-x:clip (QA F1). Single column below 700px; tablets keep 3. */
-@media (max-width: 700px) {
-  .principles-grid { grid-template-columns: 1fr; }
-}
-
-/* ---- L2-N8: landing footer ---- */
-/* Wave 5: same shared 1180px container as everything else (was 1420px). */
-.landing-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-4); margin: 0 auto; padding: var(--space-5) clamp(20px, 5vw, 76px) var(--space-6); border-top: 1px solid var(--line); }
-.landing-footer small { color: var(--muted); font: 500 var(--fs-mono)/1 var(--font-mono); }
-.landing-footer .footer-meta { display: flex; gap: var(--space-4); }
-.landing-footer .footer-meta a { color: var(--muted); font: 500 var(--fs-mono)/1 var(--font-mono); text-decoration: none; transition: color var(--motion-fade-220); }
-/* Wave 5 (re-audit): the right-hand links had no visible hover affordance —
-   copper + underline now both fire. */
-.landing-footer .footer-meta a:hover { color: var(--copper-bright); text-decoration: underline; text-underline-offset: 4px; }
-@media (max-width: 700px) {
-  .landing-footer { flex-direction: column; align-items: flex-start; gap: var(--space-3); }
-  .footer-meta { flex-wrap: wrap; }
-}
-
-/* ====================================================================== *
- * Wave 5 (2026-09-01 campaign, agent A) — landing hardening tail.
- * Scope: LandingPage + landing CSS only. Un-layered so it wins the cascade.
- * ====================================================================== */
-
-/* ---- W5-1: mono micro-type 12→13px, landing-scoped ---- */
-/* Re-audit: nav/footer/card-CTA mono at 12px is below comfortable legibility.
-   Scoped to .landing-page so the console's --fs-mono contract is untouched. */
-.landing-page {
-  --fs-mono: 13px;
-}
-
-/* ---- W5-3: mobile CTA row — labels never wrap, primary is full-width,
-          secondaries share the second row (re-audit MAJOR) ---- */
-@media (max-width: 700px) {
-  /* Wave 5: re-assert the single hero column — the container rule above
-     sets grid-template-columns at (0,2,0) and would otherwise win over the
-     legacy (0,1,0) mobile collapse. */
-  .landing-page .landing-main {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .landing-page .button-row {
-    flex-wrap: wrap;
-  }
-  .landing-page .button-row .button,
-  .landing-page .button-row .text-link {
-    width: auto;
-    white-space: nowrap;
-  }
-  .landing-page .button-row .wallet-cta {
-    flex: 1 1 100%;
-  }
-}
-
-/* ---- W5-4: micro-interactions — subtle hover lift on landing cards ----
-   Uses the existing --motion tokens; disabled entirely under
-   prefers-reduced-motion (the global reduce block already zeroes
-   durations; the media guard keeps the transition out of the cascade). */
-@media (prefers-reduced-motion: no-preference) {
-.principle {
-    transition:
-      background-color var(--motion-fade-220),
-      border-color var(--motion-fade-220),
-      transform var(--motion-fade-220);
-  }
-  /* R17: transform lives in the hover/pointer-gated block below; touch
-     devices keep the border tint without the false-hover lift. */
-.principle:hover {
-    border-color: color-mix(in srgb, var(--copper) 45%, var(--line));
-  }
-}
-/* R17 (improve-animations): hover MOTION only on real pointers — touch fires
-   false hovers on tap, so the lift is gated; the border tint stays for all. */
-@media (hover: hover) and (pointer: fine) {
-.principle:hover {
-    transform: translateY(-2px);
-  }
 }
 
 /* ---- Wave-6B (Agent B) — chat composer anchoring + thread-rail empty state ----
@@ -4460,15 +4156,13 @@ strong {
 
 /* 1. Landing text-row hit targets (browser-1 Top Fix #2: "raise the landing's
    13 sub-32px targets … minimum height 44px, 32px absolute floor").
-   .p-link / .j-cta / footer links are 13px mono rows on padding:0 — the
-   tap area is the glyph line itself (measured h=14/13). Transparent
-   vertical padding extends the hit area; border-box keeps the whole box
-   at the 32px floor (content-box would apply min-height to the content
-   box and pad on top → 48px with top-aligned glyphs). The inline-flex
-   .p-link/.j-cta center their glyph rows; footer links are blockified
-   flex items of .footer-meta and ride the same box. */
-.landing-page .principle .p-link,
-.landing-page .landing-footer .footer-meta a {
+   Footer links and the principle-row text links are small mono rows — the
+   tap area is the glyph line itself. Transparent vertical padding extends
+   the hit area; border-box keeps the whole box at the 32px floor.
+   plan-003 R1: selectors retargeted to the dual-variant landing classes. */
+.landing-page .forge-p-link,
+.landing-page .le-plink,
+.landing-page .landing-footer-links a {
   box-sizing: border-box;
   min-height: 32px; /* the audit's absolute floor (44 is the comfort rec) */
   padding-top: var(--space-2);
@@ -5023,4 +4717,760 @@ body.light .chat-empty__browse { color: var(--copper-bright); }
   .turn__actions, .chat-send, .steps__chev, .chat-tools,
   .chat-surface.threads-open .chat-thread-rail { transition: none; animation: none; }
   .chat-caret { animation: none; }
+}
+
+/* ====================================================================== *
+ * plan-003 R1 — dual-variant landing. ONE page, two designs: Dark Forge
+ * (.landing-forge, the default, dark theme slot) and Light Editorial
+ * (.landing-editorial, light theme slot). The nav design switch drives
+ * settings.theme, so landing and console share one persisted theme.
+ * Structure lives here; the landing fx (metal ring, orb fallbacks, stream
+ * caret, load staggers) live at the end of axiom-awwwards.css.
+ * Tokens: forge maps onto the dark :root tokens, editorial onto the
+ * body.light tokens (editorial renders only when theme = light). The few
+ * values with no token home are scoped additions (the --lf- and --le- prefixes).
+ * ====================================================================== */
+
+.landing-page {
+  display: block;
+  min-block-size: 100svh;
+  position: relative;
+  /* Fixed atmosphere layers and the nav chrome clip at the page root, so a
+     horizontal scrollbar can never appear. */
+  overflow-x: clip;
+  background: var(--bg);
+  color: var(--text);
+}
+/* Page-root stacking: fixed atmosphere under, content above. The fx layers
+   (grain/progress keep their own fixed z), the skip link (its translateY
+   hide needs a non-relative box) and the popover backdrop are excluded. */
+.landing-page > *:not(.forge-field):not(.skip-link):not(.popover-backdrop):not(.aw-grain):not(.aw-scroll-progress) {
+  position: relative;
+  z-index: 1;
+}
+
+/* ---- shared nav contract (both designs) ---- */
+.landing-page .nav-right {
+  position: relative; /* containing block for the .landing-mobile-menu panel */
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.landing-page .nav-inline { display: none; }
+@media (min-width: 980px) {
+  .landing-page .nav-inline { display: flex; }
+  /* 0,3,1 so the desktop hide actually beats the 40px base rule (0,2,1) —
+     the hamburger collapses to mobile per the landing header contract. */
+  body .landing-page .icon-button.landing-menu-trigger { display: none; }
+  /* The goo trigger is the editorial mobile menu — never rendered at
+     desktop widths where the inline links are visible. */
+  body .landing-page .goo-host { display: none; }
+}
+/* The A/B design switch rides the same 40px icon-button geometry as the
+   hamburger (one nav chrome row, one hit area). */
+body .landing-page .icon-button.landing-design-switch { display: grid; width: var(--icon-hit-lg); height: var(--icon-hit-lg); min-width: var(--icon-hit-lg); min-height: var(--icon-hit-lg); border-color: var(--line); transition: border-color var(--motion-fade-220), color var(--motion-fade-220), background-color var(--motion-fade-220); }
+.landing-design-switch:hover,
+.landing-design-switch[aria-pressed="true"] { border-color: var(--copper); color: var(--copper-bright); }
+
+/* ====================================================================== *
+ *  Variant A — Dark Forge
+ * ====================================================================== */
+
+.landing-forge {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+.forge-field {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* Nav: floating island pill. */
+.forge-nav-shell {
+  position: fixed;
+  top: 16px;
+  left: 0;
+  right: 0;
+  z-index: var(--layer-popover);
+  display: flex;
+  justify-content: center;
+  padding: 0 16px;
+  pointer-events: none;
+}
+.forge-nav-pill {
+  pointer-events: auto;
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 60px;
+  padding: 0 10px 0 20px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--bg-2) 72%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ink) 9%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--ink) 6%, transparent), 0 18px 50px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  max-width: 100%;
+}
+.forge-nav-pill .brand { margin-right: 18px; font-size: 15px; }
+.forge-nav-pill .axiom-brand-mark { inline-size: 24px; block-size: 24px; flex-basis: 24px; }
+.forge-nav-pill .nav-inline { gap: 2px; align-items: center; }
+.forge-nav-pill .nav-inline a {
+  font: 500 13px/1 var(--font-mono);
+  color: var(--muted);
+  padding: 8px 13px;
+  border-radius: 999px;
+  text-decoration: none;
+  transition: color 180ms var(--ease-standard), background-color 180ms var(--ease-standard);
+}
+.forge-nav-pill .nav-inline a:hover { color: var(--ink); }
+.forge-nav-pill .nav-inline a.is-active { color: var(--ink); background: color-mix(in srgb, var(--ink) 7%, transparent); }
+
+/* Buttons: pills; copper is the action role, phosphor stays signal-only. */
+.forge-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  border-radius: 999px;
+  border: 0;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-weight: 500;
+  white-space: nowrap;
+  transition: transform 160ms var(--ease-standard), background-color 200ms var(--ease-standard), border-color 200ms var(--ease-standard);
+}
+.forge-btn:active { transform: scale(0.97); }
+.forge-btn-primary {
+  position: relative;
+  background: linear-gradient(160deg, #2a2119, #1b1712 60%);
+  color: var(--copper);
+  border: 1px solid color-mix(in srgb, var(--copper) 45%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--copper) 25%, transparent), 0 10px 34px color-mix(in srgb, var(--copper) 12%, transparent);
+  font-size: 14px;
+  padding: 13px 24px;
+}
+.forge-btn-primary:hover { border-color: color-mix(in srgb, var(--copper) 80%, transparent); }
+.forge-btn-nav { font-size: 13px; padding: 10px 18px; }
+.forge-btn-hero { font-size: 15px; padding: 16px 30px; }
+.forge-btn-ghost {
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid color-mix(in srgb, var(--ink) 16%, transparent);
+  font-size: 15px;
+  padding: 16px 26px;
+}
+.forge-btn-ghost:hover { color: var(--ink); border-color: color-mix(in srgb, var(--ink) 40%, transparent); }
+.forge-btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--copper) 14%, transparent);
+  transition: transform 220ms var(--ease-standard);
+}
+.forge-btn:hover .forge-btn-icon { transform: translate(2px, -2px) scale(1.06); }
+.forge-btn-ghost .forge-btn-icon { background: color-mix(in srgb, var(--ink) 8%, transparent); }
+
+/* Layout container. */
+.forge-wrap { max-width: 1180px; margin: 0 auto; padding: 0 24px; width: 100%; }
+
+/* Hero. */
+.forge-hero {
+  min-height: 100svh;
+  display: flex;
+  align-items: center;
+  padding-top: 96px;
+  padding-bottom: 64px;
+}
+.forge-hero-inner { max-width: 880px; }
+.forge-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--muted);
+  border: 1px solid color-mix(in srgb, var(--ink) 9%, transparent);
+  border-radius: 999px;
+  padding: 7px 16px;
+  background: color-mix(in srgb, var(--bg-2) 50%, transparent);
+  margin: 0;
+}
+.forge-eyebrow b { color: var(--copper); font-weight: 500; }
+.forge-h1 {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(40px, 5.6vw, 72px);
+  line-height: 1.04;
+  letter-spacing: -0.015em;
+  margin: 26px 0 24px;
+  color: var(--ink);
+  text-wrap: balance;
+}
+.forge-h1 em { font-style: normal; color: var(--copper); }
+.forge-lede { max-width: 54ch; font-size: 16px; color: var(--muted); margin: 0; }
+.forge-ctas { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 40px; }
+
+/* Sections. */
+.forge-section { padding: 130px 0; scroll-margin-top: 104px; }
+.forge-section-flush { padding-top: 0; }
+.forge-section-head { margin-bottom: 64px; }
+.forge-section-head h2 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(30px, 4.4vw, 54px);
+  line-height: 1.08;
+  letter-spacing: -0.01em;
+  max-width: 18ch;
+  margin: 0;
+  color: var(--ink);
+  text-wrap: balance;
+}
+.forge-section-head h2 em {
+  font-style: italic;
+  color: var(--copper);
+  /* italic descender clearance */
+  display: inline-block;
+  padding-bottom: 0.09em;
+  margin-bottom: -0.09em;
+}
+
+/* Principles: beam cards on an offset 12-col grid. The margin-top offsets
+   (not transforms) keep the reveal animation's transform lane free. */
+.forge-principles-grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 22px; padding-bottom: 96px; }
+.forge-principles-grid > :nth-child(1) { grid-column: 1 / span 4; }
+.forge-principles-grid > :nth-child(2) { grid-column: 5 / span 4; margin-top: 48px; }
+.forge-principles-grid > :nth-child(3) { grid-column: 9 / span 4; margin-top: 96px; }
+.forge-beam-host { display: block; height: 100%; }
+.forge-beam { display: block; height: 100%; }
+.forge-beam .forge-principle { height: 100%; }
+.forge-principle {
+  height: 100%;
+  background: linear-gradient(170deg, var(--bg-2), var(--canvas) 130%);
+  border: 1px solid color-mix(in srgb, var(--ink) 9%, transparent);
+  border-radius: 20px;
+  padding: 30px 28px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--ink) 5%, transparent);
+}
+.forge-p-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  color: var(--copper);
+  background: color-mix(in srgb, var(--copper) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--copper) 22%, transparent);
+}
+.forge-principle h3 { font-family: var(--font-display); font-weight: 700; font-size: 22px; line-height: 1.2; margin: 0; color: var(--ink); }
+.forge-principle p { font-size: 14px; color: var(--muted); flex: 1; margin: 0; }
+.forge-p-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  color: var(--phosphor);
+  text-decoration: none;
+}
+.forge-p-link svg { transition: transform 200ms var(--ease-standard); }
+.forge-p-link:hover svg { transform: translateX(4px); }
+
+/* How it works: rail steps. */
+.forge-how-rail { display: grid; grid-template-columns: repeat(3, 1fr); gap: 40px; position: relative; }
+.forge-how-rail::before {
+  content: "";
+  position: absolute;
+  top: 7px;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: color-mix(in srgb, var(--ink) 9%, transparent);
+}
+.forge-how-step { position: relative; padding-top: 42px; display: block; }
+.forge-how-step::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: var(--bg);
+  border: 1px solid var(--copper);
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--copper) 10%, transparent);
+}
+.forge-how-step h3 { font-family: var(--font-display); font-weight: 700; font-size: 28px; margin: 0 0 10px; color: var(--ink); }
+.forge-how-step p { font-size: 14px; color: var(--muted); max-width: 30ch; margin: 0; }
+
+/* Console strip (double-bezel). */
+.forge-console-shell {
+  border-radius: 24px;
+  background: color-mix(in srgb, var(--ink) 4%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ink) 9%, transparent);
+  padding: 10px;
+}
+.forge-console {
+  border-radius: 16px;
+  background: var(--canvas);
+  border: 1px solid color-mix(in srgb, var(--ink) 6%, transparent);
+  box-shadow: inset 0 1px 1px color-mix(in srgb, var(--ink) 6%, transparent);
+  overflow: hidden;
+}
+.forge-console-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 20px;
+  border-bottom: 1px solid color-mix(in srgb, var(--ink) 9%, transparent);
+  font-size: 12px;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+  flex-wrap: wrap;
+}
+.forge-agent-id { color: var(--ink); }
+.forge-sim-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--copper);
+  border: 1px solid color-mix(in srgb, var(--copper) 40%, transparent);
+  border-radius: 999px;
+  padding: 5px 12px;
+}
+.forge-live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--phosphor); box-shadow: 0 0 10px color-mix(in srgb, var(--phosphor) 90%, transparent); }
+.forge-console-body { display: grid; grid-template-columns: 132px 1fr; gap: 8px; padding: 26px 24px 28px; min-height: 178px; }
+.forge-orb-cell { display: flex; align-items: center; justify-content: center; }
+.forge-stream { font-size: 13.5px; line-height: 2.05; color: var(--muted); overflow: hidden; }
+.forge-stream-line { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.forge-prompt { color: var(--phosphor); margin-right: 10px; }
+.forge-hash { color: var(--copper); }
+.forge-stream-line.is-fresh { color: var(--ink); }
+.forge-caret { display: inline-block; width: 8px; height: 15px; background: var(--phosphor); vertical-align: -2px; margin-left: 3px; }
+
+/* Stats band. */
+.forge-stats-band {
+  border-top: 1px solid color-mix(in srgb, var(--ink) 9%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--ink) 9%, transparent);
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+}
+.forge-stat { padding: 44px 28px; }
+.forge-stat + .forge-stat { border-left: 1px solid color-mix(in srgb, var(--ink) 9%, transparent); }
+.forge-stat-num {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: clamp(38px, 5vw, 62px);
+  line-height: 1;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+}
+.forge-stat-num .stat-suffix { color: var(--copper); font-size: 0.55em; margin-left: 2px; }
+.forge-stat-label {
+  display: block;
+  margin-top: 14px;
+  font-size: 11.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+
+/* Closing CTA. */
+.forge-closing { padding: 150px 0; text-align: center; scroll-margin-top: 104px; }
+.forge-closing .forge-btn-primary { font-size: 17px; padding: 20px 40px; }
+
+/* Footer (shared structure; colors ride the active theme's tokens). */
+.landing-footer { border-top: 1px solid color-mix(in srgb, var(--ink) 12%, transparent); }
+.landing-footer-row {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 34px 24px 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  flex-wrap: wrap;
+  font-size: 12.5px;
+  color: var(--dim);
+}
+.landing-footer-links { display: flex; gap: 26px; flex-wrap: wrap; }
+.landing-footer-links a { color: var(--muted); text-decoration: none; transition: color 160ms var(--ease-standard); }
+.landing-footer-links a:hover { color: var(--copper-bright); }
+
+/* ====================================================================== *
+ *  Variant B — Light Editorial (renders on the light theme slot; the
+ *  body.light token set is its palette, copper-bright = the editorial
+ *  copper ink, phosphor = the editorial green).
+ * ====================================================================== */
+
+.landing-editorial {
+  --le-copper-deep: #6f3a1a;
+  --le-hair: rgba(38, 32, 25, 0.16);
+  --le-hair-strong: rgba(38, 32, 25, 0.34);
+}
+
+/* Nav: sticky paper bar. */
+.le-nav {
+  position: sticky;
+  top: 0;
+  z-index: var(--layer-popover);
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--le-hair);
+}
+.le-wrap { max-width: 1180px; margin-inline: auto; padding-inline: clamp(20px, 4vw, 48px); width: 100%; }
+.le-nav-inner { display: flex; align-items: center; gap: 28px; height: 68px; }
+.le-wordmark { display: flex; align-items: baseline; gap: 9px; text-decoration: none; color: var(--ink); }
+.le-wm { font-family: var(--font-serif-display); font-weight: 500; font-size: 23px; letter-spacing: -0.01em; }
+.le-wm-tag { font: 500 10px var(--font-mono); letter-spacing: 0.22em; color: var(--copper-bright); text-transform: uppercase; }
+.le-nav .nav-inline { gap: 26px; margin-inline-start: auto; }
+.le-nav .nav-inline a {
+  position: relative;
+  font: 500 13.5px/1.4 var(--font-body, Inter, system-ui, sans-serif);
+  color: var(--muted);
+  text-decoration: none;
+  padding: 6px 0;
+  transition: color 0.25s var(--ease-standard);
+}
+.le-nav .nav-inline a::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1.5px;
+  background: var(--copper-bright);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.35s var(--ease-standard);
+}
+.le-nav .nav-inline a:hover { color: var(--ink); }
+.le-nav .nav-inline a.is-active { color: var(--ink); }
+.le-nav .nav-inline a.is-active::after { transform: scaleX(1); }
+@media (max-width: 979.98px) {
+  /* Inline links are hidden — the controls need their own push to the end. */
+  .le-nav .nav-right { margin-inline-start: auto; }
+}
+
+/* Buttons: pills; copper fill is the action role. */
+.le-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 999px;
+  cursor: pointer;
+  font: 500 15px/1.2 var(--font-body, Inter, system-ui, sans-serif);
+  text-decoration: none;
+  white-space: nowrap;
+  border: 0;
+  transition: transform 0.16s var(--ease-standard), background-color 0.25s var(--ease-standard), border-color 0.25s var(--ease-standard), color 0.25s var(--ease-standard);
+}
+.le-btn:active { transform: translateY(1px); }
+.le-btn-primary { background: var(--copper-bright); color: #fffdf8; padding: 12px 22px; }
+.le-btn-primary:hover { background: var(--le-copper-deep); }
+.le-btn-ghost { background: transparent; color: var(--ink); border: 1px solid var(--le-hair-strong); padding: 12px 22px; }
+.le-btn-ghost:hover { border-color: var(--copper-bright); color: var(--copper-bright); }
+.le-btn-nav { padding: 9px 18px; font-size: 13.5px; }
+
+/* Gooey menu trigger (the island's hamburger, two bars → X). */
+.le-menu-trigger {
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  background: var(--panel);
+  border: 1px solid var(--le-hair-strong);
+  cursor: pointer;
+  position: relative;
+  display: block;
+  transition: border-color 0.25s var(--ease-standard);
+}
+.le-menu-trigger:hover { border-color: var(--copper-bright); }
+.le-menu-trigger span {
+  position: absolute;
+  left: 13px;
+  width: 18px;
+  height: 1.5px;
+  background: var(--ink);
+  transition: transform 0.35s var(--ease-standard), top 0.35s var(--ease-standard);
+}
+.le-menu-trigger span:first-child { top: 18px; }
+.le-menu-trigger span:last-child { top: 25px; }
+.le-menu-trigger.open span:first-child { top: 21px; transform: rotate(45deg); }
+.le-menu-trigger.open span:last-child { top: 21px; transform: rotate(-45deg); }
+
+/* Goo menu host: sits above the popover backdrop so the pills stay
+   clickable; the backdrop is its first child, the Liquid group follows. */
+.goo-host { position: relative; z-index: calc(var(--layer-popover, 60) + 1); }
+.goo-shell { position: relative; width: 44px; height: 44px; }
+.goo-item { position: absolute; top: 0; right: 0; width: max-content; }
+.goo-shell .goo-pill { pointer-events: none; }
+.goo-shell.open .goo-pill { pointer-events: auto; }
+.le-menu-pill {
+  display: inline-block;
+  background: var(--panel);
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 12px 22px;
+  font: 500 15px/1.2 var(--font-body, Inter, system-ui, sans-serif);
+  color: var(--ink);
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: opacity 0.25s var(--ease-standard), transform 0.4s var(--ease-standard);
+}
+
+/* Hero: editorial grid, console card beside the lede. */
+.le-hero { padding-top: clamp(40px, 7vh, 88px); padding-bottom: clamp(56px, 9vh, 104px); }
+.le-eyebrow {
+  font: 500 11px var(--font-mono);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--phosphor);
+  margin: 0 0 22px;
+}
+.le-eyebrow b { font-weight: 500; }
+.le-h1 {
+  font-family: var(--font-serif-display);
+  font-weight: 500;
+  font-size: clamp(2.55rem, 6.4vw, 5.1rem);
+  line-height: 1.04;
+  letter-spacing: -0.022em;
+  max-width: 16ch;
+  margin: 0;
+  color: var(--ink);
+  text-wrap: balance;
+}
+.le-h1 em { font-style: italic; color: var(--copper-bright); display: inline-block; line-height: 1.1; padding-bottom: 0.07em; }
+.le-hero-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 420px);
+  gap: clamp(32px, 5vw, 80px);
+  align-items: end;
+  margin-top: clamp(30px, 4.5vh, 46px);
+}
+.le-lede { font-size: 17px; color: var(--muted); max-width: 38ch; margin: 0; }
+.le-cta-row { display: flex; gap: 12px; margin-top: 28px; flex-wrap: wrap; }
+
+/* Console card (hero right column). */
+.le-console {
+  background: var(--panel);
+  border: 1px solid var(--le-hair);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 1px 0 rgba(38, 32, 25, 0.04), 0 24px 48px -32px rgba(38, 32, 25, 0.25);
+}
+.le-console-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--le-hair); }
+.le-agent-id { font: 500 12px var(--font-mono); color: var(--ink); letter-spacing: 0.02em; }
+.le-orb-cell { display: inline-flex; align-items: center; gap: 9px; }
+.le-orb-label { font: 500 10.5px var(--font-mono); letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); }
+.le-console-body { padding: 16px; display: flex; flex-direction: column; gap: 9px; }
+.le-log-line { font: 400 12.5px/1.5 var(--font-mono); min-height: 19px; display: flex; gap: 8px; }
+.le-log-prompt { color: var(--copper-bright); }
+.le-log-text { color: var(--muted); }
+.le-log-line:first-child .le-log-text { color: var(--ink); }
+.le-log-line.is-receipt .le-log-text { color: var(--phosphor); }
+.le-console-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 16px;
+  border-top: 1px solid var(--le-hair);
+  font: 500 10.5px var(--font-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.le-ok { color: var(--phosphor); display: inline-flex; align-items: center; gap: 7px; }
+.le-ok::before { content: ""; width: 6px; height: 6px; border-radius: 999px; background: var(--phosphor); }
+
+/* Sections: ruled blocks with margin numerals. */
+.le-block { padding-block: clamp(84px, 12vh, 132px); scroll-margin-top: 88px; }
+.le-block + .le-block { border-top: 1px solid var(--le-hair); }
+.le-section-head { display: grid; grid-template-columns: 88px minmax(0, 1fr); gap: 18px; align-items: start; margin-bottom: clamp(36px, 6vh, 60px); }
+.le-sec-num {
+  font-family: var(--font-serif-display);
+  font-weight: 400;
+  font-size: clamp(2.4rem, 3.6vw, 3.4rem);
+  line-height: 1;
+  color: var(--copper-bright);
+  letter-spacing: -0.02em;
+  padding-top: 0.12em;
+}
+.le-section-head h2 {
+  font-family: var(--font-serif-display);
+  font-weight: 500;
+  font-size: clamp(1.9rem, 3.8vw, 3.05rem);
+  line-height: 1.1;
+  letter-spacing: -0.018em;
+  max-width: 20ch;
+  margin: 0;
+  color: var(--ink);
+  text-wrap: balance;
+}
+.le-section-head h2 em { font-style: italic; color: var(--copper-bright); display: inline-block; padding-bottom: 0.06em; }
+
+/* Principles: ruled instrument rows, not cards. */
+.le-prow {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 0.9fr) minmax(0, 1.25fr);
+  gap: 22px;
+  padding: 30px 0;
+  border-top: 1px solid var(--le-hair);
+  align-items: baseline;
+}
+.le-idx { font: 500 12px var(--font-mono); color: var(--copper-bright); letter-spacing: 0.1em; }
+.le-prow h3 { font-family: var(--font-serif-display); font-weight: 500; font-size: clamp(1.25rem, 2vw, 1.6rem); letter-spacing: -0.01em; margin: 0; color: var(--ink); }
+.le-prow p { color: var(--muted); font-size: 15.5px; max-width: 52ch; margin: 0; }
+.le-plink {
+  display: table;
+  margin-top: 12px;
+  font: 500 12px var(--font-mono);
+  letter-spacing: 0.06em;
+  color: var(--phosphor);
+  text-decoration: none;
+  border-bottom: 1px solid color-mix(in srgb, var(--phosphor) 35%, transparent);
+  transition: border-color 0.25s var(--ease-standard);
+}
+.le-plink:hover { border-color: var(--phosphor); }
+
+/* How it works: sliding tabs. */
+.le-tabs { position: relative; display: inline-flex; gap: 34px; border-bottom: 1px solid var(--le-hair); padding-bottom: 14px; max-width: 100%; }
+.le-tabs [role="tab"] {
+  background: none;
+  border: 0;
+  cursor: pointer;
+  font-family: var(--font-serif-display);
+  font-weight: 500;
+  font-size: clamp(1.2rem, 2vw, 1.5rem);
+  color: var(--muted);
+  padding: 0;
+  letter-spacing: -0.01em;
+  transition: color 0.3s var(--ease-standard);
+}
+.le-tabs [role="tab"]:hover { color: var(--ink); }
+.le-tabs [role="tab"][aria-selected="true"] { color: var(--copper-bright); font-style: italic; }
+.le-tab-indicator {
+  position: absolute;
+  left: 0;
+  bottom: -1px;
+  height: 2px;
+  width: 1px;
+  background: var(--copper-bright);
+  transform-origin: left;
+  transition: transform 0.5s var(--ease-standard);
+}
+.le-tab-panels { margin-top: 34px; max-width: 640px; }
+.le-tab-panels [role="tabpanel"] p { color: var(--muted); font-size: 16.5px; max-width: 46ch; margin: 0; }
+.le-fact { display: block; margin-top: 18px; font: 500 12px var(--font-mono); letter-spacing: 0.08em; color: var(--phosphor); }
+
+/* Spec section: stat row + ruled spec sheet. */
+.le-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: clamp(20px, 3vw, 44px); margin-bottom: clamp(40px, 6vh, 60px); }
+.le-stat { border-left: 1px solid var(--le-hair); padding-left: clamp(16px, 2vw, 28px); }
+.le-stat:first-child { border-left: 0; padding-left: 0; }
+.le-stat-num {
+  display: block;
+  font-family: var(--font-serif-display);
+  font-weight: 500;
+  font-size: clamp(2.5rem, 4.6vw, 3.7rem);
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+.le-stat-num .stat-suffix { color: var(--muted); font-weight: 400; }
+.le-stat-label { display: block; margin-top: 10px; font: 500 10.5px var(--font-mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); }
+.le-beam { display: block; border-radius: 12px; }
+.le-spec-inner { position: relative; background: var(--panel); border: 1px solid var(--le-hair); border-radius: 12px; padding: clamp(22px, 3.4vw, 40px); margin: 0; }
+.le-cluster + .le-cluster { margin-top: 30px; padding-top: 26px; border-top: 1px solid var(--le-hair); }
+.le-cluster-head { font: 500 10.5px var(--font-mono); letter-spacing: 0.2em; text-transform: uppercase; color: var(--copper-bright); margin-bottom: 14px; }
+.le-srow { display: grid; grid-template-columns: minmax(120px, 180px) minmax(0, 1fr); gap: 18px; padding: 9px 0; align-items: baseline; }
+.le-srow dt { font: 500 12px var(--font-mono); letter-spacing: 0.05em; color: var(--muted); }
+.le-srow dd { font-size: 15px; color: var(--ink); margin: 0; }
+
+/* Closing. */
+.le-closing { text-align: center; padding-block: clamp(96px, 15vh, 160px); scroll-margin-top: 88px; }
+.le-closing h2 {
+  margin: 0 auto;
+  max-width: 14ch;
+  font-family: var(--font-serif-display);
+  font-weight: 500;
+  font-size: clamp(2.3rem, 5.4vw, 4.2rem);
+  line-height: 1.08;
+  letter-spacing: -0.018em;
+  color: var(--ink);
+  text-wrap: balance;
+}
+.le-closing h2 em { font-style: italic; color: var(--copper-bright); }
+.le-closing .le-btn { margin-top: 34px; font-size: 16px; padding: 15px 30px; }
+
+/* ====================================================================== *
+ *  Landing responsive
+ * ====================================================================== */
+
+@media (max-width: 1060px) {
+  .forge-principles-grid > :nth-child(1) { grid-column: 1 / span 6; }
+  .forge-principles-grid > :nth-child(2) { grid-column: 7 / span 6; margin-top: 0; }
+  .forge-principles-grid > :nth-child(3) { grid-column: 1 / span 12; margin-top: 0; }
+  .forge-principles-grid { padding-bottom: 0; }
+}
+
+@media (max-width: 900px) {
+  .le-hero-grid { grid-template-columns: minmax(0, 1fr); align-items: start; }
+  .le-console { max-width: 460px; }
+  .le-prow { grid-template-columns: 44px minmax(0, 1fr); }
+  .le-prow p { grid-column: 2; }
+}
+
+@media (max-width: 767px) {
+  .le-nav-inner { gap: 16px; }
+  .le-section-head { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .le-sec-num { padding-top: 0; font-size: 2rem; }
+  .le-stats { grid-template-columns: minmax(0, 1fr); gap: 26px; }
+  .le-stat { border-left: 0; padding-left: 0; border-top: 1px solid var(--le-hair); padding-top: 20px; }
+  .le-stat:first-child { border-top: 0; padding-top: 0; }
+  .le-tabs { gap: 24px; }
+  .le-srow { grid-template-columns: minmax(0, 1fr); gap: 2px; padding: 11px 0; }
+  .le-btn-nav { padding: 9px 15px; font-size: 12.5px; }
+}
+
+@media (max-width: 700px) {
+  .forge-section { padding: 88px 0; }
+  .forge-hero { padding-top: 120px; }
+  /* Contract (QA F1): the principles grid is a single column at ≤700px. */
+  .forge-principles-grid > :nth-child(1),
+  .forge-principles-grid > :nth-child(2),
+  .forge-principles-grid > :nth-child(3) { grid-column: 1 / span 12; margin-top: 0; }
+  .forge-how-rail { grid-template-columns: 1fr; gap: 34px; }
+  .forge-how-rail::before { top: 0; bottom: 0; left: 7px; right: auto; width: 1px; height: auto; }
+  .forge-how-step { padding-top: 0; padding-left: 40px; }
+  .forge-console-body { grid-template-columns: 1fr; gap: 18px; }
+  .forge-orb-cell { justify-content: flex-start; }
+  .forge-stats-band { grid-template-columns: 1fr 1fr; }
+  .forge-stat + .forge-stat { border-left: 0; }
+  .forge-stat:nth-child(even) { border-left: 1px solid color-mix(in srgb, var(--ink) 9%, transparent); }
+  .forge-stat:nth-child(n + 3) { border-top: 1px solid color-mix(in srgb, var(--ink) 9%, transparent); }
+  .forge-stat { padding: 30px 22px; }
+  .forge-closing { padding: 100px 0; }
+  .forge-btn-hero { font-size: 14px; padding: 15px 24px; }
+  .forge-closing .forge-btn-primary { font-size: 15px; padding: 17px 30px; }
+  .landing-footer-row { flex-direction: column; align-items: flex-start; }
 }

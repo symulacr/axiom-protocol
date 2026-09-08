@@ -2,8 +2,8 @@
   ReceiptSeal — tiny guarded Three.js emblem for the hero receipt card's head:
   a slowly rotating copper particle ring with a phosphor core, read as a
   minted seal next to the receipt kind label. Same performance/guard contract
-  as ThreeBackground (no-WebGL silent bail, DPR cap, tab-hide pause, static
-  frame under reduced motion, dispose on unmount) on a 40px canvas.
+  as ForgeField (silent bail without a GL/2D context, DPR cap, tab-hide
+  pause, static frame under reduced motion, dispose on unmount) on a 40px canvas.
 */
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
@@ -116,7 +116,5 @@ export function ReceiptSeal() {
     };
   }, []);
 
-  return (
-    <span className="receipt-seal" ref={hostRef} aria-hidden="true" />
-  );
+  return <span className="receipt-seal" ref={hostRef} aria-hidden="true" />;
 }
