@@ -88,13 +88,42 @@ const HUB_REDIRECTS = {
   "/features/developers": "/developers",
 };
 
-serve({
+const server = serve({
   port: PORT,
-  async fetch(req) {
+  async fetch(req, server) {
     try {
       const url = new URL(req.url);
+      const isApi = url.pathname.startsWith("/api");
+      const isOracle = url.pathname.startsWith("/oracle");
+      // Native WS proxy: plain fetch() bridging dies at Bun's stream timeout
+      // (~12s, code 1006), which killed the tick stream and /v1/stream in dev.
+      // Upgrade natively and pipe frames to a real upstream socket. The
+      // subprotocol (WS token auth) is forwarded to the upstream and echoed to
+      // the browser so the app's header-first auth path negotiates cleanly.
+      if (
+        (isApi || isOracle) &&
+        req.headers.get("upgrade")?.toLowerCase() === "websocket"
+      ) {
+        if (backendIsSelf) return noBackendResponse();
+        const path = (isApi ? url.pathname.slice(4) : url.pathname) + url.search;
+        const upstreamUrl = BACKEND.replace(/^http/, "ws") + path;
+        const protos = req.headers.get("sec-websocket-protocol");
+        const upgraded = server.upgrade(req, {
+          data: { upstreamUrl, protos, queue: [] },
+          ...(protos
+            ? {
+                headers: {
+                  "sec-websocket-protocol": protos.split(",")[0].trim(),
+                },
+              }
+            : {}),
+        });
+        return upgraded
+          ? undefined
+          : new Response("WebSocket upgrade failed", { status: 500 });
+      }
       // Same-origin API proxy (mirrors prod /api -> backend, /oracle -> backend).
-      if (url.pathname.startsWith("/api")) {
+      if (isApi) {
         if (backendIsSelf) return noBackendResponse();
         const upstream = new URL(url.pathname.slice(4) + url.search, BACKEND);
         // Buffer the request body: streaming req.body through with duplex
@@ -168,6 +197,39 @@ serve({
     } catch {
       return new Response("Server error", { status: 500 });
     }
+  },
+  websocket: {
+    open(ws) {
+      const { upstreamUrl, protos, queue } = ws.data;
+      const upstream = protos
+        ? new WebSocket(upstreamUrl, protos.split(",").map((p) => p.trim()))
+        : new WebSocket(upstreamUrl);
+      ws.data.upstream = upstream;
+      upstream.onopen = () => {
+        for (const m of queue.splice(0)) upstream.send(m);
+      };
+      upstream.onmessage = (e) => {
+        try {
+          ws.send(e.data);
+        } catch {
+          /* client already gone; the close handler tears down upstream */
+        }
+      };
+      upstream.onclose = (e) => ws.close(e.code, e.reason);
+      upstream.onerror = () => ws.close(1011, "upstream socket error");
+    },
+    message(ws, message) {
+      const upstream = ws.data.upstream;
+      if (upstream && upstream.readyState === WebSocket.OPEN) {
+        upstream.send(message);
+      } else {
+        // Early frames (tick init/auth) wait for the upstream handshake.
+        ws.data.queue.push(message);
+      }
+    },
+    close(ws, code, reason) {
+      ws.data.upstream?.close(code, reason);
+    },
   },
 });
 
