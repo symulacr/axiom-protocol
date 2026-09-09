@@ -417,14 +417,16 @@ report/campaign/
 !apps/frontend/public/brand/
 .firecrawl/
 
-# Working artifacts (research/audit/design docs stay local)
-.design-audit/
+# ── Working artifacts (research/audit/design docs stay local) ──
+# Root-anchored so it can never shadow a source dir of the same name.
+/.design-audit/
 
 # ── Frontend-local design audit shots (not source) ──
-apps/frontend/.design-audit/
+/apps/frontend/.design-audit/
 
 # ── Agent skills library (local tooling, not project source) ──
-skills/
+# Root-anchored: packages/config/src/skills/ is source and MUST ship.
+/skills/
 
 # ── One-off design mock artifacts ──
-plans/
+/plans/
