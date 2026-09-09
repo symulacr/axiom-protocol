@@ -161,6 +161,73 @@ describe("runReadTool", () => {
     assert.equal(data.events.length, 1);
   });
 
+  it("gas_tank_status reads balance/grants/reserve and reports opsLeft + note", async () => {
+    const ctx = makeCtx({
+      chain: {
+        chainId: 1,
+        readContract: async (req: { functionName: string }) => {
+          if (req.functionName === "balanceOf") return 20_000_000_000_000_000n;
+          if (req.functionName === "grantsUsed") return 1n;
+          if (req.functionName === "grantsCap") return 3n;
+          if (req.functionName === "gasGrant") return 10_000_000_000_000_000n;
+          if (req.functionName === "reserve") return 0n;
+          throw new Error("unexpected read " + req.functionName);
+        },
+      },
+      session: {
+        chainId: 1,
+        walletAddress: ("0x" + "ab".repeat(20)) as `0x${string}`,
+        addresses: {
+          gasTank: ("0x" + "00".repeat(19) + "03") as `0x${string}`,
+        },
+      },
+    });
+    const res = await runReadTool("gas_tank_status", {}, ctx);
+    assert.equal(res.ok, true);
+    const data = JSON.parse(res.content) as Record<string, unknown>;
+    assert.equal(data.tankBalance, "20000000000000000");
+    assert.equal(data.grantsUsed, "1");
+    assert.equal(data.grantsCap, "3");
+    assert.equal(data.grantsLeft, "2");
+    assert.equal(data.gasGrant, "10000000000000000");
+    assert.equal(data.reserve, "0");
+    assert.equal(data.opsLeft, 2);
+    assert.equal(
+      data.note,
+      "lazy grants unavailable: GasTank reserve is unfunded",
+    );
+  });
+
+  it("gas_tank_status reports lazy grants available when the reserve is funded", async () => {
+    const ctx = makeCtx({
+      chain: {
+        chainId: 1,
+        readContract: async (req: { functionName: string }) => {
+          if (req.functionName === "balanceOf") return 20_000_000_000_000_000n;
+          if (req.functionName === "grantsUsed") return 1n;
+          if (req.functionName === "grantsCap") return 3n;
+          if (req.functionName === "gasGrant") return 10_000_000_000_000_000n;
+          if (req.functionName === "reserve") return 5n;
+          throw new Error("unexpected read " + req.functionName);
+        },
+      },
+      session: {
+        chainId: 1,
+        walletAddress: ("0x" + "ab".repeat(20)) as `0x${string}`,
+        addresses: {
+          gasTank: ("0x" + "00".repeat(19) + "03") as `0x${string}`,
+        },
+      },
+    });
+    const res = await runReadTool("gas_tank_status", {}, ctx);
+    assert.equal(res.ok, true);
+    const data = JSON.parse(res.content) as Record<string, unknown>;
+    assert.equal(data.tankBalance, "20000000000000000");
+    assert.equal(data.reserve, "5");
+    assert.equal(data.opsLeft, 2);
+    assert.equal(data.note, "lazy grants available");
+  });
+
   it("unknown read tools fail with the shared envelope", async () => {
     const res = await runReadTool("nonsense", {}, makeCtx());
     assert.equal(res.ok, false);

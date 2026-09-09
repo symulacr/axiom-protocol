@@ -72,6 +72,12 @@ export async function runOrchestrateTool(
       readStrategyRoot(ctx, vault, tokenId),
     ]);
     const ready = balance > 0n && root !== ZERO_DATA_ROOT;
+    const verdict = ready ? "ready" : "not_ready";
+    const verdictReason = ready
+      ? "vault funded and strategy root set"
+      : balance === 0n
+        ? "vault balance is zero"
+        : "strategy root is zero — execute_tick will refuse until the owner signs setStrategy with a non-zero root";
 
     if (!ready && !dryRun) {
       return toolFail("NOT_READY: vault balance or strategy missing");
@@ -83,6 +89,8 @@ export async function runOrchestrateTool(
           ok: true,
           simulated: true,
           ready,
+          verdict,
+          verdictReason,
           tokenId,
           balance: balance.toString(),
           strategyRoot: ready ? root : (root ?? ZERO_DATA_ROOT),
