@@ -84,9 +84,48 @@ describe("buildSystemPrompt", () => {
       1,
       "GAS-TANK is the very next rule block",
     );
-    assert.match(prompt, /withdraw and pay_for_agent normally run GAS-FREE/);
+    assert.match(
+      prompt,
+      /withdraw, pay_for_agent, swap_tokens, borrow normally run GAS-FREE/,
+    );
     assert.match(prompt, /gas tank is exhausted/);
     assert.match(prompt, /GasTank UI/);
     assert.match(prompt, /gas_tank_status/);
+  });
+
+  it("confirm-first list covers signers, not wallet-gated reads", () => {
+    const list = prompt.match(/On-chain \/ wallet actions \(([^)]*)\)/);
+    assert.ok(list, "confirm-first list present");
+    for (const signer of [
+      "mint_agent",
+      "deposit",
+      "withdraw",
+      "transfer",
+      "execute_tick",
+      "evm_tx",
+    ]) {
+      assert.ok(list[1]!.includes(signer), `${signer} listed`);
+    }
+    for (const read of ["list_my_agents", "gas_tank_status", "faucet_status"]) {
+      assert.ok(
+        !list[1]!.includes(read),
+        `${read} is a read — not confirm-first`,
+      );
+    }
+  });
+
+  it("missing-parameter stops route to ask_user, not a NEED: text protocol", () => {
+    assert.doesNotMatch(prompt, /NEED:/);
+    assert.match(prompt, /STOP and call ask_user/);
+  });
+
+  it("has a tool-error recovery rule (read, fix, retry at most once)", () => {
+    assert.match(prompt, /TOOL ERRORS/);
+    assert.match(prompt, /retry at most once/);
+    assert.match(prompt, /never report a failed action as done/i);
+  });
+
+  it("waiting-state strings are examples, rendered in the user's language", () => {
+    assert.match(prompt, /Use the user's language/);
   });
 });
