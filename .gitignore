@@ -419,3 +419,12 @@ report/campaign/
 
 # Working artifacts (research/audit/design docs stay local)
 .design-audit/
+
+# ── Frontend-local design audit shots (not source) ──
+apps/frontend/.design-audit/
+
+# ── Agent skills library (local tooling, not project source) ──
+skills/
+
+# ── One-off design mock artifacts ──
+plans/

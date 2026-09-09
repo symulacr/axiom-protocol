@@ -3,6 +3,14 @@ import { fetchJson, resolveTokenId, toolFail } from "../transport.js";
 import type { ToolRuntime } from "../transport.js";
 import type { ToolResult } from "../types.js";
 
+const NFT_NAME_ABI = parseAbi(["function name() view returns (string)"]);
+const NFT_OWNER_OF_ABI = parseAbi([
+  "function ownerOf(uint256) view returns (address)",
+]);
+const NFT_INTELLIGENT_DATAS_ABI = parseAbi([
+  "function intelligentDatasOf(uint256) view returns ((string dataDescription, bytes32 dataHash)[])",
+]);
+
 /** Shared read-list leg: GET path → `{ [key]: rows }` envelope (empty array when the backend omits the key). */
 async function fetchList(
   ctx: ToolRuntime,
@@ -59,44 +67,47 @@ export async function runReadTool(
     case "agent_metadata": {
       const tokenId = resolveTokenId(args, ctx);
       if (!tokenId) return toolFail("tokenId required");
-      if (!ctx.chain?.multicall) return toolFail("No chain connection");
+      if (!ctx.chain?.readContract) return toolFail("No chain connection");
       const nft = ctx.session.addresses?.agentNft;
       if (!nft) return toolFail("Agent NFT address not configured");
-      const results = await ctx.chain.multicall({
-        contracts: [
-          {
+      // Sequential individual reads: 0G mainnet's viem chain has no
+      // contracts.multicall3 entry, so publicClient.multicall() throws there.
+      // Per-call leniency mirrors multicall's allowFailure semantics — a
+      // failing read degrades to "" instead of failing the whole tool.
+      const read = async <T>(
+        abi: readonly unknown[],
+        functionName: string,
+        args: readonly unknown[] = [],
+      ): Promise<T> => {
+        try {
+          return (await ctx.chain!.readContract!({
             address: nft,
-            abi: parseAbi(["function name() view returns (string)"]),
-            functionName: "name",
-          },
-          {
-            address: nft,
-            abi: parseAbi(["function ownerOf(uint256) view returns (address)"]),
-            functionName: "ownerOf",
-            args: [BigInt(tokenId)],
-          },
-          {
-            address: nft,
-            abi: parseAbi([
-              "function intelligentDatasOf(uint256) view returns ((string dataDescription, bytes32 dataHash)[])",
-            ]),
-            functionName: "intelligentDatasOf",
-            args: [BigInt(tokenId)],
-          },
-        ],
-      });
-      const datas = (results[2]?.result ?? []) as Array<{
-        dataDescription: string;
-        dataHash: string;
-      }>;
+            abi,
+            functionName,
+            args,
+          })) as T;
+        } catch {
+          return undefined as T;
+        }
+      };
+      const id = BigInt(tokenId);
+      const [name, owner, datas] = await Promise.all([
+        read<string>(NFT_NAME_ABI, "name"),
+        read<string>(NFT_OWNER_OF_ABI, "ownerOf", [id]),
+        read<Array<{ dataDescription: string; dataHash: string }>>(
+          NFT_INTELLIGENT_DATAS_ABI,
+          "intelligentDatasOf",
+          [id],
+        ),
+      ]);
       return {
         ok: true as const,
         content: JSON.stringify({
           tokenId,
-          name: String(results[0]?.result ?? ""),
-          owner: String(results[1]?.result ?? ""),
-          dataDescription: datas[0]?.dataDescription ?? "",
-          dataHash: datas[0]?.dataHash ?? "",
+          name: name ?? "",
+          owner: owner ?? "",
+          dataDescription: datas?.[0]?.dataDescription ?? "",
+          dataHash: datas?.[0]?.dataHash ?? "",
         }),
       };
     }

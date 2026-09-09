@@ -554,10 +554,15 @@ export function registerRelayerRoutes(
       try {
         faucet = faucetGuard();
       } catch {
+        // deps absent = relayer mode off; deps.faucet absent = relayer up but
+        // the payment-token address was never configured, so the Faucet dep
+        // was never constructed (see server.ts).
         return sendError(
           res,
           HTTP.SERVICE_UNAVAILABLE,
-          "relayer not enabled (AXIOM_RELAYER_MODE=off or gasTank unset)",
+          !deps
+            ? "relayer not enabled (AXIOM_RELAYER_MODE=off or gasTank unset)"
+            : "faucet unavailable (payment token address not configured — set AXIOM_PAYMENT_TOKEN)",
           "ADDRESS_NOT_CONFIGURED",
         );
       }
@@ -587,10 +592,13 @@ export function registerRelayerRoutes(
       try {
         faucet = faucetGuard();
       } catch {
+        // Same distinction as the GET route above.
         return sendError(
           res,
           HTTP.SERVICE_UNAVAILABLE,
-          "relayer not enabled (AXIOM_RELAYER_MODE=off or gasTank unset)",
+          !deps
+            ? "relayer not enabled (AXIOM_RELAYER_MODE=off or gasTank unset)"
+            : "faucet unavailable (payment token address not configured — set AXIOM_PAYMENT_TOKEN)",
           "ADDRESS_NOT_CONFIGURED",
         );
       }

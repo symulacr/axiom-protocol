@@ -88,23 +88,22 @@ describe("runReadTool", () => {
     assert.equal(data.balance, "5");
   });
 
-  it("agent_metadata returns name, owner, and first data entry from multicall", async () => {
+  it("agent_metadata returns name, owner, and first data entry via individual reads", async () => {
     const ctx = makeCtx({
       chain: {
         chainId: 1,
-        readContract: async () => 0n,
-        multicall: async () => [
-          { result: "Axiom NFT" },
-          { result: "0x" + "ab".repeat(20) },
-          {
-            result: [
+        readContract: async (req: { functionName: string }) => {
+          if (req.functionName === "name") return "Axiom NFT";
+          if (req.functionName === "ownerOf") return "0x" + "ab".repeat(20);
+          if (req.functionName === "intelligentDatasOf")
+            return [
               {
                 dataDescription: "strategy v1",
                 dataHash: "0x" + "aa".repeat(32),
               },
-            ],
-          },
-        ],
+            ];
+          return undefined;
+        },
       },
       session: {
         chainId: 1,

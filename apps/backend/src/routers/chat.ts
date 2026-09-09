@@ -462,6 +462,13 @@ export function registerChatRoutes(
         // instead of masking it as a 502 compute outage — the UI's "compute
         // unavailable" copy only fits real upstream/auth/balance failures.
         if (status === 400 || code === "400001") {
+          // The typed error carries no response body — the message is all we
+          // get, so log it truncated to make future 400s diagnosable.
+          log.warn("chat provider 400 passthrough", {
+            status,
+            code,
+            body: String(msg || errMsg).slice(0, 500),
+          });
           jsonFail(
             400,
             msg
