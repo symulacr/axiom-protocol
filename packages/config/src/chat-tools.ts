@@ -639,7 +639,7 @@ export const CHAT_TOOL_CATALOG = [
     name: "set_strategy",
     class: "encode",
     label: "Set Strategy",
-    hint: "Set an agent vault's spending strategy (setStrategy) via the backend encode relay. dailyLimit is the daily spend cap in 0G (e.g. 1.5). validUntilDay is an optional UTC day index ('0' = no expiry). root is an optional 0x-prefixed Merkle strategy root. Omitted root/expiry keep the live strategyOf values, so a limit refresh never clears the strategy. Opens MetaMask (wallet lane only).",
+    hint: "Set an agent vault's spending strategy (setStrategy) via the backend encode relay. root (0x + 32-byte hex) is REQUIRED on a fresh vault — limit alone writes an unexecutable strategy and is refused. For a single-action strategy use leaf-as-root: root = keccak256(abi.encode(target, valueWei, keccak256(data))) of the one authorized action; it verifies with an empty proof. On an existing strategy, omitted root/expiry keep the live values so a limit refresh never clears the strategy. dailyLimit is the daily spend cap in 0G (e.g. 1.5). validUntilDay is an optional UTC day index ('0' = no expiry). Opens MetaMask (wallet lane only).",
     requiresWallet: true,
     requiresTokenId: true,
     friction: "medium",
@@ -658,7 +658,7 @@ export const CHAT_TOOL_CATALOG = [
         root: {
           type: "string",
           description:
-            "0x-prefixed 32-byte Merkle strategy root (default: keep the live root)",
+            "0x-prefixed 32-byte Merkle strategy root — REQUIRED when the vault has no live root (fresh vaults); on an existing strategy, omit to keep the live root. Leaf-as-root for one action: keccak256(abi.encode(target, valueWei, keccak256(data)))",
         },
       },
       ["tokenId", "dailyLimit"],
