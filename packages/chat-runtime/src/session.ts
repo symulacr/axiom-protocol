@@ -2,6 +2,7 @@ import type { ChatToolName } from "@axiom/config/chat-tools";
 import {
   getChatToolSpec,
   resolveContextWindow,
+  resolveMaxCompletionTokens,
   CHAT_TOOL_CATALOG,
 } from "@axiom/config/chat-tools";
 import type { ChatSessionContext, ToolResult } from "./types.js";
@@ -207,7 +208,7 @@ export function matchPlan(items: string[]): string[] {
         mint: "mint_agent",
         fund: "deposit",
         tick: "simulate_tick",
-        strategy: "vault_balance",
+        strategy: "set_strategy",
       };
       const mapped = alias[tool];
       if (!mapped || !TOOL_NAMES.has(mapped)) break;
@@ -274,9 +275,19 @@ function compressToolContent(content: string | null): string | null {
   }
 }
 
-const OUTPUT_RESERVE_TOKENS = 4096;
+/** History budget rule (user directive 2026-09-09): history gets at most 80%
+ *  of the resolved context window minus reserves. The reserve is the catalog's
+ *  max_completion_tokens when known, else this flat default. */
+const HISTORY_BUDGET_FRACTION = 0.8;
+const DEFAULT_OUTPUT_RESERVE_TOKENS = 4096;
 const SAFETY_MARGIN_TOKENS = 1024;
+/** Floor, never a target: keep at least this many recent messages even when
+ *  the token budget is already exhausted. */
 const RECENT_KEEP = 6;
+/** Backend transport ceiling: the chat router rejects payloads over ~4MB,
+ *  about 1M tokens at the len/4 estimate. The budget never exceeds this even
+ *  when a catalog window does, so the token estimate is the only cap. */
+const MAX_PAYLOAD_TOKENS = 1_000_000;
 
 function estimateTokens(text: string | number): number {
   return Math.ceil((typeof text === "string" ? text.length : text) / 4);
@@ -308,10 +319,18 @@ export function fitToContext(
     tools?: unknown;
     recentKeep?: number;
     contextWindow?: number;
+    outputReserve?: number;
   },
 ): ChatApiMessage[] {
   const window = opts.contextWindow ?? resolveContextWindow(opts.model);
-  const budget = window - OUTPUT_RESERVE_TOKENS - SAFETY_MARGIN_TOKENS;
+  const reserve =
+    opts.outputReserve ??
+    resolveMaxCompletionTokens(opts.model) ??
+    DEFAULT_OUTPUT_RESERVE_TOKENS;
+  const budget =
+    Math.min(Math.floor(window * HISTORY_BUDGET_FRACTION), MAX_PAYLOAD_TOKENS) -
+    reserve -
+    SAFETY_MARGIN_TOKENS;
   const keep = opts.recentKeep ?? RECENT_KEEP;
   const overheadTokens =
     estimateTokens(opts.system) +
@@ -327,6 +346,7 @@ export function fitToContext(
     serialized.reduce((a, s) => a + s.length, 0) + serialized.length + 1;
   let drop = 0;
   for (const s of serialized) {
+    // Stop when the budget fits or the RECENT_KEEP floor is reached.
     if (history.length - drop <= keep) break;
     if (estimateTokens(totalLen) <= maxHistoryTokens) break;
     totalLen -= s.length + 1;
@@ -335,46 +355,15 @@ export function fitToContext(
   return history.slice(snapHistoryStart(history, drop));
 }
 
-export function compactHistory<T extends ChatApiMessage>(
-  messages: T[],
-  summary: string | null,
-  recentKeep = RECENT_KEEP,
-): T[] {
-  if (!summary || messages.length === 0) return messages;
-  const keep = Math.min(recentKeep, messages.length);
-  // Never let the recent window open inside a tool block (see snapHistoryStart).
-  const recent = messages.slice(
-    snapHistoryStart(messages, messages.length - keep),
-  );
-  const summaryMsg = {
-    ...recent[0],
-    role: "user" as const,
-    content: `[Earlier conversation summary]\n${summary}`,
-    tool_calls: undefined,
-    tool_call_id: undefined,
-    name: undefined,
-  } as unknown as T;
-  // Fresh id avoids sharing recent[0]'s UI-only React key (id is stripped before the API payload, so cache-safe).
-  if (
-    typeof summaryMsg === "object" &&
-    summaryMsg !== null &&
-    "id" in summaryMsg
-  ) {
-    (summaryMsg as Record<string, unknown>).id =
-      globalThis.crypto?.randomUUID?.() ?? `summary-${Date.now()}`;
-  }
-  return [summaryMsg, ...recent];
-}
-
 export const MAX_TOOL_LOOPS = 10;
 
+/** Summarize exactly the passed messages (the caller hands in the dropped
+ *  prefix). 800-char cap keeps the pinned lead a small, stable prefix. */
 export function summarizeConversation<
   T extends { role: string; content: string | null },
->(msgs: T[], recentKeep = RECENT_KEEP): string {
-  if (msgs.length <= recentKeep) return "";
-  const oldest = msgs.slice(0, msgs.length - recentKeep);
+>(msgs: readonly T[]): string {
   let out = "";
-  for (const m of oldest) {
+  for (const m of msgs) {
     const text = (m.content ?? "").replace(/\s+/g, " ").trim().slice(0, 200);
     if (!text) continue;
     const line = `[${m.role}] ${text}\n`;
@@ -382,4 +371,21 @@ export function summarizeConversation<
     out += line;
   }
   return out.trim();
+}
+
+/** A thread's pinned compaction summary plus the count of history messages it
+ *  covers. The lead rides in the payload only while fitToContext drops. */
+export type PinnedSummary = { summary: string; covered: number };
+
+/** Summary pinning (cache-hit rule): reuse the stored entry until the dropped
+ *  prefix grows past twice what the entry covers, then regenerate over the
+ *  full dropped prefix. Keeps the payload prefix byte-stable between runs so
+ *  the provider's prompt cache (cached_prompt pricing on the router) can hit. */
+export function pinSummary(
+  entry: PinnedSummary | undefined,
+  dropped: ReadonlyArray<{ role: string; content: string | null }>,
+): PinnedSummary {
+  if (entry && entry.covered > 0 && dropped.length <= entry.covered * 2)
+    return entry;
+  return { summary: summarizeConversation(dropped), covered: dropped.length };
 }

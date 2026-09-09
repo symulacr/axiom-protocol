@@ -1,6 +1,6 @@
 import { describe, it } from "bun:test";
 import assert from "node:assert/strict";
-import { buildSystemPrompt } from "./prompt.js";
+import { buildSystemPrompt, buildRemainingPlanBlock } from "./prompt.js";
 
 describe("buildSystemPrompt", () => {
   const prompt = buildSystemPrompt();
@@ -43,7 +43,7 @@ describe("buildSystemPrompt", () => {
     assert.match(prompt, /CONTINUITY/);
     assert.match(
       prompt,
-      /mint → fund \(deposit\) → set strategy → run tick → pay/,
+      /mint → fund \(deposit\) → set strategy \(set_strategy\) → run tick → pay/,
     );
     assert.match(prompt, /IMMEDIATELY call the next tool/);
     assert.match(prompt, /unless a tool FAILED/);
@@ -127,5 +127,48 @@ describe("buildSystemPrompt", () => {
 
   it("waiting-state strings are examples, rendered in the user's language", () => {
     assert.match(prompt, /Use the user's language/);
+  });
+});
+
+describe("buildRemainingPlanBlock (hidden plan reminder)", () => {
+  it("returns null when no plan is active, so no block is injected", () => {
+    assert.equal(buildRemainingPlanBlock([]), null);
+  });
+
+  it("carries only the remaining steps, numbered one per line", () => {
+    const block = buildRemainingPlanBlock(["deposit", "simulate_tick"]);
+    assert.ok(block);
+    assert.match(block!, /^REMAINING PLAN/);
+    assert.match(block!, /\n1\. deposit\n2\. simulate_tick$/);
+  });
+
+  it("shrinks as steps complete and never repeats a completed step", () => {
+    const full = buildRemainingPlanBlock([
+      "mint_agent",
+      "deposit",
+      "set_strategy",
+    ])!;
+    const after = buildRemainingPlanBlock(["deposit", "set_strategy"])!;
+    assert.match(
+      after,
+      /^REMAINING PLAN[\s\S]*\n1\. deposit\n2\. set_strategy$/,
+    );
+    assert.ok(!after.includes("mint_agent"), "completed step drops out");
+    assert.ok(after.length < full.length);
+  });
+
+  it("never duplicates the stable prompt (prefix-cache separation)", () => {
+    const prompt = buildSystemPrompt();
+    const block = buildRemainingPlanBlock(["deposit"])!;
+    assert.ok(
+      !prompt.includes(block),
+      "block is not part of the stable prompt",
+    );
+    assert.ok(
+      !block.includes("CONTINUITY"),
+      "block carries no stable-prompt rules",
+    );
+    // The stable prompt itself stays byte-identical with or without a plan.
+    assert.equal(buildSystemPrompt(), prompt);
   });
 });

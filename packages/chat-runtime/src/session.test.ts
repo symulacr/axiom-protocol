@@ -2,7 +2,7 @@ import { test, describe, it } from "bun:test";
 import assert from "node:assert/strict";
 import {
   summarizeConversation,
-  compactHistory,
+  pinSummary,
   applyToolResult,
   createSession,
   groupParallelTools,
@@ -14,29 +14,43 @@ import {
 
 const mk = (role: string, content: string) => ({ role, content });
 
-test("summarizeConversation returns empty for short history", () => {
-  assert.equal(
-    summarizeConversation([mk("user", "hi"), mk("assistant", "hello")]),
-    "",
-  );
+test("summarizeConversation returns empty for an empty prefix", () => {
+  assert.equal(summarizeConversation([]), "");
 });
 
-test("summarizeConversation returns a non-empty summary for long history", () => {
-  const msgs = Array.from({ length: 10 }, (_, i) =>
-    mk(i % 2 ? "assistant" : "user", "x".repeat(50)),
-  );
-  const summary = summarizeConversation(msgs);
-  assert.ok(summary.length > 0);
-  assert.match(summary, /\[user\]/);
+test("summarizeConversation summarizes exactly the passed prefix", () => {
+  const summary = summarizeConversation([
+    mk("user", "first turn"),
+    mk("assistant", "first reply"),
+  ]);
+  assert.match(summary, /\[user\] first turn/);
+  assert.match(summary, /\[assistant\] first reply/);
 });
 
-test("compactHistory returns a summary message followed by recent turns", () => {
-  const msgs = Array.from({ length: 8 }, (_, i) =>
-    mk(i % 2 ? "assistant" : "user", String(i)),
-  ) as never;
-  const out = compactHistory(msgs, "SUMMARY", 3);
-  assert.equal(out.length, 4);
-  assert.match(String((out[0] as { content: string }).content), /SUMMARY/);
+describe("pinSummary (cache-stable prefix)", () => {
+  const turns = (n: number) =>
+    Array.from({ length: n }, (_, i) =>
+      mk("user", `turn ${i} ` + "x".repeat(30)),
+    );
+
+  it("computes on first cut and reuses while the dropped prefix stays within 2x", () => {
+    const first = pinSummary(undefined, turns(10));
+    assert.ok(first.summary.length > 0);
+    assert.equal(first.covered, 10);
+    const grown = pinSummary(first, turns(20)); // 20 <= 2*10: reuse
+    assert.equal(grown.summary, first.summary);
+    assert.equal(grown.covered, 10);
+    const shrunk = pinSummary(first, turns(5)); // smaller drop: still reuse
+    assert.equal(shrunk.summary, first.summary);
+  });
+
+  it("regenerates only when the uncovered prefix more than doubles", () => {
+    const first = pinSummary(undefined, turns(10));
+    const regen = pinSummary(first, turns(21)); // 21 > 2*10: regenerate
+    assert.equal(regen.covered, 21);
+    assert.notEqual(regen.summary, first.summary);
+    assert.match(regen.summary, /turn 10/);
+  });
 });
 
 test("applyToolResult captures tokenId from plain body, {data} wrapper, and first-of-multi JSON", () => {
@@ -157,10 +171,10 @@ describe("detectPlan / matchPlan (J2)", () => {
     );
   });
 
-  it("maps 'set strategy' onto a session read (no strategy tool in catalog) and keeps exact names", () => {
+  it("maps 'set strategy' onto the set_strategy catalog tool and keeps exact names", () => {
     assert.deepEqual(matchPlan(["deposit", "set strategy", "execute_tick"]), [
       "deposit",
-      "vault_balance",
+      "set_strategy",
       "execute_tick",
     ]);
   });
@@ -227,11 +241,12 @@ describe("groupParallelTools", () => {
   });
 });
 
-// Live incident 2026-09-08: front-cuts (compactHistory window, fitToContext
-// drop, ChatPage's 50-message cap) landing inside a tool block produced a
-// payload whose first message had role "tool" — the provider rejects it with
-// 400 "Messages with role 'tool' must be a response to a preceding message
-// with 'tool_calls'", surfaced to users as a fake compute outage.
+// Live incident 2026-09-08: a front-cut (fitToContext drop, formerly also the
+// compactHistory window and ChatPage's 50-message cap) landing inside a tool
+// block produced a payload whose first message had role "tool" — the provider
+// rejects it with 400 "Messages with role 'tool' must be a response to a
+// preceding message with 'tool_calls'", surfaced to users as a fake compute
+// outage. fitToContext is now the only cut, and it snaps via snapHistoryStart.
 describe("tool-block-safe history cuts", () => {
   const tcAssistant = (id: string) => ({
     role: "assistant" as const,
@@ -266,44 +281,6 @@ describe("tool-block-safe history cuts", () => {
     assert.equal(snapHistoryStart([toolMsg("c1")], 0), 1); // all-tool tail
   });
 
-  it("compactHistory never opens the recent window on a tool message", () => {
-    const msgs = [
-      mk("user", "u0"),
-      tcAssistant("c1"),
-      toolMsg("c1"),
-      mk("assistant", "a2"),
-      mk("user", "u3"),
-      mk("assistant", "a4"),
-      mk("user", "u5"),
-      mk("user", "u6"),
-    ];
-    const out = compactHistory(msgs as never, "SUMMARY", 6);
-    assert.equal(out[0]!.role, "user"); // summary lead
-    assert.match(String((out[0] as { content: string }).content), /SUMMARY/);
-    assert.notEqual(out[1]!.role, "tool");
-    assert.equal((out[1] as { content: string | null }).content, "a2");
-  });
-
-  it("compactHistory keeps an assistant-with-tool_calls boundary intact", () => {
-    const msgs = [
-      mk("user", "u0"),
-      tcAssistant("c1"),
-      toolMsg("c1"),
-      mk("assistant", "a2"),
-      mk("user", "u3"),
-      mk("user", "u4"),
-      mk("user", "u5"),
-      mk("user", "u6"),
-    ];
-    const out = compactHistory(msgs as never, "SUMMARY", 7);
-    assert.equal(out.length, 8); // summary + full 7-message window, no snap
-    assert.deepEqual(
-      (out[1] as { tool_calls?: Array<{ id: string }> }).tool_calls?.[0]?.id,
-      "c1",
-    );
-    assert.equal(out[2]!.role, "tool"); // its result rides along
-  });
-
   it("fitToContext never drops into the middle of a tool block", () => {
     const msgs = [
       mk("user", "u0 ".repeat(40)),
@@ -327,5 +304,116 @@ describe("tool-block-safe history cuts", () => {
       out.map((m) => m.role),
       ["assistant", "user"],
     );
+  });
+});
+
+// 2026-09-09 context-fit redesign (user directive: "context side, like 80% of
+// the 1M context"): fitToContext is the only cut. RECENT_KEEP=6 is a floor,
+// never a target; the count cap exists only as backend-schema legality.
+describe("token-budget authority", () => {
+  const small = (n: number) =>
+    Array.from({ length: n }, (_, i) =>
+      mk(i % 2 ? "assistant" : "user", `m${i}`),
+    );
+
+  it("keeps more than RECENT_KEEP when the token budget allows", () => {
+    const out = fitToContext(small(20) as never, {
+      model: "deepseek-v4-flash",
+      system: "s",
+      contextWindow: 1_000_000,
+    });
+    assert.equal(out.length, 20);
+  });
+
+  it("drops to the RECENT_KEEP floor when the budget is exhausted, never below", () => {
+    const big = Array.from({ length: 30 }, (_, i) =>
+      mk(i % 2 ? "assistant" : "user", "x".repeat(4000)),
+    );
+    const out = fitToContext(big as never, {
+      model: "m",
+      system: "s",
+      contextWindow: 1000, // budget negative after reserves: drop to the floor
+      outputReserve: 100,
+      recentKeep: 6,
+    });
+    assert.equal(out.length, 6);
+  });
+
+  it("budget = floor(0.8*window) - reserve - safety - overhead", () => {
+    // window 100k, reserve 10k, overhead 2 tokens ("s" + "[]"):
+    // budget = 80000 - 10000 - 1024 - 2 = 68974 tokens ≈ 275,896 chars.
+    const fits = Array.from({ length: 13 }, (_, i) =>
+      mk(i % 2 ? "assistant" : "user", "x".repeat(20_000)),
+    );
+    const kept = fitToContext(fits as never, {
+      model: "m",
+      system: "s",
+      contextWindow: 100_000,
+      outputReserve: 10_000,
+    });
+    assert.equal(kept.length, 13, "260k chars fits the 69k-token budget");
+    const overflows = [...fits, mk("user", "x".repeat(20_000))];
+    const cut = fitToContext(overflows as never, {
+      model: "m",
+      system: "s",
+      contextWindow: 100_000,
+      outputReserve: 10_000,
+    });
+    assert.ok(
+      cut.length < 14 && cut.length >= 6,
+      `280k chars exceeds the budget, cut to ${cut.length}`,
+    );
+  });
+
+  it("uses the catalog max_completion_tokens as the default output reserve", () => {
+    // deepseek-v4-flash catalog: reserve 39,321 (vs the 4096 fallback). A
+    // history that fits under 4096 but not under 39321 is cut only when the
+    // catalog reserve applies.
+    const msgs = Array.from({ length: 8 }, (_, i) =>
+      mk(i % 2 ? "assistant" : "user", "x".repeat(390_000)),
+    );
+    const catalog = fitToContext(msgs as never, {
+      model: "deepseek-v4-flash",
+      system: "s",
+      contextWindow: 1_000_000,
+    });
+    const fallback = fitToContext(msgs as never, {
+      model: "deepseek-v4-flash",
+      system: "s",
+      contextWindow: 1_000_000,
+      outputReserve: 4096,
+    });
+    assert.equal(fallback.length, 8, "fits with the 4096 reserve");
+    assert.ok(catalog.length < 8, "cut with the 39321 catalog reserve");
+  });
+
+  it("never exceeds the backend byte ceiling even when the catalog window does (transport legality)", () => {
+    // The backend's old max(50) message cap is a ~4MB byte guard now (≈1M
+    // tokens at len/4): a 10M-window catalog must not inflate the payload
+    // past MAX_PAYLOAD_TOKENS minus reserves and overhead.
+    const huge = Array.from({ length: 40 }, (_, i) =>
+      mk(i % 2 ? "assistant" : "user", "x".repeat(200_000)),
+    ); // 8M chars ≈ 2M tokens
+    const out = fitToContext(huge as never, {
+      model: "deepseek-v4-flash",
+      system: "s",
+      contextWindow: 10_000_000,
+    });
+    const estimated = Math.ceil(JSON.stringify(out).length / 4);
+    assert.ok(
+      estimated <= 1_000_000 - 39_321 - 1024,
+      `payload estimate ${estimated} exceeds the byte ceiling minus reserves`,
+    );
+    assert.ok(out.length >= 6, "RECENT_KEEP floor still holds");
+    assert.notEqual(out[0]!.role, "tool");
+  });
+
+  it("a long but light history is count-free: 60 small messages all fit", () => {
+    const out = fitToContext(small(60) as never, {
+      model: "deepseek-v4-flash",
+      system: "s",
+      contextWindow: 1_000_000,
+    });
+    assert.equal(out.length, 60, "no message-count cap remains");
   });
 });

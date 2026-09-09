@@ -63,17 +63,22 @@ import {
 } from "../chat/lib.js";
 import {
   buildSystemPrompt,
+  buildRemainingPlanBlock,
   formatToolResult,
   groupParallelTools,
   fitToContext,
-  compactHistory,
   MAX_TOOL_LOOPS,
-  summarizeConversation,
-  snapHistoryStart,
+  pinSummary,
+  detectPlan,
+  matchPlan,
   isAskUserResult,
   type ChatSessionContext,
+  type PinnedSummary,
 } from "@axiom/chat-runtime";
-import { resolveContextWindow } from "@axiom/config/chat-tools";
+import {
+  resolveContextWindow,
+  resolveMaxCompletionTokens,
+} from "@axiom/config/chat-tools";
 import {
   AskUserCard,
   ChatBanner,
@@ -584,8 +589,13 @@ function ChatPageInner(): ReactElement {
   // network name and native token unit come from chain config.
   const chainVars = { chainName: APP_CHAIN.name, chainId: APP_CHAIN_ID };
   const nativeSymbol = APP_CHAIN.nativeCurrency.symbol;
-  const { session, recordToolResult, providerPref, setProviderPref } =
-    useChatSession();
+  const {
+    session,
+    recordToolResult,
+    recordPlan,
+    providerPref,
+    setProviderPref,
+  } = useChatSession();
   const publicClient = usePublicClient();
   const { writeContractAsync } = useWriteContract();
   const { signTypedDataAsync } = useSignTypedData();
@@ -593,6 +603,7 @@ function ChatPageInner(): ReactElement {
 
   const [messages, setMessages] = useState(loadStoredMessages);
   const [contextWindow, setContextWindow] = useState<number>();
+  const [maxCompletion, setMaxCompletion] = useState<number>();
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
   // Stream text + its 50ms render throttle live in one hook; the local aliases
@@ -626,13 +637,13 @@ function ChatPageInner(): ReactElement {
   const turnMetricsRef = useRef<TurnMetric[]>([]);
   const currentTurnRef = useRef<TurnMetric>({ wallMs: 0 });
   const stepsRef = useRef(0);
-  /** Cached compaction summary, keyed by threadId: the inserted
-   * `[Earlier conversation summary]` lead is byte-identical every run within
-   * a thread (prefix-cache stable anchor), a fresh thread NEVER inherits
-   * another thread's summary, and switching back reuses the cached lead.
+  /** Pinned compaction summary, keyed by threadId (pinSummary): reused while
+   * the dropped prefix stays within 2x of what the entry covers, so the
+   * payload prefix is byte-stable across runs (provider prompt-cache
+   * affinity), and a fresh thread NEVER inherits another thread's summary.
    * A thread's entry is deleted when its history is rewritten
    * (edit/regenerate/delete). */
-  const summaryCacheRef = useRef<Map<string, string | null>>(new Map());
+  const summaryCacheRef = useRef<Map<string, PinnedSummary>>(new Map());
   /** Monotonic run generation. Bumped on new-chat/thread-switch so an
    * in-flight runAgent can detect staleness and never commit its (old
    * thread's) messages — including the old summary lead — into a fresh
@@ -748,6 +759,9 @@ function ChatPageInner(): ReactElement {
   const lastTokenIdRef = useRef<string | undefined>(
     urlAgentRef.current ?? session.lastTokenId,
   );
+  /** Live mirror of the active plan for the run loop; session.lastPlan is the
+   * reactive source, applyToolResult consumes steps as tool results land. */
+  const lastPlanRef = useRef<string[]>(session.lastPlan ?? []);
   const liveAddressRef = useRef<string | undefined>(address);
   const liveChainIdRef = useRef<number>(chainId);
   const providerPrefRef = useRef<ProviderPref | undefined>(undefined);
@@ -924,6 +938,7 @@ function ChatPageInner(): ReactElement {
 
   useEffect(() => {
     lastTokenIdRef.current = session.lastTokenId ?? urlAgentRef.current;
+    lastPlanRef.current = session.lastPlan ?? [];
     liveAddressRef.current = address;
     liveChainIdRef.current = chainId;
     writeContractAsyncRef.current = writeContractAsync;
@@ -932,6 +947,7 @@ function ChatPageInner(): ReactElement {
     providerPrefRef.current = providerPref;
   }, [
     session.lastTokenId,
+    session.lastPlan,
     address,
     chainId,
     writeContractAsync,
@@ -999,9 +1015,34 @@ function ChatPageInner(): ReactElement {
 
   useEffect(() => {
     let cancelled = false;
-    apiFetch<{ contextWindow?: number }>("/v1/config") // attaches API key; /v1/config is auth-gated so no key -> 401, context stays unset
+    apiFetch<{
+      contextWindow?: number;
+      maxCompletionTokens?: number;
+      model?: string;
+    }>("/v1/config") // attaches API key; /v1/config is auth-gated so no key -> 401, context stays unset
       .then((d) => {
-        if (!cancelled) setContextWindow(d?.contextWindow);
+        if (cancelled) return;
+        // /v1/config reports the BACKEND default model's catalog values;
+        // accept them only when they describe CHAT_MODEL (router ids can be
+        // versioned, e.g. deepseek-v4-flash-0731), else the static fallbacks
+        // apply.
+        const reported = d?.model?.trim().toLowerCase() || undefined;
+        const wanted = CHAT_MODEL.trim().toLowerCase();
+        const modelMatches =
+          reported === undefined ||
+          reported === wanted ||
+          reported.startsWith(wanted) ||
+          wanted.startsWith(reported);
+        if (!modelMatches) return;
+        if (typeof d?.contextWindow === "number" && d.contextWindow > 0) {
+          setContextWindow(d.contextWindow);
+        }
+        if (
+          typeof d?.maxCompletionTokens === "number" &&
+          d.maxCompletionTokens > 0
+        ) {
+          setMaxCompletion(d.maxCompletionTokens);
+        }
       })
       .catch(() => {});
     return () => {
@@ -1037,10 +1078,13 @@ function ChatPageInner(): ReactElement {
       stepsRef.current = 0;
 
       const userMsg = createMessage({ role: "user", content: userText });
-      let currentMessages = [...messagesRef.current, userMsg];
+      // Committed state keeps the FULL history (stale summary leads stripped
+      // defensively). The only cut is fitToContext's token budget, applied at
+      // payload time per loop iteration. No count-based compaction here.
+      let currentMessages = [...stripSummaryLead(messagesRef.current), userMsg];
       // Run-generation guard: startNewChat/openThread bump runEpochRef, so an
       // in-flight run can detect staleness and never commit old-thread
-      // messages (with the old summary lead) into a fresh thread.
+      // messages into a fresh thread.
       const epoch = runEpochRef.current;
       const isStale = (): boolean => epoch !== runEpochRef.current;
       const commitMessages = (msgs: Message[]): void => {
@@ -1048,18 +1092,7 @@ function ChatPageInner(): ReactElement {
         messagesRef.current = msgs;
         setMessages(msgs);
       };
-      // Compaction runs once per RUN (never mid-loop), and the summary is
-      // cached per threadId — the inserted lead message is byte-identical
-      // every run of this thread, and a fresh thread never inherits another
-      // thread's summary. Never summarize a previously inserted lead.
       const threadKey = threadIdRef.current;
-      let summary = summaryCacheRef.current.get(threadKey);
-      if (summary === undefined) {
-        summary =
-          summarizeConversation(stripSummaryLead(messagesRef.current)) || null;
-        summaryCacheRef.current.set(threadKey, summary);
-      }
-      currentMessages = compactHistory(currentMessages, summary);
       commitMessages(currentMessages);
       flushAndClearStreamText();
       if (!hasUsedChat) {
@@ -1077,15 +1110,66 @@ function ChatPageInner(): ReactElement {
       const runStartedAt = Date.now();
       let loopCount = 0;
 
-      // Byte-stable system prompt (no wallet/tokenId/timestamp) + the model's
-      // own context window (server /v1/config reports the BACKEND default
-      // model's window, e.g. 131072, while CHAT_MODEL may be 32768 — clamp so
-      // fitToContext truncates at the real boundary instead of 4x too late).
+      // Byte-stable system prompt (no wallet/tokenId/timestamp). The context
+      // window prefers the live catalog value threaded from /v1/config
+      // (accepted only when the reported model matches CHAT_MODEL, since the
+      // backend default can differ); offline or mismatched, the corrected
+      // static fallback applies (deepseek-v4-flash: 1M).
       const systemContent = buildSystemPrompt();
       const effectiveContextWindow =
-        contextWindow !== undefined
-          ? Math.min(contextWindow, resolveContextWindow(CHAT_MODEL))
-          : resolveContextWindow(CHAT_MODEL);
+        contextWindow ?? resolveContextWindow(CHAT_MODEL);
+      // Output budget: the catalog's max_completion_tokens (live via
+      // /v1/config, else the static map). Sent as max_tokens and reserved in
+      // the history budget, so long answers are never cut short of what the
+      // catalog allows, and never exceed it.
+      const effectiveMaxCompletion =
+        maxCompletion ?? resolveMaxCompletionTokens(CHAT_MODEL);
+      // One token-budget authority per loop iteration (tool turns accumulate
+      // intra-run): fitToContext owns the 80%-of-window budget, clamped to
+      // the backend's byte ceiling; no message-count cap remains. When it
+      // drops messages, a pinned per-thread summary lead covers the dropped
+      // prefix and regenerates only when the uncovered portion doubles, so
+      // the payload prefix stays byte-stable for prompt-cache hits.
+      const buildPayloadMessages = (): {
+        role: "user" | "assistant" | "tool";
+        content: string | null;
+        tool_calls?: ToolCall[];
+        tool_call_id?: string;
+        name?: string;
+      }[] => {
+        const clean = currentMessages.filter((m) => !m.meta?.error);
+        const fitted = fitToContext(clean, {
+          model: CHAT_MODEL,
+          system: systemContent,
+          tools: TOOLS,
+          contextWindow: effectiveContextWindow,
+          outputReserve: effectiveMaxCompletion,
+        });
+        const droppedCount = clean.length - fitted.length;
+        if (droppedCount <= 0) return fitted;
+        const entry = pinSummary(
+          summaryCacheRef.current.get(threadKey),
+          clean.slice(0, droppedCount),
+        );
+        summaryCacheRef.current.set(threadKey, entry);
+        if (!entry.summary) return fitted;
+        // The lead's ~250 tokens ride the fit's safety margin.
+        return [
+          {
+            role: "user" as const,
+            content: `[Earlier conversation summary]\n${entry.summary}`,
+          },
+          ...fitted,
+        ];
+      };
+      // Plan capture (shared matchers, session.ts contract): a numbered list
+      // of tool-executable steps registers as the active plan. ≥2 matched
+      // steps filters one-off enumerated answers from real plans.
+      const capturePlan = (text: string | null): void => {
+        if (!text) return;
+        const matched = matchPlan(detectPlan(text));
+        if (matched.length >= 2) recordPlan(matched);
+      };
       const prefBody = providerPrefBody(providerPrefRef.current);
 
       try {
@@ -1104,6 +1188,10 @@ function ChatPageInner(): ReactElement {
             lastTokenId: lastTokenIdRef.current,
           };
 
+          // The REMAINING PLAN block rides as a second system-position
+          // message AFTER the stable prompt: the cached prefix stays
+          // untouched while the block shrinks as plan steps complete.
+          const planBlock = buildRemainingPlanBlock(lastPlanRef.current);
           // postStreamingWithRetry: 429 Retry-After backoff, up to 2 retries
           // capped at 10s; AbortError propagates so a cancel is never retried.
           const response = await postStreamingWithRetry(
@@ -1112,28 +1200,24 @@ function ChatPageInner(): ReactElement {
               method: "POST",
               body: JSON.stringify({
                 model: CHAT_MODEL,
-                // Cap at the backend's max(50) — tool-heavy sessions otherwise
-                // brick with "Validation failed" once history exceeds it. The
-                // cap must snap to a tool-block boundary (snapHistoryStart):
-                // a payload opening on an orphaned tool result is rejected
-                // upstream with a 400 (2026-09-08 incident).
+                // fitToContext snaps its front cut to a tool-block boundary
+                // (snapHistoryStart): a payload opening on an orphaned tool
+                // result is rejected upstream with a 400 (2026-09-08 incident).
                 messages: [
                   { role: "system", content: systemContent },
-                  ...capRecentMessages(
-                    fitToContext(
-                      currentMessages.filter((m) => !m.meta?.error),
-                      {
-                        model: CHAT_MODEL,
-                        system: systemContent,
-                        tools: TOOLS,
-                        contextWindow: effectiveContextWindow,
-                      },
-                    ),
-                    50,
-                  ),
+                  ...(planBlock
+                    ? [{ role: "system" as const, content: planBlock }]
+                    : []),
+                  ...buildPayloadMessages(),
                 ],
                 tools: TOOLS,
                 stream: true,
+                // Output budget: the catalog's max_completion_tokens, never
+                // above it (backend strips the field until its passthrough
+                // lands, so this is schema-safe either way).
+                ...(effectiveMaxCompletion !== undefined
+                  ? { max_tokens: effectiveMaxCompletion }
+                  : {}),
                 // Wallet-keyed session: the backend persists the transcript under a stable
                 // per-wallet threadId and exposes it via GET /v1/chat/history?wallet=…
                 wallet: liveSession.walletAddress,
@@ -1263,6 +1347,7 @@ function ChatPageInner(): ReactElement {
                 ),
               },
             });
+            capturePlan(assistantContent);
             currentMessages = [...currentMessages, assistantMsg];
             commitMessages(currentMessages);
             flushAndClearStreamText();
@@ -1274,6 +1359,7 @@ function ChatPageInner(): ReactElement {
             content: assistantContent || null,
             tool_calls: toolCallList,
           });
+          capturePlan(assistantContent || null);
           currentMessages = [...currentMessages, assistantMsg];
           commitMessages(currentMessages);
           flushAndClearStreamText();
@@ -1431,6 +1517,7 @@ function ChatPageInner(): ReactElement {
       handlers,
       session,
       recordToolResult,
+      recordPlan,
       hasUsedChat,
       flushAndClearStreamText,
       scheduleStreamTextUpdate,
@@ -1495,27 +1582,37 @@ function ChatPageInner(): ReactElement {
     queueRef.current = [];
     setThreadId(crypto.randomUUID());
     setComputeHint(null);
+    // Plans are thread-scoped: a fresh thread never inherits the plan block.
+    recordPlan([]);
+    lastPlanRef.current = [];
     try {
       localStorage.removeItem(CHAT_MESSAGES_KEY);
       localStorage.removeItem(CHAT_THREAD_KEY);
     } catch {
       /* best-effort persistence */
     }
-  }, []);
+  }, [recordPlan]);
 
-  const openThread = useCallback((t: StoredThread) => {
-    // Same guard as startNewChat: switching threads mid-run must not let the
-    // old run's output land in the newly opened thread.
-    runEpochRef.current += 1;
-    abortRef.current?.abort();
-    const loaded = stripSummaryLead(toMessages(t.messages));
-    setThreadId(t.id);
-    setMessages(loaded);
-    messagesRef.current = loaded;
-    setComputeHint(null);
-    // The per-thread summary cache entry (if any) is kept: switching back
-    // reuses the byte-identical lead (cache anchor).
-  }, []);
+  const openThread = useCallback(
+    (t: StoredThread) => {
+      // Same guard as startNewChat: switching threads mid-run must not let the
+      // old run's output land in the newly opened thread.
+      runEpochRef.current += 1;
+      abortRef.current?.abort();
+      const loaded = stripSummaryLead(toMessages(t.messages));
+      setThreadId(t.id);
+      setMessages(loaded);
+      messagesRef.current = loaded;
+      setComputeHint(null);
+      // Plans are thread-scoped (in-memory only); the opened thread starts
+      // without a plan block.
+      recordPlan([]);
+      lastPlanRef.current = [];
+      // The per-thread summary cache entry (if any) is kept: switching back
+      // reuses the byte-identical lead (cache anchor).
+    },
+    [recordPlan],
+  );
 
   const deleteThread = useCallback(
     (id: string) => {
@@ -2225,6 +2322,16 @@ function groupTurns(messages: Message[]): Turn[] {
               a.tool_call_id === msg.tool_call_id),
         );
         if (!isDup) cur.asks.push(msg);
+        // B6b: pair the result with its step as well, or the ask's row in
+        // Steps stays "pending" forever (the card above is the prompt; this
+        // tool message is its resolution).
+        const step = msg.tool_call_id
+          ? cur.steps.find((s) => s.id === msg.tool_call_id)
+          : undefined;
+        if (step) {
+          step.result = msg.content;
+          step.hasResult = true;
+        }
         continue;
       }
       const step = msg.tool_call_id
@@ -2356,15 +2463,9 @@ function stripSummaryLead<T extends { role: string; content: string | null }>(
     : msgs;
 }
 
-/** Hard message-count cap that never opens inside a tool block — the same
- * rule fitToContext/compactHistory follow (snapHistoryStart). */
-function capRecentMessages<T extends { role: string }>(
-  msgs: T[],
-  max: number,
-): T[] {
-  if (msgs.length <= max) return msgs;
-  return msgs.slice(snapHistoryStart(msgs, msgs.length - max));
-}
+/** No message-count cap: the backend replaced its 50-message schema cap with
+ * a ~4MB byte guard (C2), and fitToContext clamps the history budget to that
+ * ceiling via the token estimate. The token budget is the only limit. */
 
 export default function ChatPage(): ReactElement {
   return (

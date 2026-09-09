@@ -84,7 +84,21 @@ export function humanizeError(err: unknown): string {
     needles.some((needle) => lower.includes(needle));
   const errors = getCopy(errorLocale()).errors;
 
-  if (has("user rejected", "user denied", "rejected the request")) {
+  // The backend's invalid_request passthrough ("Compute provider rejected the
+  // request: …") names a request-side defect, not a wallet cancel — keep it
+  // out of the userRejected ladder below (prod paste: those failures rendered
+  // as "Transaction cancelled — you rejected the request in your wallet.").
+  if (has("compute provider rejected the request")) {
+    return errors.computeInvalidRequest;
+  }
+
+  // Wallet cancel is always phrased as the USER rejecting ("User rejected the
+  // request.", code 4001) — never match the provider's bare "rejected the
+  // request" from the invalid_request passthrough above.
+  if (
+    (err as { code?: unknown } | null)?.code === 4001 ||
+    has("user rejected", "user denied")
+  ) {
     return errors.userRejected;
   }
 
@@ -195,7 +209,10 @@ export function humanizeToolName(name: string): string {
 
 export function errorRefString(err: unknown): string | null {
   const ref = err as { code?: string; requestId?: string } | null;
-  return ref && (ref.code !== undefined || ref.requestId !== undefined)
+  // A ref exists for support correlation, which only the requestId gives — a
+  // bare machine code ("Ref · invalid_request") under an error toast is raw
+  // noise for users, so code-only errors render no ref line.
+  return ref?.requestId !== undefined
     ? `Ref · ${[ref.requestId, ref.code].filter((x): x is string => x !== undefined).join(" · ")}`
     : null;
 }

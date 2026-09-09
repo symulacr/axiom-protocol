@@ -217,8 +217,7 @@
                 "role"
               ]
             },
-            "minItems": 1,
-            "maxItems": 50
+            "minItems": 1
           },
           "tools": {
             "type": "array",
@@ -838,6 +837,57 @@
           "reserve"
         ]
       },
+      "RelayerOpStatus": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Relayer-side correlation id (echoed)"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "submitted",
+              "confirmed",
+              "dead-lettered"
+            ],
+            "description": "Queue lifecycle state; in-memory — unknown after a process restart"
+          },
+          "txHash": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Relay tx hash once broadcast"
+          },
+          "nonce": {
+            "type": "string",
+            "pattern": "^\\d+$",
+            "description": "Per-user ForwardRequest nonce (decimal string)"
+          },
+          "attempts": {
+            "type": "integer",
+            "description": "Broadcast attempts (1 = dead-lettered)"
+          },
+          "enqueuedAt": {
+            "type": "integer",
+            "description": "Enqueue time (unix ms)"
+          },
+          "lastError": {
+            "type": "string",
+            "description": "Broadcast failure reason when dead-lettered"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "txHash",
+          "nonce",
+          "attempts",
+          "enqueuedAt"
+        ]
+      },
       "FaucetStatus": {
         "type": "object",
         "properties": {
@@ -1209,6 +1259,16 @@
           "price": {
             "type": "string"
           },
+          "context_length": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "description": "Live catalog context window (tokens), when the router reports it"
+          },
+          "max_completion_tokens": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "description": "Live catalog completion cap (tokens), when the router reports it"
+          },
           "trust_mode": {
             "type": "string",
             "enum": [
@@ -1255,12 +1315,21 @@
           "contextWindow": {
             "type": "integer",
             "exclusiveMinimum": 0
+          },
+          "maxCompletionTokens": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "exclusiveMinimum": 0,
+            "description": "Output-reserve cap from the live catalog (null when the model is unknown)"
           }
         },
         "required": [
           "model",
           "assistantName",
-          "contextWindow"
+          "contextWindow",
+          "maxCompletionTokens"
         ]
       },
       "StoredEvent": {
@@ -4524,6 +4593,68 @@
           },
           "503": {
             "description": "Relayer disabled",
+            "x-error-codes": [
+              "ADDRESS_NOT_CONFIGURED"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/relayer/op/{id}": {
+      "get": {
+        "summary": "Sponsored-op status by queue id (queued/submitted/confirmed/dead-lettered + txHash)",
+        "security": [
+          {
+            "serverKey": []
+          },
+          {
+            "clientKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Relayer-side correlation id returned by POST /v1/relayer/sponsor (202)",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Op status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RelayerOpStatus"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown op id (expired with the in-memory queue, or never existed)",
+            "x-error-codes": [
+              "OP_NOT_FOUND"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Relayer not enabled",
             "x-error-codes": [
               "ADDRESS_NOT_CONFIGURED"
             ],

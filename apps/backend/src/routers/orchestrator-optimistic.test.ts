@@ -252,6 +252,12 @@ test("background settlement failure emits a failure Tick event + error frame ove
       500,
       "failure before any response surfaces as 500",
     );
+    const failBody = (await res.json()) as Record<string, unknown>;
+    assert.equal(
+      failBody.code,
+      "TICK_FAILED",
+      "B3: the 500 path carries a machine-readable code",
+    );
     await new Promise((r) => setTimeout(r, 30));
     const errorFrame = frames.find(
       (f) =>
@@ -264,6 +270,78 @@ test("background settlement failure emits a failure Tick event + error frame ove
     );
   } finally {
     unregisterClient(sub.client);
+    await new Promise<void>((resolve) => {
+      server.closeAllConnections?.();
+      server.close(() => resolve());
+    });
+  }
+});
+
+// B3: every non-200 from the tick route carries a machine-readable `code` so
+// the executor passthrough can surface the real failure class to the model.
+test("tick with no orchestrator wired → 503 ORCHESTRATOR_UNAVAILABLE", async () => {
+  const app = express();
+  app.use(express.json());
+  registerOrchestratorRoutes(app, makeConfig(), () => null, 16661);
+  const server = app.listen(0, "127.0.0.1");
+  await new Promise<void>((r) => server.once("listening", r));
+  try {
+    const res = await fetch(`${baseUrl(server)}/v1/orchestrator/tick`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        vault: "0x" + "00".repeat(19) + "02",
+        agentNft: "0x" + "00".repeat(19) + "01",
+        agentTokenId: "11",
+      }),
+    });
+    assert.equal(res.status, 503);
+    const body = (await res.json()) as Record<string, unknown>;
+    assert.equal(body.code, "ORCHESTRATOR_UNAVAILABLE");
+  } finally {
+    await new Promise<void>((resolve) => {
+      server.closeAllConnections?.();
+      server.close(() => resolve());
+    });
+  }
+});
+
+test("concurrent tick for the same tokenId → 409 TICK_IN_FLIGHT", async () => {
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const runner = {
+    runTick: () => gate.then(() => HOLD_RESULT),
+  } as unknown as StrategyRunner;
+  const server = buildApp(runner);
+  try {
+    const body = JSON.stringify({
+      vault: "0x" + "00".repeat(19) + "02",
+      agentNft: "0x" + "00".repeat(19) + "01",
+      agentTokenId: "12",
+    });
+    const first = fetch(`${baseUrl(server)}/v1/orchestrator/tick`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body,
+    });
+    // Let the first request acquire the slot before the second arrives.
+    await new Promise((r) => setTimeout(r, 30));
+    const res2 = await fetch(`${baseUrl(server)}/v1/orchestrator/tick`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body,
+    });
+    assert.equal(res2.status, 409);
+    assert.equal(
+      ((await res2.json()) as Record<string, unknown>).code,
+      "TICK_IN_FLIGHT",
+    );
+    release();
+    const res1 = await first;
+    assert.equal(res1.status, 200);
+  } finally {
     await new Promise<void>((resolve) => {
       server.closeAllConnections?.();
       server.close(() => resolve());

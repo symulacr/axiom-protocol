@@ -622,6 +622,35 @@ export const CHAT_TOOL_CATALOG = [
     "0.5",
   ),
   tool({
+    name: "set_strategy",
+    class: "encode",
+    label: "Set Strategy",
+    hint: "Set an agent vault's spending strategy (setStrategy) via the backend encode relay. dailyLimit is the daily spend cap in 0G (e.g. 1.5). validUntilDay is an optional UTC day index ('0' = no expiry). root is an optional 0x-prefixed Merkle strategy root. Omitted root/expiry keep the live strategyOf values, so a limit refresh never clears the strategy. Opens MetaMask (wallet lane only).",
+    requiresWallet: true,
+    requiresTokenId: true,
+    friction: "medium",
+    parameters: params(
+      {
+        tokenId: tokenIdParam,
+        dailyLimit: {
+          type: "string",
+          description: "Daily spend cap in 0G human units (e.g. 1.5)",
+        },
+        validUntilDay: {
+          type: "string",
+          description:
+            "UTC day index the strategy expires after; '0' = no expiry (default: keep the live expiry)",
+        },
+        root: {
+          type: "string",
+          description:
+            "0x-prefixed 32-byte Merkle strategy root (default: keep the live root)",
+        },
+      },
+      ["tokenId", "dailyLimit"],
+    ),
+  }),
+  tool({
     name: "swap_tokens",
     class: "encode",
     label: "Swap Tokens",
@@ -891,7 +920,17 @@ const FALLBACK_CONTEXT_WINDOWS: Record<string, number> = {
   // qwen2.5-omni is the real Galileo catalog id (16602 default model).
   "qwen2.5-omni": 32768,
   "qwen/qwen2.5-omni-7b": 32768,
-  "deepseek-v4-flash": 131072,
+  // Probed against the live 0G router catalog 2026-09-09: context_length 1,000,000.
+  "deepseek-v4-flash": 1000000,
+};
+
+/** Live catalog probe 2026-09-09: max_completion_tokens per model. Used as the
+ *  output reserve in the chat history budget; unknown models fall back to a
+ *  flat 4096 at the call site. */
+const FALLBACK_MAX_COMPLETION_TOKENS: Record<string, number> = {
+  // Live-probed 2026-09-09: aliyun/tencent services allow 393,216, openrouter
+  // 65,536 (probe-research-context.md capability matrix).
+  "deepseek-v4-flash": 393216,
 };
 
 export function resolveContextWindow(
@@ -907,4 +946,19 @@ export function resolveContextWindow(
     ([k]) => k.toLowerCase() === id,
   );
   return fb ? fb[1] : 32768;
+}
+
+export function resolveMaxCompletionTokens(
+  model: string,
+  live?: Record<string, number>,
+): number | undefined {
+  const id = model.trim().toLowerCase();
+  if (live) {
+    const hit = Object.entries(live).find(([k]) => k.toLowerCase() === id);
+    if (hit) return hit[1];
+  }
+  const fb = Object.entries(FALLBACK_MAX_COMPLETION_TOKENS).find(
+    ([k]) => k.toLowerCase() === id,
+  );
+  return fb?.[1];
 }

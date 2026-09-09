@@ -50,6 +50,10 @@ export const DEFAULT_PROVIDER_PREF: ProviderPref = {
 type ChatSessionValue = {
   session: ChatSessionContext;
   recordToolResult: (name: string, content: string) => void;
+  /** Register the active numbered plan (matched tool names), or [] to clear.
+   *  Drives the hidden REMAINING PLAN block; in-memory only, thread-scoped by
+   *  the page (cleared on new/open thread). */
+  recordPlan: (steps: string[]) => void;
   providerPref: ProviderPref | undefined;
   setProviderPref: (pref: ProviderPref | undefined) => void;
 };
@@ -112,6 +116,7 @@ export function ChatSessionProvider({
   const [lastTokenId, setLastTokenId] = useState<string | undefined>(
     stored.lastTokenId,
   );
+  const [lastPlan, setLastPlan] = useState<string[]>([]);
   // Backward compat: legacy `{ lastTokenId }` payloads fall back to the cache-friendly DEFAULT_PROVIDER_PREF.
   // Durable pref wins over tab-scoped copy (legacy sessionStorage) and default; changes write localStorage.
   const [providerPref, setProviderPrefState] = useState<
@@ -124,25 +129,38 @@ export function ChatSessionProvider({
         chainId,
         walletAddress: address?.toLowerCase() as `0x${string}` | undefined,
         lastTokenId,
+        // Copy: applyToolResult shifts this array in place, and it must never
+        // alias the React state it syncs back into.
+        lastPlan: lastPlan.length ? [...lastPlan] : undefined,
         addresses: {
           vault: getAxiomStrategyVaultAddress(chainId),
           agentNft: getAxiomAgentNftAddress(chainId),
           paymentProcessor: getAxiomPaymentProcessorAddress(chainId),
         },
       }),
-    [address, chainId, lastTokenId],
+    [address, chainId, lastTokenId, lastPlan],
   );
 
   const recordToolResult = useCallback(
     (name: string, content: string) => {
       const result: ToolResult = { ok: true, content };
       applyToolResult(session, name, result);
+      // Sync plan consumption (head shift / stale-plan clear) back to state.
+      setLastPlan(session.lastPlan ? [...session.lastPlan] : []);
       if (session.lastTokenId && session.lastTokenId !== lastTokenId) {
         setLastTokenId(session.lastTokenId);
         persistSession({ lastTokenId: session.lastTokenId, providerPref });
       }
     },
     [session, lastTokenId, providerPref],
+  );
+
+  const recordPlan = useCallback(
+    (steps: string[]) => {
+      session.lastPlan = steps.length ? [...steps] : undefined;
+      setLastPlan(steps);
+    },
+    [session],
   );
 
   const setProviderPref = useCallback(
@@ -155,8 +173,14 @@ export function ChatSessionProvider({
   );
 
   const value = useMemo(
-    () => ({ session, recordToolResult, providerPref, setProviderPref }),
-    [session, recordToolResult, providerPref, setProviderPref],
+    () => ({
+      session,
+      recordToolResult,
+      recordPlan,
+      providerPref,
+      setProviderPref,
+    }),
+    [session, recordToolResult, recordPlan, providerPref, setProviderPref],
   );
 
   return (
