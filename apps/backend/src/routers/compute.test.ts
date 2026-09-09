@@ -91,12 +91,12 @@ describe("/v1/config model caps exposure", () => {
         >;
         assert.equal(body.contextWindow, 262_144);
         // Cap absent from the catalog row → fallback map still answers.
-        assert.equal(body.maxCompletionTokens, 39_321);
+        assert.equal(body.maxCompletionTokens, 393_216);
       },
     );
   });
 
-  test("router down → static fallback (1M window, 39321 cap) for the default model", async () => {
+  test("router down → static fallback (1M window, 393216 cap) for the default model", async () => {
     await withRouterStub(
       () => new Response("router down", { status: 500 }),
       async (url) => {
@@ -105,7 +105,7 @@ describe("/v1/config model caps exposure", () => {
           unknown
         >;
         assert.equal(body.contextWindow, 1_000_000);
-        assert.equal(body.maxCompletionTokens, 39_321);
+        assert.equal(body.maxCompletionTokens, 393_216);
       },
     );
   });

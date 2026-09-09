@@ -416,6 +416,17 @@ async function readStrategyTuple(
   }
 }
 
+/** No-strategy root check: undefined, "", the all-zero 32-byte word (0G
+ *  mainnet mints fresh vaults with ZERO_DATA_ROOT), or 0n. While the root is
+ *  zero, AxiomStrategyVault.execute() reverts NoStrategySet — a zero-root
+ *  setStrategy would leave the agent permanently untickable. */
+function isZeroRoot(root: unknown): boolean {
+  if (root === undefined || root === null) return true;
+  if (typeof root === "bigint") return root === 0n;
+  const hex = String(root).trim().toLowerCase();
+  return hex === "" || hex === "0x" || /^0x0+$/.test(hex);
+}
+
 /** set_strategy: vault setStrategy(tokenId, root, dailyLimit, validUntilDay)
  *  encoded by the backend relay route, wallet-lane only (not sponsored). */
 async function encodeSetStrategy(
@@ -447,13 +458,19 @@ async function encodeSetStrategy(
     (!rootArg || !dayArg) && vault
       ? await readStrategyTuple(ctx, vault, tokenId)
       : null;
+  const resolvedRoot = rootArg || live?.root || undefined;
+  if (isZeroRoot(resolvedRoot)) {
+    return toolFail(
+      "no strategy root available: vault has no live strategy root and none was supplied — supply a 0x-prefixed 32-byte Merkle root to make the agent executable",
+    );
+  }
 
   const { ok: httpOk, data } = await postJson<{
     to: string;
     data: string;
     value: string;
   }>(ctx.http, `/v1/agents/${tokenId}/set-strategy`, {
-    root: rootArg || live?.root || undefined,
+    root: resolvedRoot,
     dailyLimit,
     validUntilDay: dayArg || live?.validUntilDay || "0",
   });
