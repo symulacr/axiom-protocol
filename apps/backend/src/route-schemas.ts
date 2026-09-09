@@ -109,7 +109,9 @@ export const tickSchema = z.object({
       target: addressViem,
       value: z.union([z.string(), z.number()]).optional(),
       data: hexViem.optional(),
-      merkleProof: z.array(hexViem).min(1).max(32),
+      // Empty proof is valid: single-action (leaf-as-root) strategies verify with []
+      // (OZ processProof([]) returns the leaf unchanged).
+      merkleProof: z.array(hexViem).min(0).max(32),
     })
     .optional(),
 });

@@ -1,4 +1,4 @@
-import { parseAbi } from "viem";
+import { parseAbi, parseEther } from "viem";
 import { postJson, resolveTokenId, toolFail } from "../transport.js";
 import type { ToolRuntime } from "../transport.js";
 import { STRATEGY_OF_CURRENT, STRATEGY_OF_LEGACY } from "@axiom/config/abis";
@@ -106,6 +106,35 @@ export async function runOrchestrateTool(
   return { ok: true as const, content: JSON.stringify(data) };
 }
 
+export interface TickPlanArg {
+  /** Recipient/contract address — used as-is. */
+  target: string;
+  /** Human OG amount, parsed to a wei string with parseEther. */
+  value: string;
+  /** Calldata hex, used as-is (defaults to "0x" server-side). */
+  data?: string;
+}
+
+/**
+ * Leaf-as-root convention: the wire plan always carries merkleProof: [] — a
+ * single-action strategy root IS the leaf, and OZ processProof([]) returns the
+ * leaf unchanged. The plan only settles if it matches the strategy root the
+ * owner signed; the server keeps the client-key 403 on raw executionPlan bodies.
+ */
+function buildWirePlan(plan: TickPlanArg): {
+  target: `0x${string}`;
+  value: string;
+  data?: `0x${string}`;
+  merkleProof: `0x${string}`[];
+} {
+  return {
+    target: plan.target as `0x${string}`,
+    value: parseEther(plan.value).toString(),
+    ...(plan.data !== undefined ? { data: plan.data as `0x${string}` } : {}),
+    merkleProof: [],
+  };
+}
+
 export function buildTickBody(
   args: Record<string, unknown>,
   ctx: ToolRuntime,
@@ -114,6 +143,12 @@ export function buildTickBody(
   agentNft: `0x${string}` | undefined;
   agentTokenId: string;
   computeModel?: string;
+  executionPlan?: {
+    target: `0x${string}`;
+    value: string;
+    data?: `0x${string}`;
+    merkleProof: `0x${string}`[];
+  };
 } {
   const vault = ctx.session.addresses?.vault;
   const agentNft = ctx.session.addresses?.agentNft;
@@ -123,6 +158,12 @@ export function buildTickBody(
     agentNft: `0x${string}` | undefined;
     agentTokenId: string;
     computeModel?: string;
+    executionPlan?: {
+      target: `0x${string}`;
+      value: string;
+      data?: `0x${string}`;
+      merkleProof: `0x${string}`[];
+    };
   } = { vault, agentNft, agentTokenId };
 
   const computeModel =
@@ -130,6 +171,17 @@ export function buildTickBody(
       ? args.computeModel.trim()
       : undefined;
   if (computeModel) body.computeModel = computeModel;
+
+  const plan = args.plan as TickPlanArg | undefined;
+  if (
+    plan &&
+    typeof plan.target === "string" &&
+    plan.target &&
+    typeof plan.value === "string" &&
+    plan.value
+  ) {
+    body.executionPlan = buildWirePlan(plan);
+  }
 
   return body;
 }
