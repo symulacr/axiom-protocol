@@ -49,6 +49,8 @@ export interface RelayerQueue {
   reservedWei(user: string): bigint;
   /** Records pending (queued or submitted) for a user. */
   inflightOf(user: string): SponsorRecord[];
+  /** Single-record lookup for the op status route. */
+  byId(id: string): SponsorRecord | undefined;
   all(): readonly SponsorRecord[];
 }
 
@@ -121,6 +123,8 @@ export function createRelayerQueue(): RelayerQueue {
     },
 
     inflightOf,
+
+    byId: (id) => records.get(id),
 
     all: () => [...records.values()],
   };

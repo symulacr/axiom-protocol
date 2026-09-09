@@ -376,6 +376,9 @@ export function AgentPage({
     {
       path: `/tick?agent=${agentId}&intent=bounded`,
       icon: <Play size={16} />,
+      // One copper primary per view: the page-head already carries Run task
+      // as a primary, so the command card's duplicate demotes to secondary.
+      variant: "secondary",
       label: agentCopy.runTask,
     },
   ];

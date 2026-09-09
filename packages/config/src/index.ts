@@ -43,6 +43,7 @@ export {
   getChatToolSpec,
   resolveChatModel,
   resolveContextWindow,
+  resolveMaxCompletionTokens,
   toolsByClass,
   type ChatToolClass,
   type ChatToolName,

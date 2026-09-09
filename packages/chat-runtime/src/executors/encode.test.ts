@@ -371,3 +371,152 @@ describe("runEncodeTool pay_for_agent", () => {
     assert.equal(content.receiptStatus, undefined);
   });
 });
+
+const STRATEGY_VAULT = ("0x" + "aa".repeat(20)) as `0x${string}`;
+const LIVE_ROOT = "0x" + "bb".repeat(32);
+
+describe("runEncodeTool set_strategy (P1: real relay route /v1/agents/:id/set-strategy)", () => {
+  function strategyCtx(extra: Record<string, unknown> = {}) {
+    const calls: Array<{ path: string; body?: Record<string, unknown> }> = [];
+    const reads: string[] = [];
+    const ctx = {
+      mode: "encode-only",
+      wallet: { address: "0xwallet" as `0x${string}` },
+      session: {
+        chainId: 16602,
+        lastTokenId: "7",
+        addresses: {
+          vault: STRATEGY_VAULT,
+          agentNft: "0xN" as `0x${string}`,
+        },
+      },
+      chain: {
+        chainId: 16602,
+        readContract: async (req: { functionName: string }) => {
+          reads.push(req.functionName);
+          return [LIVE_ROOT, 0n, 0n, 0n, 12345n];
+        },
+      },
+      http: {
+        fetch: async (path: string, init?: { body?: string }) => {
+          calls.push({
+            path,
+            body: init?.body ? JSON.parse(init.body) : undefined,
+          });
+          return {
+            ok: true,
+            status: 200,
+            text: async () =>
+              JSON.stringify({ to: "0xabc", data: "0xdef", value: "0" }),
+            json: async () => ({}),
+          };
+        },
+      },
+      ...extra,
+    } as unknown as ToolRuntime;
+    return { ctx, calls, reads };
+  }
+
+  it("prefills omitted root/expiry from the live strategyOf tuple", async () => {
+    const { ctx, calls, reads } = strategyCtx();
+    const res = await runEncodeTool("set_strategy", { dailyLimit: "1.5" }, ctx);
+    assert.equal(res.ok, true);
+    assert.deepEqual(reads, ["strategyOf"]);
+    const post = calls.find((c) => c.path === "/v1/agents/7/set-strategy");
+    assert.ok(post, "relay route called with the session tokenId");
+    assert.deepEqual(
+      post!.body,
+      { root: LIVE_ROOT, dailyLimit: "1.5", validUntilDay: "12345" },
+      "omitted fields keep the live strategy, so a limit refresh never clears the Merkle root",
+    );
+    const content = payContent(res);
+    assert.equal(content.encodeOnly, true);
+    assert.equal(content.to, "0xabc");
+  });
+
+  it("explicit root and validUntilDay win and skip the chain read", async () => {
+    const { ctx, calls, reads } = strategyCtx();
+    const explicit = "0x" + "cc".repeat(32);
+    const res = await runEncodeTool(
+      "set_strategy",
+      { tokenId: "9", dailyLimit: "2", root: explicit, validUntilDay: "0" },
+      ctx,
+    );
+    assert.equal(res.ok, true);
+    assert.deepEqual(
+      reads,
+      [],
+      "no strategyOf read when both fields are given",
+    );
+    const post = calls.find((c) => c.path === "/v1/agents/9/set-strategy");
+    assert.deepEqual(post!.body, {
+      root: explicit,
+      dailyLimit: "2",
+      validUntilDay: "0",
+    });
+  });
+
+  it("rejects missing, zero, or over-cap dailyLimit", async () => {
+    for (const dailyLimit of [undefined, "0", "1001"]) {
+      const res = await runEncodeTool(
+        "set_strategy",
+        dailyLimit === undefined ? {} : { dailyLimit },
+        strategyCtx().ctx,
+      );
+      assert.equal(res.ok, false, `dailyLimit ${dailyLimit}`);
+      assert.match(payContent(res).error as string, /dailyLimit/);
+    }
+  });
+
+  it("rejects malformed root and validUntilDay", async () => {
+    const bad = await runEncodeTool(
+      "set_strategy",
+      { dailyLimit: "1", root: "0x1234" },
+      strategyCtx().ctx,
+    );
+    assert.equal(bad.ok, false);
+    assert.match(payContent(bad).error as string, /root/);
+    const badDay = await runEncodeTool(
+      "set_strategy",
+      { dailyLimit: "1", validUntilDay: "tomorrow" },
+      strategyCtx().ctx,
+    );
+    assert.equal(badDay.ok, false);
+    assert.match(payContent(badDay).error as string, /validUntilDay/);
+  });
+
+  it("fails honestly when the relay route errors", async () => {
+    const { ctx } = strategyCtx({
+      http: {
+        fetch: async () => ({
+          ok: false,
+          status: 400,
+          text: async () => JSON.stringify({ error: "invalid" }),
+          json: async () => ({}),
+        }),
+      },
+    });
+    const res = await runEncodeTool("set_strategy", { dailyLimit: "1" }, ctx);
+    assert.equal(res.ok, false);
+    assert.match(payContent(res).error as string, /set_strategy encode fail/);
+  });
+
+  it("never enters the sponsor lane (wallet-lane only op)", async () => {
+    let sponsored = false;
+    const { ctx } = strategyCtx({
+      mode: "sign",
+      wallet: {
+        address: "0xwallet" as `0x${string}`,
+        signAndSend: async () => ("0x" + "33".repeat(32)) as `0x${string}`,
+        sponsor: async () => {
+          sponsored = true;
+          return { signature: ("0x" + "44".repeat(65)) as `0x${string}` };
+        },
+      },
+    });
+    const res = await runEncodeTool("set_strategy", { dailyLimit: "1" }, ctx);
+    assert.equal(res.ok, true);
+    assert.equal(sponsored, false, "set_strategy is not in SPONSORED_TOOLS");
+    assert.equal(payContent(res).txHash, "0x" + "33".repeat(32));
+  });
+});

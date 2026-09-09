@@ -194,11 +194,31 @@ export const providerRoutingSchema = z
   })
   .optional();
 
+// The 50-message COUNT cap is dead: the live catalog gives the chat model a
+// 1,000,000-token context window (deepseek-v4-flash, probed 2026-09-09) and the
+// frontend fits history to a token budget, so the backend only rejects payloads
+// no window could hold. Sizing: 1M tokens × 4 chars/token (the repo's len/4
+// heuristic in chat-runtime fitToContext) = 4,000,000 bytes of serialized
+// messages — a generous ceiling, not a budget (the FE budget is ~80% of window
+// minus reserves).
+export const MAX_CHAT_MESSAGES_BYTES = 4_000_000;
+
 export const chatBodySchema = z.object({
-  messages: z.array(chatMessageSchema).nonempty().max(50),
+  messages: z
+    .array(chatMessageSchema)
+    .nonempty()
+    .refine(
+      (msgs) =>
+        new TextEncoder().encode(JSON.stringify(msgs)).length <=
+        MAX_CHAT_MESSAGES_BYTES,
+      `messages payload exceeds the ${MAX_CHAT_MESSAGES_BYTES}-byte ceiling (sized from the 1M-token context window at 4 chars/token)`,
+    ),
   tools: z.array(z.any()).optional(),
   model: z.string().optional(),
   stream: z.boolean().optional(),
+  // Client-computed completion budget (catalog-driven); the router forwards it
+  // and the provider clamps per service. Ceiling covers the probed 393,216 max.
+  max_tokens: z.number().int().positive().max(500_000).optional(),
   // Optional wallet address that keys the transcript thread (stable per wallet); absent = anonymous thread.
   wallet: addressViem.optional(),
   provider: providerRoutingSchema,

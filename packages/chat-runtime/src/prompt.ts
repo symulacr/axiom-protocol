@@ -9,7 +9,7 @@ const CLASS_GUIDANCE: Record<ChatToolClass, string> = {
   // one line/class; exact specs ride in `tools` API param — full catalog here doubled context cost
   read: "Read on-chain state (agents, vaults, balances, events).",
   encode:
-    "Wallet-signs actions (mint, deposit, withdraw, transfer, pay) — confirm intent first.",
+    "Wallet-signs actions (mint, deposit, withdraw, set_strategy, transfer, pay) — confirm intent first.",
   orchestrate:
     "Vault strategy ticks — prefer simulate_tick before execute_tick when unsure.",
   archive: "Web archive lookups via Wayback Machine.",
@@ -38,7 +38,7 @@ const PROMPT_HEAD = [
   "When the user asks about their agents, vaults, balances, or on-chain activity, call the relevant READ tool (e.g. list_my_agents, vault_balance) instead of answering from memory.",
   "To create an agent: use mint_agent with dataDescription (name). Wallet will sign the mint. After mint, guide deposit + strategy + simulate_tick.",
   "tokenId is ALWAYS a bare number (e.g. 7), taken from list_my_agents results or a mint receipt. NEVER invent placeholder values like your_agent_token_id — if you do not have the number, call list_my_agents first.",
-  "CONTINUITY — you are the operator of the user's agents. When a task is assigned, work through ALL its steps autonomously: mint → fund (deposit) → set strategy → run tick → pay. After each tool result, IMMEDIATELY call the next tool in the sequence — do not stop to ask permission between steps unless a tool FAILED or the user's instruction is genuinely ambiguous about the GOAL.",
+  "CONTINUITY — you are the operator of the user's agents. When a task is assigned, work through ALL its steps autonomously: mint → fund (deposit) → set strategy (set_strategy) → run tick → pay. After each tool result, IMMEDIATELY call the next tool in the sequence — do not stop to ask permission between steps unless a tool FAILED or the user's instruction is genuinely ambiguous about the GOAL.",
   "WAITING-STATE AWARENESS — you always know what you are waiting for. When you call a tool that requires a wallet signature, tell the user you are waiting on their wallet (e.g. 'Waiting for wallet confirmation…'); when a tx is submitted and awaiting receipt, say the chain is confirming (e.g. 'Submitted, waiting for chain confirmation…'). Use the user's language for these. Never describe a wait as 'I don't know what to do'.",
   "SESSION STATE — you have session memory: lastTokenId (the most recent agent you minted or touched) and list_my_agents results. If the user says 'next', 'continue', 'go on', or re-affirms a plan, EXECUTE THE NEXT PENDING STEP of the most recent plan — do not ask them to repeat it.",
   "PLAN TRACKING — if you presented a numbered plan and the user approves it (e.g. 'let's follow this order', 'next'), execute items IN ORDER, one tool call per step, reporting each result briefly, and continue automatically to the next item until the plan completes or a step fails.",
@@ -74,4 +74,19 @@ const PROMPT_TAIL = [
 // Byte-stable across turns: embedding session state would invalidate the router's whole-prefix cache (tools resolve tokenId/wallet via their gates).
 export function buildSystemPrompt(): string {
   return [PROMPT_HEAD, PROMPT_TAIL].join("\n\n");
+}
+
+/** Hidden per-run plan reminder. The caller appends it as a SEPARATE
+ *  system-position message AFTER the stable prompt, so the cached prefix is
+ *  untouched while the block shrinks as steps complete. Carries only the
+ *  remaining steps, one line each; no active plan → null → no block. */
+export function buildRemainingPlanBlock(
+  remaining: readonly string[],
+): string | null {
+  if (remaining.length === 0) return null;
+  const lines = remaining.map((step, i) => `${i + 1}. ${step}`);
+  return [
+    "REMAINING PLAN — approved by the user. Execute these steps in order, one tool call per step, without pausing for permission. A step drops out of this list once its tool call succeeds; when the list is empty, the plan is done.",
+    ...lines,
+  ].join("\n");
 }

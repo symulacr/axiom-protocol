@@ -214,6 +214,7 @@ export function registerOrchestratorRoutes(
           res,
           HTTP.SERVICE_UNAVAILABLE,
           "Orchestrator not available",
+          "ORCHESTRATOR_UNAVAILABLE",
         );
 
       // One in-flight tick per token: concurrent runs would race the tx nonce
@@ -298,7 +299,12 @@ export function registerOrchestratorRoutes(
         });
       void tickPromise.catch((err) => {
         if (!res.headersSent) {
-          sendError(res, HTTP.INTERNAL, extractErrorMessage(err));
+          sendError(
+            res,
+            HTTP.INTERNAL,
+            extractErrorMessage(err),
+            "TICK_FAILED",
+          );
         }
         log.warn("background tick settlement failed", {
           error: extractErrorMessage(err),

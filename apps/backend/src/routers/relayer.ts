@@ -243,6 +243,54 @@ export function registerRelayerRoutes(
     config,
   );
 
+  // B2: sponsored ops answered 202 + id and then went silent — no way to learn
+  // the outcome. This route exposes the queue entry's lifecycle state. Queue is
+  // in-memory (queue.ts): the id 404s after a process restart; clients re-check
+  // the tank's nextNonce or re-submit on timeout.
+  createRoute(
+    app,
+    routeMeta(
+      "/v1/relayer/op/:id",
+      "relayer",
+      "Sponsored-op status by queue id (queued/submitted/confirmed/dead-lettered + txHash)",
+      { method: "get" },
+    ),
+    async (_parsed, req, res) => {
+      if (!deps) {
+        return sendError(
+          res,
+          HTTP.SERVICE_UNAVAILABLE,
+          "relayer not enabled (AXIOM_RELAYER_MODE=off or gasTank unset)",
+          "ADDRESS_NOT_CONFIGURED",
+        );
+      }
+      const record = deps.queue.byId(req.params.id ?? "");
+      if (!record) {
+        return sendError(
+          res,
+          HTTP.NOT_FOUND,
+          "unknown relayer op id",
+          "OP_NOT_FOUND",
+        );
+      }
+      res.setHeader("Cache-Control", "no-store");
+      // user/request stay server-side: the id alone must not leak the signer
+      // address or signed calldata.
+      return {
+        id: record.id,
+        status: record.status,
+        txHash: record.txHash ?? null,
+        nonce: record.request.nonce.toString(),
+        attempts: record.attempts,
+        enqueuedAt: record.enqueuedAt,
+        ...(record.lastError !== undefined
+          ? { lastError: record.lastError }
+          : {}),
+      };
+    },
+    config,
+  );
+
   createRoute(
     app,
     routeMeta(
