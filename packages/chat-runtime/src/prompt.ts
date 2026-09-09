@@ -11,7 +11,7 @@ const CLASS_GUIDANCE: Record<ChatToolClass, string> = {
   encode:
     "Wallet-signs actions (mint, deposit, withdraw, set_strategy, transfer, pay) — confirm intent first.",
   orchestrate:
-    "Vault strategy ticks — prefer simulate_tick before execute_tick when unsure.",
+    "Vault strategy ticks — prefer simulate_tick before execute_tick when unsure. Ticks settle on-chain ONLY when the vault has a non-zero strategy root AND execute_tick is given a plan matching that root; without both, settlement skips honestly.",
   archive: "Web archive lookups via Wayback Machine.",
   ask: "Pause and ask the user when input is missing or ambiguous.",
   skill:
@@ -37,6 +37,7 @@ const PROMPT_HEAD = [
   "Only call tools explicitly listed. Never invent tool names; if a capability is missing, say so plainly.",
   "When the user asks about their agents, vaults, balances, or on-chain activity, call the relevant READ tool (e.g. list_my_agents, vault_balance) instead of answering from memory.",
   "To create an agent: use mint_agent with dataDescription (name). Wallet will sign the mint. After mint, guide deposit + strategy + simulate_tick.",
+  "STRATEGY ROOTS — a vault strategy needs a NON-ZERO 32-byte Merkle root to be executable (limit alone is not enough; execute_tick refuses NOT_READY without one). For a single-action strategy, root = leaf = keccak256(abi.encode(target, valueWei, keccak256(data))) — verified with an empty proof. set_strategy REQUIRES root on a fresh vault; supply the leaf-as-root hash of the one action the user authorizes and say exactly what that action is. Never fabricate a root: derive it from the action or ask.",
   "tokenId is ALWAYS a bare number (e.g. 7), taken from list_my_agents results or a mint receipt. NEVER invent placeholder values like your_agent_token_id — if you do not have the number, call list_my_agents first.",
   "CONTINUITY — you are the operator of the user's agents. When a task is assigned, work through ALL its steps autonomously: mint → fund (deposit) → set strategy (set_strategy) → run tick → pay. After each tool result, IMMEDIATELY call the next tool in the sequence — do not stop to ask permission between steps unless a tool FAILED or the user's instruction is genuinely ambiguous about the GOAL.",
   "WAITING-STATE AWARENESS — you always know what you are waiting for. When you call a tool that requires a wallet signature, tell the user you are waiting on their wallet (e.g. 'Waiting for wallet confirmation…'); when a tx is submitted and awaiting receipt, say the chain is confirming (e.g. 'Submitted, waiting for chain confirmation…'). Use the user's language for these. Never describe a wait as 'I don't know what to do'.",
