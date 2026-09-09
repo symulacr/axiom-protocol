@@ -393,6 +393,104 @@ describe("POST /v1/relayer/sponsor", () => {
   });
 });
 
+describe("GET /v1/relayer/op/:id (B2)", () => {
+  test("404 OP_NOT_FOUND for an unknown id", async () => {
+    const h = await buildApp(GAS_TANK_ADDRESS);
+    try {
+      const { status, json } = await get(h.port, "/v1/relayer/op/rel-nope-1");
+      assert.equal(status, 404);
+      assert.equal(json.code, "OP_NOT_FOUND");
+    } finally {
+      await h.close();
+    }
+  });
+
+  test("returns the queue entry state, then the txHash once broadcast lands", async () => {
+    const h = await buildApp(GAS_TANK_ADDRESS);
+    try {
+      const { body } = await signedBody();
+      const accepted = await post(h.port, "/v1/relayer/sponsor", body);
+      assert.equal(accepted.status, 202);
+      const id = String(accepted.json.id);
+
+      // Broadcast leg is async fire-and-forget; give it a tick to set txHash.
+      await new Promise((r) => setTimeout(r, 20));
+      const { status, json } = await get(h.port, `/v1/relayer/op/${id}`);
+      assert.equal(status, 200);
+      assert.equal(json.id, id);
+      assert.equal(json.status, "queued");
+      assert.equal(json.txHash, "0x" + "aa".repeat(32));
+      assert.equal(json.nonce, "0");
+      assert.equal(json.attempts, 0);
+      assert.ok(typeof json.enqueuedAt === "number");
+      // The id alone must not leak the signer address or signed calldata.
+      assert.equal(json.user, undefined);
+      assert.equal(json.request, undefined);
+    } finally {
+      await h.close();
+    }
+  });
+
+  test("dead-lettered op exposes status + lastError", async () => {
+    const h = await buildApp(GAS_TANK_ADDRESS);
+    try {
+      h.submitError = "insufficient funds for gas";
+      const { body } = await signedBody();
+      const accepted = await post(h.port, "/v1/relayer/sponsor", body);
+      assert.equal(accepted.status, 202);
+      await new Promise((r) => setTimeout(r, 20));
+      const { status, json } = await get(
+        h.port,
+        `/v1/relayer/op/${String(accepted.json.id)}`,
+      );
+      assert.equal(status, 200);
+      assert.equal(json.status, "dead-lettered");
+      assert.match(String(json.lastError), /insufficient funds/);
+      assert.equal(json.txHash, null);
+    } finally {
+      await h.close();
+    }
+  });
+
+  test("confirmed state is visible after reconcile marks the record", async () => {
+    const h = await buildApp(GAS_TANK_ADDRESS);
+    try {
+      const { body } = await signedBody();
+      const accepted = await post(h.port, "/v1/relayer/sponsor", body);
+      const id = String(accepted.json.id);
+      h.queue.markConfirmed(id);
+      const { json } = await get(h.port, `/v1/relayer/op/${id}`);
+      assert.equal(json.status, "confirmed");
+    } finally {
+      await h.close();
+    }
+  });
+
+  test("503 ADDRESS_NOT_CONFIGURED when the relayer is off", async () => {
+    const h = await buildApp(undefined);
+    try {
+      const { status, json } = await get(h.port, "/v1/relayer/op/rel-1-1");
+      assert.equal(status, 503);
+      assert.equal(json.code, "ADDRESS_NOT_CONFIGURED");
+    } finally {
+      await h.close();
+    }
+  });
+
+  test("queue.byId is the same lookup the route uses", async () => {
+    const h = await buildApp(GAS_TANK_ADDRESS);
+    try {
+      const { body } = await signedBody();
+      const accepted = await post(h.port, "/v1/relayer/sponsor", body);
+      const id = String(accepted.json.id);
+      assert.equal(h.queue.byId(id)?.id, id);
+      assert.equal(h.queue.byId("rel-unknown-0"), undefined);
+    } finally {
+      await h.close();
+    }
+  });
+});
+
 describe("GET /v1/relayer/tank/:id", () => {
   test("503s ADDRESS_NOT_CONFIGURED when the GasTank address is unset", async () => {
     const h = await buildApp(undefined);
@@ -749,22 +847,17 @@ describe("W9 DeFi selector gate (POST /v1/relayer/sponsor)", () => {
     app.use(express.json());
     const queue = createRelayerQueue();
     const submitted: string[] = [];
-    registerRelayerRoutes(
-      app,
-      makeDeFiConfig(),
-      {} as never,
-      {
-        queue,
-        gate: new SponsorGate(),
-        reconcile: {} as never,
-        gasTankAddress: GAS_TANK_ADDRESS,
-        simulate: async () => {},
-        submit: (async (record) => {
-          submitted.push(record.id);
-          return ("0x" + "aa".repeat(32)) as `0x${string}`;
-        }) as RelaySubmitter,
-      },
-    );
+    registerRelayerRoutes(app, makeDeFiConfig(), {} as never, {
+      queue,
+      gate: new SponsorGate(),
+      reconcile: {} as never,
+      gasTankAddress: GAS_TANK_ADDRESS,
+      simulate: async () => {},
+      submit: (async (record) => {
+        submitted.push(record.id);
+        return ("0x" + "aa".repeat(32)) as `0x${string}`;
+      }) as RelaySubmitter,
+    });
     const server = app.listen(0);
     const port = (server.address() as { port: number }).port;
     try {
@@ -772,7 +865,11 @@ describe("W9 DeFi selector gate (POST /v1/relayer/sponsor)", () => {
         POOL_A,
         1_000_000n,
         1n,
-        { permitted: { token: POOL_A, amount: 1_000_000n }, nonce: 0n, deadline: 0n },
+        {
+          permitted: { token: POOL_A, amount: 1_000_000n },
+          nonce: 0n,
+          deadline: 0n,
+        },
         "0x",
       ]);
       const { body } = await signedBody({ target: PROCESSOR, data });
@@ -788,19 +885,15 @@ describe("W9 DeFi selector gate (POST /v1/relayer/sponsor)", () => {
   test("swapExactIn with a non-pool tokenIn → 400 DEFI_TOKEN_REJECTED, nothing queued", async () => {
     const app = express();
     app.use(express.json());
-    registerRelayerRoutes(
-      app,
-      makeDeFiConfig(),
-      {} as never,
-      {
-        queue: createRelayerQueue(),
-        gate: new SponsorGate(),
-        reconcile: {} as never,
-        gasTankAddress: GAS_TANK_ADDRESS,
-        simulate: async () => {},
-        submit: (async () => ("0x" + "aa".repeat(32)) as `0x${string}`) as RelaySubmitter,
-      },
-    );
+    registerRelayerRoutes(app, makeDeFiConfig(), {} as never, {
+      queue: createRelayerQueue(),
+      gate: new SponsorGate(),
+      reconcile: {} as never,
+      gasTankAddress: GAS_TANK_ADDRESS,
+      simulate: async () => {},
+      submit: (async () =>
+        ("0x" + "aa".repeat(32)) as `0x${string}`) as RelaySubmitter,
+    });
     const server = app.listen(0);
     const port = (server.address() as { port: number }).port;
     try {
@@ -808,7 +901,11 @@ describe("W9 DeFi selector gate (POST /v1/relayer/sponsor)", () => {
         ROGUE,
         1_000_000n,
         1n,
-        { permitted: { token: ROGUE, amount: 1_000_000n }, nonce: 0n, deadline: 0n },
+        {
+          permitted: { token: ROGUE, amount: 1_000_000n },
+          nonce: 0n,
+          deadline: 0n,
+        },
         "0x",
       ]);
       const { body } = await signedBody({ target: PROCESSOR, data });
@@ -823,24 +920,23 @@ describe("W9 DeFi selector gate (POST /v1/relayer/sponsor)", () => {
   test("borrow targeting a non-Processor address → 400 DEFI_TARGET_REJECTED", async () => {
     const app = express();
     app.use(express.json());
-    registerRelayerRoutes(
-      app,
-      makeDeFiConfig(),
-      {} as never,
-      {
-        queue: createRelayerQueue(),
-        gate: new SponsorGate(),
-        reconcile: {} as never,
-        gasTankAddress: GAS_TANK_ADDRESS,
-        simulate: async () => {},
-        submit: (async () => ("0x" + "aa".repeat(32)) as `0x${string}`) as RelaySubmitter,
-      },
-    );
+    registerRelayerRoutes(app, makeDeFiConfig(), {} as never, {
+      queue: createRelayerQueue(),
+      gate: new SponsorGate(),
+      reconcile: {} as never,
+      gasTankAddress: GAS_TANK_ADDRESS,
+      simulate: async () => {},
+      submit: (async () =>
+        ("0x" + "aa".repeat(32)) as `0x${string}`) as RelaySubmitter,
+    });
     const server = app.listen(0);
     const port = (server.address() as { port: number }).port;
     try {
       const data = SWAP_ABI.encodeFunctionData("borrow", [1_000_000n]);
-      const { body } = await signedBody({ target: ("0x" + "12".repeat(20)) as `0x${string}`, data });
+      const { body } = await signedBody({
+        target: ("0x" + "12".repeat(20)) as `0x${string}`,
+        data,
+      });
       const { status, json } = await post(port, "/v1/relayer/sponsor", body);
       assert.equal(status, 400);
       assert.equal(json.code, "DEFI_TARGET_REJECTED");

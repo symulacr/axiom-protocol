@@ -6,6 +6,7 @@ import { HTTP } from "@axiom/config/constants";
 import {
   resolveChatModel,
   resolveContextWindow,
+  resolveMaxCompletionTokens,
 } from "@axiom/config/chat-tools";
 import { getComputeBaseUrl } from "../providers.js";
 import { TTLCache } from "../utils/response.js";
@@ -58,18 +59,28 @@ export function registerComputeRoutes(
     return parsed.data;
   }
 
-  async function fetchModelWindows(): Promise<Record<string, number>> {
+  /** Live catalog caps per model id. The router row names the window
+   *  context_window on some deployments and context_length on others (the live
+   *  2026-09-09 catalog uses context_length) — read both. */
+  async function fetchModelCaps(): Promise<{
+    contextLength: Record<string, number>;
+    maxCompletion: Record<string, number>;
+  }> {
     try {
       const models = await fetchRouterModels();
-      return Object.fromEntries(
-        models.flatMap((m) => {
-          const id = String(m.id ?? "");
-          const cw = m.context_window;
-          return id && typeof cw === "number" ? [[id, cw]] : [];
-        }),
-      );
+      const contextLength: Record<string, number> = {};
+      const maxCompletion: Record<string, number> = {};
+      for (const m of models) {
+        const id = String(m.id ?? "");
+        if (!id) continue;
+        const cl = m.context_length ?? m.context_window;
+        if (typeof cl === "number") contextLength[id] = cl;
+        const mc = m.max_completion_tokens;
+        if (typeof mc === "number") maxCompletion[id] = mc;
+      }
+      return { contextLength, maxCompletion };
     } catch {
-      return {};
+      return { contextLength: {}, maxCompletion: {} };
     }
   }
 
@@ -150,7 +161,17 @@ export function registerComputeRoutes(
           pricingRaw && typeof pricingRaw === "object" && "prompt" in pricingRaw
             ? String((pricingRaw as Record<string, unknown>).prompt ?? "")
             : undefined;
-        return { address, model: id, endpoint: routerBaseUrl, price };
+        // Passthrough surface → catalog's own snake_case names.
+        const cl = m.context_length ?? m.context_window;
+        const mc = m.max_completion_tokens;
+        return {
+          address,
+          model: id,
+          endpoint: routerBaseUrl,
+          price,
+          ...(typeof cl === "number" ? { context_length: cl } : {}),
+          ...(typeof mc === "number" ? { max_completion_tokens: mc } : {}),
+        };
       });
       res.json({ services });
     },
@@ -167,11 +188,15 @@ export function registerComputeRoutes(
         config.env?.AXIOM_COMPUTE_MODEL,
         ogChainId,
       );
-      const windows = await fetchModelWindows();
+      const caps = await fetchModelCaps();
       res.json({
         model,
         assistantName: "Axiom",
-        contextWindow: resolveContextWindow(model, windows),
+        contextWindow: resolveContextWindow(model, caps.contextLength),
+        // Completion cap beside the window (the FE's output reserve); null when
+        // the model is unknown to both the live catalog and the fallback map.
+        maxCompletionTokens:
+          resolveMaxCompletionTokens(model, caps.maxCompletion) ?? null,
       });
     },
     config,

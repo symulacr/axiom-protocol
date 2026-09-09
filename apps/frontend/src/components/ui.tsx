@@ -155,7 +155,9 @@ export function ErrorRef({
   code?: string;
   requestId?: string;
 }): ReactElement {
-  if (code === undefined && requestId === undefined) return <></>;
+  // Same contract as errorRefString: only a requestId correlates with backend
+  // logs, so a code-only error renders no bare "Ref <code>" line.
+  if (requestId === undefined) return <></>;
   const ref = [requestId, code].filter(Boolean).join(", ");
   return (
     <span

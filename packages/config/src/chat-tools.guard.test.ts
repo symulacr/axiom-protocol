@@ -4,6 +4,8 @@ import {
   CHAT_TOOL_CATALOG,
   SPONSORED_TOOLS,
   getChatToolSpec,
+  resolveContextWindow,
+  resolveMaxCompletionTokens,
 } from "./chat-tools.js";
 
 // Catalog invariants the agent loop relies on: the frontend TOOLS builder maps
@@ -80,5 +82,46 @@ describe("chat tool catalog invariants", () => {
     for (const t of CHAT_TOOL_CATALOG) {
       assert.doesNotThrow(() => JSON.stringify(t.parameters), t.name);
     }
+  });
+});
+
+// Live catalog probe 2026-09-09: deepseek-v4-flash context_length is 1,000,000
+// with max_completion_tokens 39,321 and discounted cached_prompt pricing. The
+// static fallbacks must match so offline resolution stays honest.
+describe("model window fallbacks match the live 0G catalog", () => {
+  it("deepseek-v4-flash resolves to the probed 1M window + 393216 completion", () => {
+    assert.equal(resolveContextWindow("deepseek-v4-flash"), 1_000_000);
+    assert.equal(resolveMaxCompletionTokens("deepseek-v4-flash"), 393_216);
+  });
+
+  it("live catalog values still win over the fallback", () => {
+    assert.equal(
+      resolveContextWindow("deepseek-v4-flash", { "deepseek-v4-flash": 500 }),
+      500,
+    );
+  });
+
+  it("unknown models fall back to 32768 and no completion reserve", () => {
+    assert.equal(resolveContextWindow("never-heard-of-it"), 32768);
+    assert.equal(resolveMaxCompletionTokens("never-heard-of-it"), undefined);
+  });
+});
+
+// P1: the CONTINUITY chain promises "set strategy"; the catalog now carries a
+// real encode tool backed by the /v1/agents/:id/set-strategy relay route.
+describe("set_strategy catalog entry", () => {
+  it("is an encode-class, wallet+token gated tool with dailyLimit required", () => {
+    const spec = getChatToolSpec("set_strategy");
+    assert.ok(spec, "set_strategy in catalog");
+    assert.equal(spec.class, "encode");
+    assert.equal(spec.requiresWallet, true);
+    assert.equal(spec.requiresTokenId, true);
+    assert.deepEqual(spec.parameters?.required, ["tokenId", "dailyLimit"]);
+    assert.ok(spec.parameters?.properties.validUntilDay, "expiry param");
+    assert.ok(spec.parameters?.properties.root, "Merkle root param");
+  });
+
+  it("is not sponsored (wallet lane only; the relay allowlist excludes it)", () => {
+    assert.ok(!(SPONSORED_TOOLS as readonly string[]).includes("set_strategy"));
   });
 });

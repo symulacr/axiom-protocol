@@ -347,6 +347,7 @@ export type Copy = {
     tankExhausted: string;
     reserveExhausted: string;
     sponsorRateLimited: string;
+    computeInvalidRequest: string;
     computeUpstream: string;
     gasEstimate: string;
     reverted: string;
@@ -1467,6 +1468,8 @@ const english: Copy = {
       "The protocol gas reserve is temporarily empty. Sponsored ops pause until it's refunded — try again shortly.",
     sponsorRateLimited:
       "Too many sponsored ops in a row. Wait a moment and retry.",
+    computeInvalidRequest:
+      "The compute provider rejected this request as invalid. Start a new chat thread, then try again.",
     computeUpstream:
       "Compute is unavailable right now. Check backend compute keys and balance.",
     gasEstimate:
@@ -1652,12 +1655,13 @@ const english: Copy = {
       list_my_agents: "List my agents",
       vault_balance: "Show the vault balance of agent #",
       agent_metadata: "Show the on-chain metadata of agent #",
-      event_history: "Show recent on-chain events for agent #",
+      event_history: "Show recent on-chain protocol events",
       execute_tick: "Execute a strategy tick for agent #",
       simulate_tick: "Dry-run a tick for agent #",
       mint_agent: "Mint a new agent named ",
       deposit: "Deposit funds into the vault of agent #",
       withdraw: "Withdraw funds from the vault of agent #",
+      set_strategy: "Set the daily spending limit of agent #",
       pay_for_agent: "Make a payment to agent #",
       transfer: "Transfer agent # to a new owner",
       archive_lookup: "Look up the archived account ",
@@ -2747,6 +2751,8 @@ const french: Copy = {
       "La réserve de gaz du protocole est temporairement vide. Les opérations sponsorisées reprennent dès qu’elle est rechargée : réessayez dans un instant.",
     sponsorRateLimited:
       "Trop d’opérations sponsorisées d’affilée. Patientez un instant et réessayez.",
+    computeInvalidRequest:
+      "Le fournisseur de calcul a rejeté cette requête comme invalide. Ouvrez un nouveau fil de discussion, puis réessayez.",
     computeUpstream:
       "Le calcul est indisponible pour le moment. Vérifiez les clés et le solde compute du backend.",
     gasEstimate:
@@ -2928,12 +2934,13 @@ const french: Copy = {
       list_my_agents: "Liste mes agents",
       vault_balance: "Montre le solde du vault de l’agent #",
       agent_metadata: "Montre les métadonnées on-chain de l’agent #",
-      event_history: "Montre les événements on-chain récents de l’agent #",
+      event_history: "Montre les événements on-chain récents du protocole",
       execute_tick: "Exécute un tick de stratégie pour l’agent #",
       simulate_tick: "Simule un tick à blanc pour l’agent #",
       mint_agent: "Minte un nouvel agent nommé ",
       deposit: "Dépose des fonds dans le vault de l’agent #",
       withdraw: "Retire des fonds du vault de l’agent #",
+      set_strategy: "Définis la limite de dépense quotidienne de l’agent #",
       pay_for_agent: "Effectue un paiement à l’agent #",
       transfer: "Transfère l’agent # à un nouveau propriétaire",
       archive_lookup: "Recherche le compte archivé ",
@@ -4037,6 +4044,8 @@ const german: Copy = {
       "Die Gas-Reserve des Protokolls ist vorübergehend leer. Gesponserte Vorgänge pausieren, bis sie wieder aufgefüllt ist. Versuche es gleich erneut.",
     sponsorRateLimited:
       "Zu viele gesponserte Vorgänge hintereinander. Warte kurz und versuche es erneut.",
+    computeInvalidRequest:
+      "Der Compute-Provider hat diese Anfrage als ungültig abgelehnt. Starte einen neuen Chat und versuche es erneut.",
     computeUpstream:
       "Compute ist gerade nicht verfügbar. Prüfe die Compute-Schlüssel und das Guthaben des Backends.",
     gasEstimate:
@@ -4217,11 +4226,12 @@ const german: Copy = {
       list_my_agents: "Liste meine Agents auf",
       vault_balance: "Zeige das Vault-Guthaben von Agent #",
       agent_metadata: "Zeige die On-Chain-Metadaten von Agent #",
-      event_history: "Zeige die letzten On-Chain-Ereignisse für Agent #",
+      event_history: "Zeige die letzten On-Chain-Ereignisse des Protokolls",
       execute_tick: "Führe einen Strategie-Tick für Agent # aus",
       simulate_tick: "Teste einen Tick für Agent # trocken",
       mint_agent: "Minte einen neuen Agenten namens ",
       deposit: "Zahle Guthaben in den Vault von Agent # ein",
+      set_strategy: "Setze das tägliche Ausgabenlimit von Agent #",
       withdraw: "Zahle Guthaben aus dem Vault von Agent # aus",
       pay_for_agent: "Leiste eine Zahlung an Agent #",
       transfer: "Übertrage Agent # an einen neuen Inhaber",

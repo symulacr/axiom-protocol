@@ -552,9 +552,7 @@ export function TransactionsPage({
           {/* L1-L7: these are section headers, not inline emphasis — real
               headings keep the document outline valid. */}
           <h2 className="ops-summary-value num">
-            {String(
-              transactions.filter((tx) => isInFlightTx(tx.state)).length,
-            ).padStart(2, "0")}
+            {transactions.filter((tx) => isInFlightTx(tx.state)).length}
           </h2>
           <small>{txCopy.confirmingNow}</small>
         </div>
@@ -564,9 +562,7 @@ export function TransactionsPage({
           onClick={() => chooseFilter("review")}
         >
           <h2 className="ops-summary-value num">
-            {String(
-              transactions.filter((tx) => isRecoverableTx(tx.state)).length,
-            ).padStart(2, "0")}
+            {transactions.filter((tx) => isRecoverableTx(tx.state)).length}
           </h2>
           <small>{txCopy.needReview}</small>
           <ArrowRight size={14} />

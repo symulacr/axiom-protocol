@@ -1,4 +1,4 @@
-import { NonceManager, type Wallet } from "ethers";
+import { NonceManager, toBeHex, zeroPadValue, type Wallet } from "ethers";
 import {
   Contract,
   type JsonRpcProvider,
@@ -22,6 +22,7 @@ import {
   EVENT_NAMES,
   getRuntimeConfig,
   ZERO_DATA_ROOT,
+  type EventName,
 } from "@axiom/config/constants";
 import {
   STRATEGY_OF_CURRENT,
@@ -40,6 +41,15 @@ const RecommendationSchema = z.object({
 });
 
 type VaultAbiVariant = "legacy" | "current";
+
+/** Vault log scan set (B4): every vault event with tokenId indexed topic1, in
+ *  both ABI variants. The tick's recentEvents feed names logs from this map. */
+const VAULT_SCAN_EVENTS = [
+  EVENT_NAMES.StrategySet,
+  EVENT_NAMES.Deposited,
+  EVENT_NAMES.Withdrawn,
+  EVENT_NAMES.Executed,
+] as const;
 
 const variantCache = new Map<string, VaultAbiVariant>();
 
@@ -219,20 +229,26 @@ export class StrategyRunner {
       : this.runInference(strategy, signal, onchainTask, onChunk);
 
     // Storage read: when a 0G adapter is configured, download the blob by root and report
-    // its real size; otherwise report configured modelDataRoot with size 0 (honest: not measured).
-    const storageTask = (async (): Promise<{
-      rootHash: `0x${string}`;
-      size: number;
-    }> => {
+    // its real size; otherwise report the configured modelDataRoot with size 0 AND
+    // readable:false — size 0 alone read as a real empty blob (B4), the flag names
+    // the miss honestly. `readable` rides past the shared TickStorageInfo type; the
+    // optional field lands in @axiom/config with the context-fit wave.
+    const storageTask = (async (): Promise<
+      TickResult["storage"] & { readable: boolean }
+    > => {
       if (this.storage && strategy.modelDataRoot !== ZERO_DATA_ROOT) {
         try {
           const dl = await this.storage.download(strategy.modelDataRoot);
-          return { rootHash: strategy.modelDataRoot, size: dl.length };
+          return {
+            rootHash: strategy.modelDataRoot,
+            size: dl.length,
+            readable: true,
+          };
         } catch {
-          /* blob absent / undecryptable — report root with size 0 */
+          /* blob absent / undecryptable — fall through to the honest miss */
         }
       }
-      return { rootHash: strategy.modelDataRoot, size: 0 };
+      return { rootHash: strategy.modelDataRoot, size: 0, readable: false };
     })();
     const [inferenceResult, onchainResult, storageResult] =
       await Promise.allSettled([inferenceTask, onchainTask, storageTask]);
@@ -252,7 +268,7 @@ export class StrategyRunner {
     const storage =
       storageResult.status === "fulfilled"
         ? storageResult.value
-        : { rootHash: strategy.modelDataRoot, size: 0 };
+        : { rootHash: strategy.modelDataRoot, size: 0, readable: false };
 
     const recommendation = parseRecommendation(rawModelOutput);
 
@@ -535,50 +551,47 @@ export class StrategyRunner {
     const readAbi = vaultAbiFor(vaultVariant);
     const vaultTc = this.getVaultContract("read", readAbi);
     const tokenId = strategy.agentTokenId;
-    if (!vaultTc.raw.filters?.StrategySet || !vaultTc.raw.filters?.Deposited)
-      return { vaultBalance: 0n, recentEvents: [] };
     const rawBalance = await vaultTc.contract.balanceOf(tokenId);
     const vaultBalance = rawBalance ?? 0n;
+
+    // B4: the old scan spread contract.filters.X(tokenId) into getLogs — a
+    // PreparedTopicFilter's only own key is `fragment`, so address+topics were
+    // dropped and the scan returned EVERY log in the block window, all named
+    // "Unknown". Build explicit {address, topics:[topic0, tokenId]} filters and
+    // name matches from a topic map covering all four vault events.
+    const topicName = new Map<string, EventName>();
+    const filters: Array<{ address: string; topics: string[] }> = [];
+    const tokenTopic = zeroPadValue(toBeHex(tokenId, 32), 32);
+    for (const name of VAULT_SCAN_EVENTS) {
+      const ev = vaultTc.iface.getEvent(name);
+      if (!ev) continue;
+      topicName.set(ev.topicHash, name);
+      filters.push({ address: vaultAddr, topics: [ev.topicHash, tokenTopic] });
+    }
+    if (filters.length === 0) return { vaultBalance, recentEvents: [] };
 
     const latest = await this.provider.getBlockNumber();
     const fromBlock = Math.max(
       0,
       latest - getRuntimeConfig().orchestratorEventScanBlocks,
     );
-    const strategyFilter = vaultTc.raw.filters.StrategySet(tokenId);
-    const depositFilter = vaultTc.raw.filters.Deposited(tokenId);
-    const strategyEvent = vaultTc.iface.getEvent(EVENT_NAMES.StrategySet);
-    const depositEvent = vaultTc.iface.getEvent(EVENT_NAMES.Deposited);
-    if (!strategyEvent || !depositEvent)
-      return { vaultBalance: 0n, recentEvents: [] };
-    const strategyTopic = strategyEvent.topicHash;
-    const depositTopic = depositEvent.topicHash;
-    const [strategyLogs, depositLogs] = await Promise.all([
-      this.provider.getLogs({ ...strategyFilter, fromBlock, toBlock: latest }),
-      this.provider.getLogs({ ...depositFilter, fromBlock, toBlock: latest }),
-    ]);
-    const recentEvents = [...strategyLogs, ...depositLogs]
+    const logSets = await Promise.all(
+      filters.map((f) =>
+        this.provider.getLogs({ ...f, fromBlock, toBlock: latest }),
+      ),
+    );
+    const recentEvents = logSets
+      .flat()
       .sort((a, b) => a.blockNumber - b.blockNumber)
       .slice(-10)
-      .map((log) => {
-        const topic0 = log.topics[0];
-        let name: (typeof EVENT_NAMES)[keyof typeof EVENT_NAMES];
-        if (topic0 === strategyTopic) {
-          name = EVENT_NAMES.StrategySet;
-        } else if (topic0 === depositTopic) {
-          name = EVENT_NAMES.Deposited;
-        } else {
-          name = EVENT_NAMES.Unknown;
-        }
-        return {
-          // Plain number, not BigInt: this array is JSON.stringify'd into the
-          // inference prompt and the tick response/WS frame — BigInt throws
-          // "JSON.stringify cannot serialize BigInt" and kills every tick.
-          blockNumber: Number(log.blockNumber),
-          txHash: log.transactionHash as `0x${string}`,
-          name,
-        };
-      });
+      .map((log) => ({
+        // Plain number, not BigInt: this array is JSON.stringify'd into the
+        // inference prompt and the tick response/WS frame — BigInt throws
+        // "JSON.stringify cannot serialize BigInt" and kills every tick.
+        blockNumber: Number(log.blockNumber),
+        txHash: log.transactionHash as `0x${string}`,
+        name: topicName.get(log.topics[0] ?? "") ?? EVENT_NAMES.Unknown,
+      }));
     return { vaultBalance, recentEvents };
   }
 }
