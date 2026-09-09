@@ -1096,6 +1096,9 @@ export type Copy = {
     /** Chain-event row detail when the event carries no agent token.
      * Placeholder: {block}. */
     eventDetailBlockOnly: string;
+    /** Off-chain orchestrator tick rows (blockNumber 0 — appended by the
+     * tick endpoint, never mined): honest label instead of "block 0". */
+    eventsOffchainTick: string;
     emptyState: string;
     /** Zero-receipts first run (no filter active) — distinct from the filter-miss line. */
     emptyAll: string;
@@ -2267,6 +2270,8 @@ const english: Copy = {
     chainEvent: "Chain event",
     eventDetail: "agent #{agent}, block {block}",
     eventDetailBlockOnly: "block {block}",
+    eventsOffchainTick:
+      "Strategy tick (off-chain recommendation — not an on-chain transaction)",
     emptyState: "No receipts match this filter.",
     emptyAll: "No receipts yet. Mint an agent to create the first one.",
     closeReceipt: "Close receipt",
@@ -3566,6 +3571,8 @@ const french: Copy = {
     chainEvent: "Événement de chaîne",
     eventDetail: "agent #{agent}, bloc {block}",
     eventDetailBlockOnly: "bloc {block}",
+    eventsOffchainTick:
+      "Recommandation de stratégie (hors chaîne — pas une transaction on-chain)",
     emptyState: "Aucun reçu ne correspond à cet état.",
     emptyAll: "Pas encore de reçu. Mintez un agent pour créer le premier.",
     closeReceipt: "Fermer le reçu",
@@ -4863,6 +4870,8 @@ const german: Copy = {
     chainEvent: "Chain-Ereignis",
     eventDetail: "Agent #{agent}, Block {block}",
     eventDetailBlockOnly: "Block {block}",
+    eventsOffchainTick:
+      "Strategie-Empfehlung (off-chain — keine On-Chain-Transaktion)",
     emptyState: "Keine Belege passen zu diesem Status.",
     emptyAll: "Noch keine Belege. Minte einen Agenten für den ersten.",
     closeReceipt: "Beleg schließen",

@@ -124,13 +124,75 @@ describe("runOrchestrateTool", () => {
     const data = JSON.parse(res.content) as {
       simulated: boolean;
       ready: boolean;
+      verdict: string;
+      verdictReason: string;
       balance: string;
       strategyRoot: string;
     };
     assert.equal(data.simulated, true);
     assert.equal(data.ready, true);
+    assert.equal(data.verdict, "ready");
+    assert.equal(data.verdictReason, "vault funded and strategy root set");
     assert.equal(data.balance, "5");
     assert.equal(data.strategyRoot, STRATEGY_ROOT);
+  });
+
+  it("simulate_tick reports verdict not_ready with a zero strategy root", async () => {
+    const res = await runOrchestrateTool(
+      "simulate_tick",
+      { tokenId: "3" },
+      tickCtx({
+        chain: {
+          chainId: 1,
+          readContract: async (req: { functionName: string }) => {
+            if (req.functionName === "balanceOf") return 5n;
+            if (req.functionName === "strategyOf") {
+              return ["0x" + "0".repeat(64), 0n, 0n, 0n, 0n];
+            }
+            return undefined;
+          },
+          multicall: async () => [],
+        },
+      }),
+    );
+    assert.equal(res.ok, true);
+    const data = JSON.parse(res.content) as {
+      ready: boolean;
+      verdict: string;
+      verdictReason: string;
+    };
+    assert.equal(data.ready, false);
+    assert.equal(data.verdict, "not_ready");
+    assert.match(data.verdictReason, /strategy root is zero/);
+  });
+
+  it("simulate_tick reports verdict not_ready with a zero vault balance", async () => {
+    const res = await runOrchestrateTool(
+      "simulate_tick",
+      { tokenId: "3" },
+      tickCtx({
+        chain: {
+          chainId: 1,
+          readContract: async (req: { functionName: string }) => {
+            if (req.functionName === "balanceOf") return 0n;
+            if (req.functionName === "strategyOf") {
+              return [STRATEGY_ROOT, 0n, 0n, 0n, 0n];
+            }
+            return undefined;
+          },
+          multicall: async () => [],
+        },
+      }),
+    );
+    assert.equal(res.ok, true);
+    const data = JSON.parse(res.content) as {
+      ready: boolean;
+      verdict: string;
+      verdictReason: string;
+    };
+    assert.equal(data.ready, false);
+    assert.equal(data.verdict, "not_ready");
+    assert.equal(data.verdictReason, "vault balance is zero");
   });
 
   it("execute_tick with dryRun and no chain connection short-circuits to simulated", async () => {

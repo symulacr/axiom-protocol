@@ -81,6 +81,10 @@ export type Transaction = {
   kind: string;
   detail: string;
   hash: string;
+  /** Chain-event provenance: 0 marks a synthetic off-chain orchestrator tick
+   * (never mined) — the receipt drawer suppresses its explorer leg for those.
+   * Local receipts leave it unset. */
+  blockNumber?: number;
   age: string;
   state: TxState;
   route: string;

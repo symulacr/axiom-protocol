@@ -552,7 +552,7 @@ export const CHAT_TOOL_CATALOG = [
     name: "gas_tank_status",
     class: "read",
     label: "Gas Tank Status",
-    hint: "Get the connected wallet's GasTank status: prepaid gas balance, grants used/cap, and ops remaining. Zero balance with grants left = next ops are protocol-sponsored.",
+    hint: "Check the session wallet's GasTank position: prepaid tank balance, lazy gas grants used/cap, grant size, and the protocol reserve. Reserve 0 means lazy grants revert ReserveExhausted — relayed ops still work from the relayer wallet.",
     requiresWallet: true,
     context: "on-chain read (gas tank)",
     capabilities: ["read", "gas-tank"],
@@ -590,7 +590,7 @@ export const CHAT_TOOL_CATALOG = [
     name: "simulate_tick",
     class: "orchestrate",
     label: "Simulate Tick",
-    hint: "Dry-run tick preflight (vault balance + strategy) without live compute. tokenId optional; defaults to the session's last agent. A passed plan is preflighted the same way but never settles",
+    hint: "Dry-run tick preflight (vault balance + strategy) without live compute. tokenId optional; defaults to the session's last agent. A passed plan is preflighted the same way but never settles; the result carries a verdict: not_ready means execute_tick will refuse (zero balance or zero strategy root)",
     requiresTokenId: false,
     friction: "low",
     parameters: params({
