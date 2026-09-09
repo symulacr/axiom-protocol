@@ -12,13 +12,22 @@ import rateLimit from "express-rate-limit";
 import { createServer, type Server as HttpServer } from "node:http";
 import { WebSocketServer, type WebSocket } from "ws";
 import type { ServerConfig } from "./config-types.js";
-import { ethers } from "ethers";
+import { ethers, formatEther } from "ethers";
 import { GAS_TANK_ABI } from "@axiom/config/abis";
 
 // Minimal read leg for the faucet balance gate (ERC20_ABI is far larger than
 // the one function this path needs).
 const ERC20_BALANCE_ABI = [
   "function balanceOf(address account) view returns (uint256)",
+] as const;
+
+// W0G wrap-drip legs: deposit() wraps native (credits msg.sender), transfer()
+// pays the user; balanceOf backs the eligibility gate, symbol() labels status.
+const W0G_ABI = [
+  "function deposit() payable",
+  "function transfer(address to, uint256 amount) returns (bool)",
+  "function balanceOf(address) view returns (uint256)",
+  "function symbol() view returns (string)",
 ] as const;
 import {
   TypedContract,
@@ -418,31 +427,78 @@ export function startServer(config: ServerConfig): {
       ? new ethers.Wallet(relayerPk, provider)
       : null;
     const relayIface = new ethers.Interface(GAS_TANK_ABI);
-    // V3 W6-B faucet: relayer-initiated axmUSDC.mint for first-time users.
-    // Requires both the relayer key (broadcast leg) and the mock USDC address;
-    // silently absent otherwise (testnet-only convenience surface).
-    const usdcAddr = config.addresses?.paymentToken;
+    // V3 W6-B faucet: one-time W0G wrap-drip — the relayer wraps native OG
+    // (deposit()) and transfers the W0G to the user. Requires both the relayer
+    // key (broadcast legs) and the W0G address; silently absent otherwise.
+    const faucetToken =
+      config.addresses?.paymentToken ?? config.addresses?.swapPairToken;
     const faucet =
-      relayerWallet && usdcAddr
+      relayerWallet && faucetToken
         ? new Faucet(
             queue,
             async (user, amount) => {
-              const iface = new ethers.Interface([
-                "function mint(address to, uint256 amount)",
-              ]);
-              const tx = await relayerWallet.sendTransaction({
-                to: usdcAddr,
-                data: iface.encodeFunctionData("mint", [user, amount]),
-                gasLimit: 200_000,
+              const iface = new ethers.Interface(W0G_ABI);
+              // Leg 1: wrap native → W0G, credited to the relayer wallet.
+              const dep = await relayerWallet.sendTransaction({
+                to: faucetToken,
+                value: amount,
+                data: iface.encodeFunctionData("deposit"),
+                gasLimit: 80_000,
               });
-              return tx.hash as `0x${string}`;
+              await dep.wait();
+              // Leg 2: transfer the wrapped W0G to the user.
+              const xfer = await relayerWallet.sendTransaction({
+                to: faucetToken,
+                data: iface.encodeFunctionData("transfer", [user, amount]),
+                gasLimit: 80_000,
+              });
+              return xfer.hash as `0x${string}`;
             },
             async (user) => {
               const erc20 = new TypedContract<{
                 balanceOf(u: string): Promise<bigint>;
-              }>(usdcAddr, ERC20_BALANCE_ABI, provider);
+              }>(faucetToken, ERC20_BALANCE_ABI, provider);
               return erc20.contract.balanceOf(user);
             },
+            // tokenSymbol: on-chain symbol() read; null on failure → status omits it.
+            async () => {
+              const tc = new TypedContract<{ symbol(): Promise<string> }>(
+                faucetToken,
+                W0G_ABI,
+                provider,
+              );
+              return tc.contract.symbol();
+            },
+            // relayGrantsOf: GasTank lazy-grant view; null on any failure or
+            // when the tank address is unset → status omits the field.
+            async (user) => {
+              if (!gasTankAddr) return null;
+              try {
+                const tc = new TypedContract<{
+                  grantBalance(u: string): Promise<bigint>;
+                  grantsUsed(u: string): Promise<bigint>;
+                  grantsCap(): Promise<bigint>;
+                  gasGrant(): Promise<bigint>;
+                }>(gasTankAddr, GAS_TANK_ABI, provider);
+                const [grantBalance, grantsUsed, grantsCap, gasGrant] =
+                  await Promise.all([
+                    tc.contract.grantBalance(user),
+                    tc.contract.grantsUsed(user),
+                    tc.contract.grantsCap(),
+                    tc.contract.gasGrant(),
+                  ]);
+                return {
+                  grantBalance: formatEther(grantBalance),
+                  grantsUsed: grantsUsed.toString(),
+                  grantsCap: grantsCap.toString(),
+                  gasGrant: formatEther(gasGrant),
+                };
+              } catch {
+                return null;
+              }
+            },
+            { AXIOM_FAUCET_ENABLED: config.env?.AXIOM_FAUCET_ENABLED },
+            faucetToken,
           )
         : undefined;
     relayerDeps = {

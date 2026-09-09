@@ -702,6 +702,11 @@ export function ToolResultBody({
     return <ArchiveResultCard name={name} content={content} />;
   }
 
+  if (name === "faucet_status") {
+    const faucetLines = <FaucetResultLines content={content} />;
+    if (faucetLines) return faucetLines;
+  }
+
   // L1-L9: array-of-objects results read as tabular data, not JSON — render
   // a mini-table (reuses .chat-md table styling); everything else keeps the
   // monospace body.
@@ -750,6 +755,74 @@ function parseEncodePreview(content: string | null): EncodePreview | null {
 
 function hasEncodePreview(content: string | null): boolean {
   return parseEncodePreview(content) !== null;
+}
+
+/** faucet_status: already-claimed + GasTank grants summary from the raw status JSON. */
+function FaucetResultLines({
+  content,
+}: {
+  content: string | null;
+}): ReactElement | null {
+  const { state } = useUiStore();
+  const chatCopy = getCopy(state.settings.locale).chat;
+  const obj = parseObj(content);
+  if (!obj) return null;
+  const alreadyGranted =
+    obj.alreadyGranted === true ||
+    (obj.eligible === false && typeof obj.grantedBalance === "string");
+  const grantedBalance =
+    typeof obj.grantedBalance === "string" ? obj.grantedBalance : undefined;
+  const relay = obj.relayGrants as
+    | {
+        grantBalance?: string;
+        grantsUsed?: string;
+        grantsCap?: string;
+        gasGrant?: string;
+      }
+    | undefined;
+  let grantsLine: string | undefined;
+  if (
+    relay &&
+    typeof relay.grantsUsed === "string" &&
+    typeof relay.grantsCap === "string"
+  ) {
+    const used = BigInt(relay.grantsUsed);
+    const cap = BigInt(relay.grantsCap);
+    const gasGrant = relay.gasGrant ? BigInt(relay.gasGrant) : undefined;
+    grantsLine = chatCopy.faucetRelayGrants
+      .replace("{left}", (cap > used ? cap - used : 0n).toString())
+      .replace("{cap}", cap.toString())
+      .replace("{size}", gasGrant !== undefined ? formatEther(gasGrant) : "?");
+  }
+  if (!alreadyGranted && !grantsLine) return null;
+  return (
+    <pre
+      className="tool-result"
+      style={{
+        ...preBlockStyle,
+        wordBreak: "break-word",
+        lineHeight: "var(--lh-normal)",
+        color: "var(--muted)",
+      }}
+    >
+      {alreadyGranted
+        ? chatCopy.faucetAlreadyGranted.replace(
+            "{balance}",
+            grantedBalance !== undefined
+              ? (() => {
+                  try {
+                    return formatEther(BigInt(grantedBalance));
+                  } catch {
+                    return grantedBalance;
+                  }
+                })()
+              : "0",
+          )
+        : null}
+      {alreadyGranted && grantsLine ? "\n" : null}
+      {grantsLine ?? null}
+    </pre>
+  );
 }
 
 function formatNativeValue(weiStr: string): string {

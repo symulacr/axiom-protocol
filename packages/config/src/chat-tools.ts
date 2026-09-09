@@ -563,7 +563,7 @@ export const CHAT_TOOL_CATALOG = [
     name: "faucet_status",
     class: "read",
     label: "Faucet Status",
-    hint: "Check the connected wallet's testnet axmUSDC faucet status: whether the one-time drip is still claimable and its size. Use before payments when a wallet has no USDC.",
+    hint: "Check the wallet's W0G faucet status: whether the one-time wrap-drip is still claimable, its size (0.01 OG in W0G), the wallet's current W0G balance, and the remaining GasTank lazy gas grants. Already-claimed wallets report alreadyGranted with their balance.",
     requiresWallet: true,
     context: "backend read (faucet)",
     capabilities: ["read", "faucet"],

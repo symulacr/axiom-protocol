@@ -26,6 +26,7 @@ import type { RelaySubmitter } from "./queue.js";
 
 const CHAIN_ID = 16602;
 const GAS_TANK_ADDRESS = ("0x" + "ee".repeat(20)) as `0x${string}`;
+const W0G_ADDRESS = ("0x" + "77".repeat(20)) as `0x${string}`;
 
 function makeConfig(gasTank: `0x${string}` | undefined): ServerConfig {
   return {
@@ -126,7 +127,13 @@ interface Harness {
  */
 async function buildApp(
   gasTank: `0x${string}` | undefined,
-  opts?: { faucetEnabled?: boolean; balances?: Map<string, bigint> },
+  opts?: {
+    faucetEnabled?: boolean;
+    balances?: Map<string, bigint>;
+    tokenSymbol?: (() => Promise<string>) | null;
+    relayGrantsOf?: ((user: string) => Promise<unknown>) | null;
+    faucetToken?: string;
+  },
 ): Promise<Harness> {
   const h: Harness = {
     port: 0,
@@ -158,7 +165,10 @@ async function buildApp(
                 return ("0x" + "bb".repeat(32)) as `0x${string}`;
               },
               async (user) => h.balances.get(user) ?? 0n,
+              opts?.tokenSymbol ?? null,
+              opts?.relayGrantsOf ?? null,
               { AXIOM_FAUCET_ENABLED: String(opts?.faucetEnabled ?? true) },
+              opts?.faucetToken,
             );
           }
           return {
@@ -677,7 +687,7 @@ describe("V3 W6-B faucet", () => {
         h.minted[0]!.user,
         (await signedBody({ userPk: pk })).userAddress,
       );
-      assert.equal(h.minted[0]!.amount, 1_000_000_000n);
+      assert.equal(h.minted[0]!.amount, 10_000_000_000_000_000n);
 
       // Second op from the same address: no re-drip.
       h.queue.markConfirmed(h.queue.all().find((r) => !isFaucetRecord(r))!.id);
@@ -694,10 +704,10 @@ describe("V3 W6-B faucet", () => {
     }
   });
 
-  test("balance gate: an address holding >= 1 axmUSDC is never dripped", async () => {
+  test("balance gate: an address holding >= 0.01 W0G is never dripped", async () => {
     const richPk = "0x" + "66".repeat(32);
     const rich = new Wallet(richPk).address.toLowerCase();
-    const balances = new Map([[rich, 1_000_000n]]);
+    const balances = new Map([[rich, 10_000_000_000_000_000n]]);
     const h = await buildApp(GAS_TANK_ADDRESS, { balances });
     try {
       await post(
@@ -723,15 +733,17 @@ describe("V3 W6-B faucet", () => {
     }
   });
 
-  test("GET faucet/:address reports eligibility, amount, token", async () => {
-    const h = await buildApp(GAS_TANK_ADDRESS);
+  test("GET faucet/:address reports eligibility, drip, token, granted balance", async () => {
+    const h = await buildApp(GAS_TANK_ADDRESS, { faucetToken: W0G_ADDRESS });
     try {
       const addr = "0x" + "88".repeat(20);
       const { status, json } = await get(h.port, `/v1/relayer/faucet/${addr}`);
       assert.equal(status, 200);
       assert.equal(json.eligible, true);
-      assert.equal(json.amount, "1000000000");
-      assert.equal(json.token, "axmUSDC");
+      assert.equal(json.alreadyGranted, false);
+      assert.equal(json.grantedBalance, "0.0");
+      assert.equal(json.dripAmount, "0.01");
+      assert.equal(json.token, W0G_ADDRESS);
 
       // After a drip the set marks the address ineligible.
       await h.faucet!.dripOnFirstRelay(addr);
@@ -787,6 +799,8 @@ describe("V3 W6-B faucet", () => {
           throw new Error("rpc down");
         },
         async () => 0n,
+        null,
+        null,
         { AXIOM_FAUCET_ENABLED: "true" },
       );
       const ok = await failing.dripOnFirstRelay(addr);
@@ -812,6 +826,79 @@ describe("V3 W6-B faucet", () => {
     // Marker is attached by enqueueDrip, not by buildFaucetRecord.
     assert.ok(!isFaucetRecord(queued));
     assert.equal(faucetAmountOf(queued), undefined);
+  });
+
+  test("status alreadyGranted=true when the injected W0G balance >= gate", async () => {
+    const rich = "0x" + "12".repeat(20);
+    const balances = new Map([[rich, 10_000_000_000_000_000n]]);
+    const h = await buildApp(GAS_TANK_ADDRESS, { balances });
+    try {
+      const { status, json } = await get(h.port, `/v1/relayer/faucet/${rich}`);
+      assert.equal(status, 200);
+      assert.equal(json.alreadyGranted, true);
+      assert.equal(json.grantedBalance, "0.01");
+      // Already-granted addresses are gate-blocked from a second drip.
+      assert.equal(json.eligible, false);
+    } finally {
+      await h.close();
+    }
+  });
+
+  test("tokenSymbol read failure → field omitted from status", async () => {
+    const h = await buildApp(GAS_TANK_ADDRESS, {
+      tokenSymbol: async () => {
+        throw new Error("rpc down");
+      },
+      faucetToken: W0G_ADDRESS,
+    });
+    try {
+      const { json } = await get(
+        h.port,
+        `/v1/relayer/faucet/${"0x" + "13".repeat(20)}`,
+      );
+      assert.equal(json.tokenSymbol, undefined);
+      assert.equal(json.token, W0G_ADDRESS);
+    } finally {
+      await h.close();
+    }
+  });
+
+  test("relayGrantsOf returning null → relayGrants field omitted", async () => {
+    const h = await buildApp(GAS_TANK_ADDRESS, {
+      relayGrantsOf: async () => null,
+    });
+    try {
+      const { json } = await get(
+        h.port,
+        `/v1/relayer/faucet/${"0x" + "14".repeat(20)}`,
+      );
+      assert.equal(json.relayGrants, undefined);
+      // Successful reads surface the GasTank grant view.
+      const h2 = await buildApp(GAS_TANK_ADDRESS, {
+        relayGrantsOf: async () => ({
+          grantBalance: "0.03",
+          grantsUsed: "0",
+          grantsCap: "3",
+          gasGrant: "0.01",
+        }),
+      });
+      try {
+        const ok = await get(
+          h2.port,
+          `/v1/relayer/faucet/${"0x" + "15".repeat(20)}`,
+        );
+        assert.deepEqual(ok.json.relayGrants, {
+          grantBalance: "0.03",
+          grantsUsed: "0",
+          grantsCap: "3",
+          gasGrant: "0.01",
+        });
+      } finally {
+        await h2.close();
+      }
+    } finally {
+      await h.close();
+    }
   });
 });
 

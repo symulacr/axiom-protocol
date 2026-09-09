@@ -634,6 +634,9 @@ export type Copy = {
     toolRanIn: (seconds: number) => string;
     toolWasArchived: string;
     toolNotArchived: string;
+    /** W0G faucet_status card: already-claimed report + GasTank grants summary. */
+    faucetAlreadyGranted: string;
+    faucetRelayGrants: string;
     /** Class badge labels keyed by ChatToolClass (union duplicated from
      * @axiom/config/chat-tools so copy.ts stays dependency-free). */
     toolClassLabels: Record<
@@ -1755,6 +1758,8 @@ const english: Copy = {
     toolRanIn: (seconds) => `ran in ${seconds}s`,
     toolWasArchived: "Was archived",
     toolNotArchived: "Not archived",
+    faucetAlreadyGranted: "Drip already claimed — {balance} W0G held",
+    faucetRelayGrants: "GasTank grants: {left}/{cap} × {size}",
     toolClassLabels: {
       read: "Read",
       encode: "Encode",
@@ -3036,6 +3041,8 @@ const french: Copy = {
     toolRanIn: (seconds) => `exécuté en ${seconds} s`,
     toolWasArchived: "Archivé",
     toolNotArchived: "Non archivé",
+    faucetAlreadyGranted: "Goutte déjà réclamée — {balance} W0G détenus",
+    faucetRelayGrants: "Subventions GasTank : {left}/{cap} × {size}",
     toolClassLabels: {
       read: "Lecture",
       encode: "Encodage",
@@ -4329,6 +4336,8 @@ const german: Copy = {
     toolRanIn: (seconds) => `ausgeführt in ${seconds} s`,
     toolWasArchived: "Archiviert",
     toolNotArchived: "Nicht archiviert",
+    faucetAlreadyGranted: "Drip bereits abgeholt — {balance} W0G im Bestand",
+    faucetRelayGrants: "GasTank-Zuschüsse: {left}/{cap} × {size}",
     toolClassLabels: {
       read: "Lesen",
       encode: "Encodieren",
