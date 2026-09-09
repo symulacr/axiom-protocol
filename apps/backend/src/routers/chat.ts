@@ -9,6 +9,7 @@ import type {
 import { ARISTOTLE_CHAIN_ID } from "@axiom/config/networks";
 import { HTTP } from "@axiom/config/constants";
 import { resolveChatModel } from "@axiom/config/chat-tools";
+import { snapHistoryStart } from "@axiom/chat-runtime";
 import type { StorageAdapter } from "@axiom/config/storage/0g";
 import { getEventStore, payloadField } from "../events/store.js";
 import { chatBodySchema, chatHistoryQuerySchema } from "../route-schemas.js";
@@ -24,9 +25,13 @@ const log = createLogger("server");
 // Resolve the trace payload for the typed SSE frame. The router relays usage + x_0g_trace inside a
 // terminal SSE chunk (choices: []) right before [DONE] — there is no x_0g_trace response header.
 // Prefer the terminal chunk; fall back to the legacy header for upstreams that never send one.
+// B5: `usage` must survive whenever the provider sent it — some providers put token
+// counts on a non-terminal chunk or a terminal chunk of their own, so the last-seen
+// usage rides as a fallback and a usage-only stream still earns a trace frame.
 function resolveTracePayload(
   terminalChunk: unknown,
   response: { headers?: unknown } | undefined,
+  lastUsage?: unknown,
 ): Record<string, unknown> | null {
   const headers = response?.headers as
     { get?(name: string): string | null } | Record<string, string> | undefined;
@@ -36,7 +41,9 @@ function resolveTracePayload(
       : (headers as Record<string, string> | undefined)?.[name];
   if (terminalChunk !== null && typeof terminalChunk === "object") {
     const chunk = terminalChunk as { usage?: unknown; x_0g_trace?: unknown };
-    const trace: Record<string, unknown> = { usage: chunk.usage };
+    const trace: Record<string, unknown> = {
+      usage: chunk.usage !== undefined ? chunk.usage : lastUsage,
+    };
     if (chunk.x_0g_trace && typeof chunk.x_0g_trace === "object") {
       Object.assign(trace, chunk.x_0g_trace);
     }
@@ -45,16 +52,20 @@ function resolveTracePayload(
     return trace;
   }
   const traceHeader = headerValue("x_0g_trace");
-  if (!traceHeader) return null;
-  try {
-    const parsed =
-      typeof traceHeader === "string" ? JSON.parse(traceHeader) : traceHeader;
-    return parsed && typeof parsed === "object"
-      ? (parsed as Record<string, unknown>)
-      : null;
-  } catch {
-    return null;
+  if (traceHeader) {
+    try {
+      const parsed =
+        typeof traceHeader === "string" ? JSON.parse(traceHeader) : traceHeader;
+      if (parsed && typeof parsed === "object") {
+        return lastUsage !== undefined
+          ? { usage: lastUsage, ...(parsed as Record<string, unknown>) }
+          : (parsed as Record<string, unknown>);
+      }
+    } catch {
+      return null;
+    }
   }
+  return lastUsage !== undefined ? { usage: lastUsage } : null;
 }
 
 // Map the optional `provider` routing body to the canonical X-0G-Provider-* request headers.
@@ -197,6 +208,55 @@ function verifyWalletProof(req: Request, wallet: string): boolean {
   }
 }
 
+// Restore-time transcript healing (B6a). Transcripts persisted before the
+// tool-block truncation fix can open on — or retain — orphan `tool` messages
+// whose assistant tool_calls lead is gone; replayed verbatim they 400 the next
+// send ("Messages with role 'tool' must be a response to a preceding message
+// with 'tool_calls'"). snapHistoryStart's one rule — a tool message is legal
+// only in the run directly after an assistant message carrying tool_calls —
+// is applied at read time: the boundary via the runtime helper, mid-array by
+// the same rule. Stored blobs stay untouched.
+type RestoredMessage = { role?: unknown; tool_calls?: unknown };
+
+export function healTranscriptMessages(
+  messages: readonly RestoredMessage[],
+): RestoredMessage[] {
+  const start = snapHistoryStart(
+    messages.map((m) => ({ role: typeof m?.role === "string" ? m.role : "" })),
+    0,
+  );
+  const healed: RestoredMessage[] = [];
+  let toolBlockOpen = false;
+  for (const m of messages.slice(start)) {
+    if (m.role === "tool") {
+      if (toolBlockOpen) healed.push(m);
+      continue;
+    }
+    toolBlockOpen =
+      m.role === "assistant" &&
+      Array.isArray(m.tool_calls) &&
+      m.tool_calls.length > 0;
+    healed.push(m);
+  }
+  return healed;
+}
+
+/** Heal one parsed transcript's messages; identity when nothing was dropped. */
+function healTranscript(value: unknown): unknown {
+  if (value === null || typeof value !== "object" || Array.isArray(value))
+    return value;
+  const t = value as { messages?: unknown };
+  if (!Array.isArray(t.messages)) return value;
+  const healed = healTranscriptMessages(t.messages as RestoredMessage[]);
+  if (healed.length === t.messages.length) return value;
+  return {
+    ...t,
+    messages: healed,
+    msgCount: healed.length,
+    healedToolOrphans: t.messages.length - healed.length,
+  };
+}
+
 export function registerChatRoutes(
   app: Express,
   config: ServerConfig,
@@ -218,7 +278,14 @@ export function registerChatRoutes(
       res: Response,
     ) => {
       try {
-        const { messages, tools, model: reqModel, wallet, provider } = parsed;
+        const {
+          messages,
+          tools,
+          model: reqModel,
+          wallet,
+          provider,
+          max_tokens: reqMaxTokens,
+        } = parsed;
         const DEFAULT_MODEL = resolveChatModel(
           config.env?.AXIOM_COMPUTE_MODEL,
           ogChainId,
@@ -245,7 +312,9 @@ export function registerChatRoutes(
               messages: messages as ChatCompletionMessageParam[],
               tools: tools as ChatCompletionTool[] | undefined,
               stream: true,
-              max_tokens: 2048,
+              // Client-computed budget (catalog-driven) wins; 2048 stays the
+              // legacy default for callers that send nothing.
+              max_tokens: reqMaxTokens ?? 2048,
             },
             {
               signal: streamSignal,
@@ -272,24 +341,32 @@ export function registerChatRoutes(
         let assistantContent = "";
         // Terminal chunk: the router sends choices:[] + usage + x_0g_trace just before [DONE].
         let terminalChunk: unknown = null;
+        // B5: token counts can ride a non-terminal chunk (or a second terminal
+        // chunk) depending on the provider — keep the last usage seen anywhere.
+        let lastUsage: unknown;
         for await (const chunk of openaiRes) {
           if (res.writableEnded) break;
-          if (
-            terminalChunk === null &&
-            chunk !== null &&
-            typeof chunk === "object"
-          ) {
+          if (chunk !== null && typeof chunk === "object") {
             const c = chunk as {
               choices?: unknown;
               usage?: unknown;
               x_0g_trace?: unknown;
             };
+            if (c.usage !== undefined) lastUsage = c.usage;
             if (
               Array.isArray(c.choices) &&
               c.choices.length === 0 &&
               (c.usage !== undefined || c.x_0g_trace !== undefined)
             )
-              terminalChunk = chunk;
+              // Merge successive terminal chunks: a provider may split usage
+              // and x_0g_trace across two empty-choices chunks.
+              terminalChunk =
+                terminalChunk === null
+                  ? chunk
+                  : {
+                      ...(terminalChunk as Record<string, unknown>),
+                      ...(chunk as unknown as Record<string, unknown>),
+                    };
           }
           if (!writeChunk(`data: ${JSON.stringify(chunk)}\n\n`)) break;
           n++;
@@ -302,7 +379,7 @@ export function registerChatRoutes(
               `data: ${JSON.stringify({ choices: [{ delta: { content: EMPTY_RESPONSE_FALLBACK } }] })}\n\n`,
             );
           }
-          const trace = resolveTracePayload(terminalChunk, response);
+          const trace = resolveTracePayload(terminalChunk, response, lastUsage);
           if (trace) {
             writeChunk(`data: ${JSON.stringify({ type: "trace", trace })}\n\n`);
           }
@@ -472,7 +549,7 @@ export function registerChatRoutes(
       );
       const transcripts = slots
         .filter((s): s is { ok: true; value: unknown } => s.ok)
-        .map((s) => s.value);
+        .map((s) => healTranscript(s.value));
       transcripts.reverse(); // newest turn first
       res.json({ wallet, count: transcripts.length, transcripts });
     },

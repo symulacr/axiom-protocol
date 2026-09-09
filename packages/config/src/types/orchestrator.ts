@@ -15,6 +15,8 @@ interface TickOnchainState {
 interface TickStorageInfo {
   rootHash: `0x${string}`;
   size: number;
+  /** False when the blob could not be read back — size is meaningless then. */
+  readable?: boolean;
 }
 
 interface TickExecution {

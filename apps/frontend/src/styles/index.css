@@ -5649,3 +5649,175 @@ body.light .receipt-ticket-head h2 {
   font-weight: 500;
   letter-spacing: -0.018em;
 }
+
+/* ==========================================================================
+ * plan-003 N3 (console page polish onto the landing language) — 2026-09-09.
+ * Visual layer only: no markup, copy, or state-machine changes. Every rule
+ * either repairs a defect measured live (both themes, 1440 + 390, mock
+ * wallet) or echoes a landing convention the console already shares tokens
+ * with (hairline + inner top bevel, copper-wash selection). Append-only per
+ * this sheet's convention: overrides below win by cascade order.
+ * ========================================================================== */
+
+/* N3-1. Receipt-table desktop column drift (user report: rows vs "the big
+   mono hash column"). The legacy .transaction-row>svg / .transaction-age
+   placements (:132-133) parked the chevron and the age in the Hash track, so
+   the hash proof cell auto-placed under the Age header. Desktop rows flow in
+   DOM order (kind | hash | age | state | chevron); the ≤700px reflow
+   (Wave-9A appendix) keeps its own explicit placements. */
+@media (min-width: 701px) {
+  .transaction-row > svg { grid-column: auto; grid-row: auto; }
+  .transaction-row > .transaction-age { grid-column: auto; grid-row: auto; }
+}
+
+/* N3-2. Ops-summary recovery cell carried padding:0 (:1049) — "need review"
+   sat flush to the cell border while its siblings pad 16. Same step as its
+   siblings; the corner arrow re-anchors onto the padding grid with it. */
+.ops-summary-recovery { padding: var(--space-4); }
+.ops-summary-recovery svg { top: var(--space-4); right: var(--space-4); }
+
+/* N3-3. Filter-chip selection was invisible: .filter.active repainted the
+   chip in the panel's own surface (:1999, --panel on --panel), and hover
+   wore the same full-copper underline as active. Hierarchy now: hover gets a
+   faint wash + quiet underline; active gets the copper wash (the command
+   palette's is-active register) + the full underline. Both color-mix off
+   --copper, so both themes re-tune. */
+.filter:hover { background: var(--copper-06); }
+.filter:hover:not(.active) { border-bottom-color: color-mix(in srgb, var(--completion-copper) 40%, transparent); }
+.filter.active { background: var(--copper-10); }
+
+/* N3-4. Context strip: four cells in a three-track grid (:1932) — the
+   health cell wrapped to an orphan second row at desktop. Four tracks; the
+   ≤1120 two-track and ≤700 stack rules already partition four cells
+   cleanly. */
+@media (min-width: 1121px) {
+  .context-strip { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+/* N3-5. GasTankCard shipped no sheet rules (one layout guard only) — a bare
+   text run between the stats band and the receipts panel. It takes the card
+   family's chrome (border/radius/surface), its grants bar becomes a real
+   track, and the deposit input matches the .field-control recipe. */
+.gas-tank-card {
+  display: grid;
+  gap: var(--space-3);
+  justify-items: start;
+  margin-bottom: var(--space-4);
+  padding: var(--space-5);
+  border: 1px solid var(--completion-line);
+  border-radius: var(--radius);
+  background: var(--completion-panel);
+}
+.gas-tank-card h3 {
+  font: var(--fw-title) var(--fs-title) var(--font-display);
+  letter-spacing: -0.02em;
+}
+.gas-tank-card__balance strong { font-size: var(--fs-title); }
+.gas-tank-card__balance small { color: var(--completion-dim); font-size: var(--fs-mono); }
+.gas-tank-card__grants {
+  width: 100%;
+  height: 4px;
+  background: color-mix(in srgb, var(--completion-line) 60%, transparent);
+}
+.gas-tank-card__grants > div { height: 100%; background: var(--completion-copper); }
+.gas-tank-card__deposit { display: flex; flex-wrap: wrap; gap: var(--space-2); width: 100%; }
+.gas-tank-card__deposit input {
+  flex: 1 1 200px;
+  min-width: 0;
+  min-height: 40px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--completion-line);
+  border-radius: var(--radius-md);
+  background: var(--completion-elevated);
+  color: var(--completion-text);
+  font: 16px var(--font-mono); /* 16px: the iOS focus-zoom guard, as .field-control input */
+}
+.gas-tank-card__deposit input:focus-visible { border-color: var(--completion-copper); }
+/* Ghost buttons on the card keep a quiet plate edge so they read as
+   controls, not stray text (the dialect's ghost is otherwise borderless). */
+.gas-tank-card .button-ghost { border-color: var(--completion-line); }
+
+/* N3-6. Checklist head at ≤700px: the blanket .panel-head column flip (:408)
+   dropped the dismiss control onto its own left-aligned row under the
+   title. The checklist head stays a space-between row. */
+@media (max-width: 700px) {
+  .checklist-card .panel-head { flex-direction: row; align-items: center; }
+}
+
+/* N3-7. Flow-form stayed two-column at phone width (fields squeezed to
+   ~145px, hints wrapping four lines) and the action row squeezed its buttons
+   into mid-word wraps. One column + whole-button wrap. */
+@media (max-width: 700px) {
+  .flow-form { grid-template-columns: 1fr; }
+  .flow-action { flex-wrap: wrap; }
+  .flow-action .button { flex: 1 1 150px; }
+}
+/* Mint's lone name field no longer abandons the right track at desktop. */
+.flow-form > .field:only-child { grid-column: 1 / -1; }
+
+/* N3-8. Storage and agent-overview grids declared grid-template-columns with
+   no display:grid (:194, :833) — both pages stacked their panels full-width
+   at desktop — and the shared card-padding rule (:192) padded the borderless
+   containers, double-indenting the panels inside. display:grid lands the
+   declared split; container padding goes (the panels pad themselves).
+   Columns mirror .dashboard-split; the ≤1120/≤700 single-column rules
+   already exist. */
+.storage-grid,
+.agent-grid { display: grid; gap: var(--space-4); align-items: start; padding: 0; }
+.agent-grid { grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr); }
+/* Same defect class on the settings page's grid (columns declared at :195,
+   display never set): lands the declared .88fr/1.12fr split. */
+.settings-grid { display: grid; gap: var(--space-4); align-items: start; padding: 0; }
+
+/* N3-9. A long h1 starved the trailing CTA: the max-inline-size:100%
+   override (:688) lets the title eat the row and the button's flex-shrink
+   wrapped "Open chat transcript" to two lines at 1440. The action keeps its
+   natural width; the title column already carries min-width:0 and wraps. */
+.page-head > .button { flex: 0 0 auto; }
+
+/* N3-10. Theme parity for the portaled overlays: the review sheet was the
+   one layer still dark-locked (literal #24201d→#11100f) over the light
+   console — the receipt drawer, wallet gate and command palette all ride
+   the completion tokens. Paper sheet + warm veil scrims under body.light
+   (the .app-shell.light overlay value); the blocked co-sign strong's
+   dark-only cream re-tones to the light danger ink. */
+body.light .operation-review-layer,
+body.light .drawer-layer { background: rgba(49, 42, 35, 0.42); }
+body.light .operation-review-sheet {
+  --sheet-ink: #202528;
+  --sheet-dim: #5b5b55;
+  background: linear-gradient(145deg, #fffdf8, #f3eee6 72%);
+  box-shadow: 0 24px 80px rgba(66, 47, 31, 0.22);
+}
+body.light .review-cosign-blocked strong { color: var(--danger); }
+
+/* N3-11. The landing card read is hairline + inner top bevel; console
+   plates carried the hairline only. The inner 1px highlight lands on the
+   panel family in both themes (dark: 5% ink cream, the forge card's own
+   value; light: paper-white) — the console's radii and plate dialect stay. */
+.panel, .flow-stage, .flow-context, .stats-grid, .context-strip, .ops-summary,
+.gas-tank-card, .checklist-card {
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--ink) 5%, transparent);
+}
+body.light .panel, body.light .flow-stage, body.light .flow-context,
+body.light .stats-grid, body.light .context-strip, body.light .ops-summary,
+body.light .gas-tank-card, body.light .checklist-card {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+/* N3-12. Display caps at line-height 1 clipped descenders on wrapped h1s at
+   phone width (the ≥1.05 contract Wave-9B enforced on the locked-route h1,
+   :353). Same floor for the ops-page h1. */
+@media (max-width: 700px) {
+  .ops-page .page-head h1 { line-height: 1.06; }
+}
+
+/* N3-13. UA button borders bled through three un-bordered buttons (measured
+   2px outset white on .priority-why and the receipt drawer's inline-copy):
+   the layered reset (:3199) only clears background. Same border:0 contract
+   as .text-link. */
+.priority-why, .priority-details button, .inline-copy { border: 0; }
+
+/* N3-14. The storage verify block's grid gap was 4px — the hint glued to
+   the field label. 8px matches the field kit's internal rhythm. */
+.storage-stage .provenance-source { gap: var(--space-2); }

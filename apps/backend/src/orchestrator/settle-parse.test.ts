@@ -14,8 +14,16 @@ import {
   type MarketSignal,
   type StrategySpec,
 } from "./index.js";
-import { STRATEGY_OF_CURRENT } from "@axiom/config/abis";
+import {
+  STRATEGY_OF_CURRENT,
+  STRATEGY_OF_LEGACY,
+  VAULT_ABI,
+  VAULT_ABI_LEGACY,
+} from "@axiom/config/abis";
 import { ZERO_DATA_ROOT } from "@axiom/config/constants";
+import type { TickResult } from "@axiom/config/types/orchestrator";
+import { InMemoryStorage, type StorageAdapter } from "@axiom/config/storage/0g";
+import { toBeHex, zeroPadValue } from "ethers";
 
 const ZERO_ROOT =
   "0x0000000000000000000000000000000000000000000000000000000000000000";
@@ -460,3 +468,262 @@ test(
     });
   }),
 );
+
+/* ------------------------------------------------------------------ */
+/* B4: honest tick observability — storage leg + event topic map      */
+/* ------------------------------------------------------------------ */
+
+const HOLD_OUTPUT = JSON.stringify({ action: "hold", reason: "quiet" });
+// makeStrategy's agentTokenId is 7n — the topic1 every vault-event scan must carry.
+const TOKEN_TOPIC = zeroPadValue(toBeHex(7n, 32), 32);
+// Fresh address for the legacy-variant test (variantCache is keyed per address).
+const LEGACY_VAULT_ADDR = ("0x" + "00".repeat(19) + "03") as `0x${string}`;
+
+function vaultLog(
+  address: string,
+  topic0: string,
+  blockHex: string,
+  txByte: string,
+): Record<string, unknown> {
+  return {
+    address,
+    topics: [topic0, TOKEN_TOPIC],
+    data: "0x",
+    blockNumber: blockHex,
+    transactionHash: "0x" + txByte.repeat(32),
+    transactionIndex: "0x0",
+    logIndex: "0x0",
+    blockHash: "0x" + "bb".repeat(32),
+    removed: false,
+  };
+}
+
+/** vaultRpc + an eth_getLogs leg that answers topic-filtered (as a real node
+ *  does) and captures every filter for the scoping assertions. */
+function eventScanRpc(
+  root: string,
+  logs: Array<Record<string, unknown>>,
+  seenFilters: unknown[],
+): RpcStub {
+  const base = vaultRpc(root);
+  return (method, params) => {
+    if (method === "eth_getLogs") {
+      const filter = (params[0] ?? {}) as { topics?: string[] };
+      seenFilters.push(params[0]);
+      const topic0 = filter.topics?.[0];
+      return logs.filter((l) => (l.topics as string[])[0] === topic0);
+    }
+    return base(method, params);
+  };
+}
+
+function assertScopedToVault(
+  seenFilters: unknown[],
+  vaultAddr: string,
+  vaultTopics: Set<string>,
+): void {
+  // Regression guard for the PreparedTopicFilter spread bug (B4): the old code
+  // spread contract.filters.X() into getLogs, dropping address+topics, and the
+  // scan returned EVERY log in the block window — all named "Unknown".
+  assert.equal(seenFilters.length, 4, "one getLogs per vault event");
+  for (const f of seenFilters) {
+    const filter = f as { address?: string; topics?: string[] };
+    assert.equal(
+      filter.address?.toLowerCase(),
+      vaultAddr.toLowerCase(),
+      "filter must be scoped to the vault address",
+    );
+    assert.ok(
+      filter.topics && vaultTopics.has(filter.topics[0] ?? ""),
+      "topic0 must be a vault event hash",
+    );
+    assert.equal(filter.topics?.[1], TOKEN_TOPIC, "topic1 must be the tokenId");
+  }
+}
+
+test(
+  "B4: event scan scopes getLogs to the vault and names all four vault events",
+  withDirectComputeEnv(async () => {
+    const iface = new Interface(VAULT_ABI);
+    const vaultTopics = new Set(
+      ["StrategySet", "Deposited", "Withdrawn", "Executed"].map(
+        (n) => iface.getEvent(n)!.topicHash,
+      ),
+    );
+    const logs = [
+      vaultLog(
+        VAULT_ADDR,
+        iface.getEvent("Deposited")!.topicHash,
+        "0x61",
+        "22",
+      ),
+      vaultLog(
+        VAULT_ADDR,
+        iface.getEvent("StrategySet")!.topicHash,
+        "0x60",
+        "11",
+      ),
+      vaultLog(VAULT_ADDR, iface.getEvent("Executed")!.topicHash, "0x63", "44"),
+      vaultLog(
+        VAULT_ADDR,
+        iface.getEvent("Withdrawn")!.topicHash,
+        "0x62",
+        "33",
+      ),
+    ];
+    const seenFilters: unknown[] = [];
+    const runner = makeVaultRunner();
+    await withHttpStub(
+      eventScanRpc(NON_ZERO_ROOT, logs, seenFilters),
+      HOLD_OUTPUT,
+      async () => {
+        const result = await runner.runTick(makeStrategy(), marketSignal({}));
+        const events = result.onchain.recentEvents as Array<{
+          name: string;
+          blockNumber: number;
+          txHash: string;
+        }>;
+        // Sorted by blockNumber regardless of per-filter response order.
+        assert.deepEqual(
+          events.map((e) => e.name),
+          ["StrategySet", "Deposited", "Withdrawn", "Executed"],
+        );
+        assert.equal(events[0]!.blockNumber, 0x60);
+      },
+    );
+    assertScopedToVault(seenFilters, VAULT_ADDR, vaultTopics);
+  }),
+);
+
+test(
+  "B4: legacy vault variant names the 3-arg StrategySet topic",
+  withDirectComputeEnv(async () => {
+    const legacyIface = new Interface(VAULT_ABI_LEGACY);
+    const legacyStrategyOf = new Interface(STRATEGY_OF_LEGACY);
+    const vaultTopics = new Set(
+      ["StrategySet", "Deposited", "Withdrawn", "Executed"].map(
+        (n) => legacyIface.getEvent(n)!.topicHash,
+      ),
+    );
+    const logs = [
+      vaultLog(
+        LEGACY_VAULT_ADDR,
+        legacyIface.getEvent("StrategySet")!.topicHash,
+        "0x60",
+        "55",
+      ),
+      vaultLog(
+        LEGACY_VAULT_ADDR,
+        legacyIface.getEvent("Deposited")!.topicHash,
+        "0x61",
+        "66",
+      ),
+    ];
+    const seenFilters: unknown[] = [];
+    const base = eventScanRpc(NON_ZERO_ROOT, logs, seenFilters);
+    // strategyOf answered with the legacy 4-field encoding → variant detection
+    // falls from "current" to "legacy" (selectors match, return arity differs).
+    const rpc: RpcStub = (method, params) => {
+      if (method === "eth_call") {
+        const data = ((params[0] as { data?: string })?.data ?? "0x").slice(
+          0,
+          10,
+        );
+        if (data === strategyOfSelector) {
+          return legacyStrategyOf.encodeFunctionResult("strategyOf", [
+            NON_ZERO_ROOT,
+            1_000_000n,
+            0n,
+            0,
+          ]);
+        }
+      }
+      return base(method, params);
+    };
+    const provider = new JsonRpcProvider("http://127.0.0.1:1", 16661, {
+      staticNetwork: true,
+    });
+    const runner = new StrategyRunner({
+      evmRpc: "http://127.0.0.1:1",
+      signer: makeSigner(provider),
+      addresses: { vault: LEGACY_VAULT_ADDR },
+      chainId: 16661,
+    });
+    await withHttpStub(rpc, HOLD_OUTPUT, async () => {
+      const result = await runner.runTick(makeStrategy(), marketSignal({}));
+      assert.deepEqual(
+        (result.onchain.recentEvents as Array<{ name: string }>).map(
+          (e) => e.name,
+        ),
+        ["StrategySet", "Deposited"],
+      );
+    });
+    assertScopedToVault(seenFilters, LEGACY_VAULT_ADDR, vaultTopics);
+  }),
+);
+
+test("B4: storage leg reports readable:true with the real blob size", async () => {
+  const storage = new InMemoryStorage();
+  const blob = new TextEncoder().encode(JSON.stringify({ ctx: "model" }));
+  const { rootHash } = await storage.upload(blob);
+  const runner = new StrategyRunner({
+    evmRpc: "http://127.0.0.1:1",
+    signer: makeSigner(),
+    chainId: 16661,
+    storage,
+  });
+  const result = await runner.runTick(
+    makeStrategy({ modelDataRoot: rootHash }),
+    {
+      source: "manual:e2e-mock",
+      payload: {},
+      emittedAt: Date.now(),
+    },
+  );
+  const leg = result.storage as TickResult["storage"] & { readable: boolean };
+  assert.equal(leg.rootHash, rootHash);
+  assert.equal(leg.size, blob.length);
+  assert.equal(leg.readable, true);
+});
+
+test("B4: storage leg reports readable:false when the blob cannot be read", async () => {
+  const failing: StorageAdapter = {
+    upload: () => ({ rootHash: ("0x" + "00".repeat(32)) as `0x${string}` }),
+    download: async () => {
+      throw new Error("blob unavailable");
+    },
+    markDataHashSeen: () => void 0,
+    hasSeenDataHash: () => false,
+  };
+  const runner = new StrategyRunner({
+    evmRpc: "http://127.0.0.1:1",
+    signer: makeSigner(),
+    chainId: 16661,
+    storage: failing,
+  });
+  const result = await runner.runTick(makeStrategy(), {
+    source: "manual:e2e-mock",
+    payload: {},
+    emittedAt: Date.now(),
+  });
+  const leg = result.storage as TickResult["storage"] & { readable: boolean };
+  assert.equal(leg.size, 0);
+  assert.equal(leg.readable, false);
+});
+
+test("B4: storage leg with no adapter reports the root with readable:false", async () => {
+  const runner = new StrategyRunner({
+    evmRpc: "http://127.0.0.1:1",
+    signer: makeSigner(),
+    chainId: 16661,
+  });
+  const result = await runner.runTick(makeStrategy(), {
+    source: "manual:e2e-mock",
+    payload: {},
+    emittedAt: Date.now(),
+  });
+  const leg = result.storage as TickResult["storage"] & { readable: boolean };
+  assert.equal(leg.rootHash, makeStrategy().modelDataRoot);
+  assert.equal(leg.size, 0);
+  assert.equal(leg.readable, false);
+});

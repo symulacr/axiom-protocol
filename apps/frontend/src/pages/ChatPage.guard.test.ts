@@ -147,23 +147,86 @@ test("active-thread resume persists in localStorage with a thread cap (L1-L8)", 
 
 // 2026-09-08 incident: a history front-cut landing inside a tool block made
 // the provider reject the payload with a 400 (orphaned role:"tool" message),
-// which the UI then misreported as "Compute is unavailable". All three
-// front-cut sites must snap to a tool-block boundary via snapHistoryStart.
+// which the UI then misreported as "Compute is unavailable". fitToContext is
+// now the only cut (2026-09-09 redesign); it snaps via snapHistoryStart.
 test("history front-cuts snap to tool-block boundaries", () => {
-  assert.match(
+  assert.doesNotMatch(
     src,
-    /snapHistoryStart\(msgs, msgs\.length - max\)/,
-    "capRecentMessages snaps the 50-message cap to a tool-block boundary",
-  );
-  assert.match(
-    src,
-    /capRecentMessages\(\s*fitToContext\(/,
-    "the chat payload caps via capRecentMessages, not a blind slice(-50)",
+    /capRecentMessages/,
+    "the count-based capRecentMessages is gone, fitToContext is the only cut",
   );
   assert.doesNotMatch(
     src,
     /\)\.slice\(-50\)/,
-    "the blind .slice(-50) on the chat payload is gone",
+    "the blind .slice(-50) on the chat payload stays gone",
+  );
+});
+
+// B1 follow-up (resume scope): the backend's 50-message schema cap became a
+// ~4MB byte guard (C2). The frontend count cap (MAX_HISTORY_MESSAGES 49/48)
+// is deleted; fitToContext clamps the history budget to the byte ceiling via
+// the token estimate. The token budget is the only limit.
+test("the chat payload is bounded by the token budget, no count cap (B1 contract)", () => {
+  assert.doesNotMatch(src, /MAX_HISTORY_MESSAGES/, "count cap deleted");
+  assert.doesNotMatch(
+    src,
+    /maxMessages/,
+    "no count-cap option remains in the payload path",
+  );
+  assert.match(
+    src,
+    /\.\.\.buildPayloadMessages\(\)/,
+    "the only payload build path goes through the token-budget fit",
+  );
+});
+
+// Output budget (resume scope): long answers were clamped by the backend's
+// hardcoded max_tokens 2048. The payload now sends the catalog's
+// max_completion_tokens (live via /v1/config, else the static map), never
+// above it, and reserves the same value in the history budget.
+test("the payload sends the catalog output budget, never above it", () => {
+  assert.match(
+    src,
+    /maxCompletion \?\? resolveMaxCompletionTokens\(CHAT_MODEL\)/,
+    "live catalog value preferred, static map as fallback",
+  );
+  assert.match(
+    src,
+    /max_tokens: effectiveMaxCompletion/,
+    "max_tokens sent when the catalog value is known",
+  );
+  assert.match(
+    src,
+    /outputReserve: effectiveMaxCompletion/,
+    "the history budget reserves exactly the output budget",
+  );
+});
+
+// Hidden plan reminder (resume scope): the REMAINING PLAN block is a second
+// system-position message AFTER the byte-stable prompt, injected only while a
+// plan is active; plans are captured from assistant prose via the shared
+// detectPlan/matchPlan matchers and cleared on thread switch.
+test("REMAINING PLAN block rides after the stable prompt, only with an active plan", () => {
+  assert.match(
+    src,
+    /buildRemainingPlanBlock\(lastPlanRef\.current\)/,
+    "block built from the live plan ref",
+  );
+  const stableIdx = src.indexOf('{ role: "system", content: systemContent }');
+  const blockIdx = src.indexOf("content: planBlock");
+  assert.ok(
+    stableIdx >= 0 && blockIdx > stableIdx,
+    "plan block follows the stable system prompt",
+  );
+  assert.match(
+    src,
+    /capturePlan\(assistantContent/,
+    "plans captured from assistant messages",
+  );
+  assert.match(
+    src,
+    /if \(matched\.length >= 2\) recordPlan\(matched\)/,
+    "two-plus matched steps filters one-off enumerated answers",
   );
 });
 
@@ -194,5 +257,23 @@ test("groupTurns dedupes ask_user results like steps", () => {
     src,
     /cur\.asks\.some\(\s*\(a\) =>\s*a\.content === msg\.content \|\|/,
     "asks dedupe on identical content or tool_call_id",
+  );
+});
+
+// B6b: an ask_user tool result routed only to turn.asks, so the ask's row in
+// Steps stayed "pending" forever. The result must also pair with its step.
+test("ask_user results resolve their step row (B6b)", () => {
+  const askBranch = src.indexOf('if (msg.name === "ask_user")');
+  assert.ok(askBranch > 0, "ask branch present in groupTurns");
+  const branch = src.slice(askBranch, askBranch + 1400);
+  assert.match(
+    branch,
+    /cur\.steps\.find\(\(s\) => s\.id === msg\.tool_call_id\)/,
+    "the ask result finds its step by tool_call_id",
+  );
+  assert.match(
+    branch,
+    /step\.hasResult = true/,
+    "the paired step leaves the pending state",
   );
 });

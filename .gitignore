@@ -416,3 +416,6 @@ report/campaign/
 # Brand assets are shipped app content, not generated artifacts
 !apps/frontend/public/brand/
 .firecrawl/
+
+# Working artifacts (research/audit/design docs stay local)
+.design-audit/

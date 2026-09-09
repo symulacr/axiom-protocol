@@ -3,7 +3,12 @@ import {
   isSponsoredTool,
   resolveAxmTokenAddress,
 } from "@axiom/config/chat-tools";
-import { PAYMENT_PROCESSOR_ABI, ERC20_ABI } from "@axiom/config/abis";
+import {
+  PAYMENT_PROCESSOR_ABI,
+  ERC20_ABI,
+  STRATEGY_OF_CURRENT,
+  STRATEGY_OF_LEGACY,
+} from "@axiom/config/abis";
 import { ADDRESS_REGEX } from "@axiom/config/types/hex";
 import { fetchJson, postJson, resolveTokenId, toolFail } from "../transport.js";
 import { encodeFunctionData, parseAbi, parseUnits } from "viem";
@@ -119,6 +124,8 @@ export async function runEncodeTool(
       return encodeVaultOp("withdraw", tokenId, args, ctx);
     case "pay_for_agent":
       return encodePayForAgent(tokenId, args, ctx);
+    case "set_strategy":
+      return encodeSetStrategy(tokenId, args, ctx);
     case "swap_tokens":
       return encodeSwap(args, ctx);
     case "add_liquidity":
@@ -367,6 +374,103 @@ async function encodeVaultOp(
     // Vault ops are cheap; a flat 0.001 OG ceiling comfortably covers them and
     // matches the backend's sponsor ceiling (env SPONSOR_MAX_GAS_COST_WEI default).
     () => 1_000_000_000_000_000n,
+  );
+}
+
+const STRATEGY_OF_CURRENT_ABI = parseAbi(STRATEGY_OF_CURRENT);
+const STRATEGY_OF_LEGACY_ABI = parseAbi(STRATEGY_OF_LEGACY);
+
+/** Live strategyOf tuple (root + expiry) so omitted fields preserve the
+ *  on-chain strategy: the relay defaults an absent root to ZeroHash, which
+ *  would clear it. Mirrors AgentPage's prefill. orchestrate.ts keeps its own
+ *  root-only read; this one needs the expiry leg, so a shared helper would
+ *  force a wider return shape onto the tick path for no gain there. */
+async function readStrategyTuple(
+  ctx: ToolRuntime,
+  vault: `0x${string}`,
+  tokenId: string,
+): Promise<{ root: string; validUntilDay: string } | null> {
+  const read = ctx.chain?.readContract;
+  if (!read) return null;
+  const id = BigInt(tokenId);
+  try {
+    const r = await read<readonly [string, bigint, bigint, bigint, bigint]>({
+      address: vault,
+      abi: STRATEGY_OF_CURRENT_ABI,
+      functionName: "strategyOf",
+      args: [id],
+    });
+    return { root: r[0], validUntilDay: r[4].toString() };
+  } catch {
+    try {
+      const r = await read<readonly [string, bigint, bigint, bigint]>({
+        address: vault,
+        abi: STRATEGY_OF_LEGACY_ABI,
+        functionName: "strategyOf",
+        args: [id],
+      });
+      return { root: r[0], validUntilDay: "0" }; // legacy vault has no expiry leg
+    } catch {
+      return null;
+    }
+  }
+}
+
+/** set_strategy: vault setStrategy(tokenId, root, dailyLimit, validUntilDay)
+ *  encoded by the backend relay route, wallet-lane only (not sponsored). */
+async function encodeSetStrategy(
+  tokenId: string,
+  args: Record<string, unknown>,
+  ctx: ToolRuntime,
+): Promise<ToolResult> {
+  const dailyLimit = String(args.dailyLimit ?? "").trim();
+  if (!/^\d+(\.\d+)?$/.test(dailyLimit) || Number(dailyLimit) <= 0) {
+    return toolFail("dailyLimit required and must be greater than zero");
+  }
+  if (!(Number(dailyLimit) <= MAX_CHAT_NATIVE)) {
+    return toolFail(
+      `dailyLimit ${dailyLimit} exceeds the chat cap of ${MAX_CHAT_NATIVE} (native OG); ask the user to use the agent page for larger limits`,
+    );
+  }
+  const rootArg = typeof args.root === "string" ? args.root.trim() : "";
+  if (rootArg && !/^0x[0-9a-fA-F]{64}$/.test(rootArg)) {
+    return toolFail("root must be a 0x-prefixed 32-byte hex string");
+  }
+  const dayArg =
+    typeof args.validUntilDay === "string" ? args.validUntilDay.trim() : "";
+  if (dayArg && !/^\d+$/.test(dayArg)) {
+    return toolFail("validUntilDay must be a UTC day index ('0' = no expiry)");
+  }
+
+  const vault = ctx.session.addresses?.vault;
+  const live =
+    (!rootArg || !dayArg) && vault
+      ? await readStrategyTuple(ctx, vault, tokenId)
+      : null;
+
+  const { ok: httpOk, data } = await postJson<{
+    to: string;
+    data: string;
+    value: string;
+  }>(ctx.http, `/v1/agents/${tokenId}/set-strategy`, {
+    root: rootArg || live?.root || undefined,
+    dailyLimit,
+    validUntilDay: dayArg || live?.validUntilDay || "0",
+  });
+  if (!httpOk || !data.to) return toolFail("set_strategy encode fail");
+
+  return executeSponsoredOrWallet(
+    ctx,
+    {
+      to: data.to as `0x${string}`,
+      data: data.data as `0x${string}`,
+      value: BigInt(data.value || "0"),
+    },
+    "set_strategy sign failed",
+    { name: "set_strategy", tokenId, dailyLimit },
+    // A root/limit write is a couple of SSTOREs; the op never enters the
+    // sponsor lane (not in SPONSORED_TOOLS), so this is never spent.
+    () => 200_000n * 2_000_000_000n,
   );
 }
 

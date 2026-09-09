@@ -80,7 +80,9 @@ const CLIENT_ALLOWED_ROUTES: ReadonlyArray<{
     match: (p) =>
       p.startsWith("/v1/relayer/tank/") ||
       p === "/v1/relayer/status" ||
-      p.startsWith("/v1/relayer/faucet/"),
+      p.startsWith("/v1/relayer/faucet/") ||
+      // B2: the browser polls a sponsored op's outcome by id (queue status).
+      p.startsWith("/v1/relayer/op/"),
   },
   { methods: ["POST"], match: (p) => p === "/v1/relayer/sponsor" },
   // Faucet claim (V3 W6-B): relayer-initiated mint, no key material involved.
