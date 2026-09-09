@@ -119,46 +119,61 @@ export async function runReadTool(
         const gasTank = ctx.session.addresses?.gasTank;
         if (!gasTank) return toolFail("GasTank address not configured");
         try {
-          const [balance, grantsUsed, grantsCap, gasGrant] = await Promise.all([
-            ctx.chain.readContract<bigint>({
-              address: gasTank,
-              abi: parseAbi([
-                "function balanceOf(address) view returns (uint256)",
-              ]),
-              functionName: "balanceOf",
-              args: [owner],
-            }),
-            ctx.chain.readContract<bigint>({
-              address: gasTank,
-              abi: parseAbi([
-                "function grantsUsed(address) view returns (uint256)",
-              ]),
-              functionName: "grantsUsed",
-              args: [owner],
-            }),
-            ctx.chain.readContract<bigint>({
-              address: gasTank,
-              abi: parseAbi(["function grantsCap() view returns (uint256)"]),
-              functionName: "grantsCap",
-            }),
-            ctx.chain.readContract<bigint>({
-              address: gasTank,
-              abi: parseAbi(["function gasGrant() view returns (uint256)"]),
-              functionName: "gasGrant",
-            }),
-          ]);
+          const [balance, grantsUsed, grantsCap, gasGrant, reserve] =
+            await Promise.all([
+              ctx.chain.readContract<bigint>({
+                address: gasTank,
+                abi: parseAbi([
+                  "function balanceOf(address) view returns (uint256)",
+                ]),
+                functionName: "balanceOf",
+                args: [owner],
+              }),
+              ctx.chain.readContract<bigint>({
+                address: gasTank,
+                abi: parseAbi([
+                  "function grantsUsed(address) view returns (uint256)",
+                ]),
+                functionName: "grantsUsed",
+                args: [owner],
+              }),
+              ctx.chain.readContract<bigint>({
+                address: gasTank,
+                abi: parseAbi(["function grantsCap() view returns (uint256)"]),
+                functionName: "grantsCap",
+              }),
+              ctx.chain.readContract<bigint>({
+                address: gasTank,
+                abi: parseAbi(["function gasGrant() view returns (uint256)"]),
+                functionName: "gasGrant",
+              }),
+              ctx.chain.readContract<bigint>({
+                address: gasTank,
+                abi: parseAbi(["function reserve() view returns (uint256)"]),
+                functionName: "reserve",
+              }),
+            ]);
           const grantsLeft =
             grantsCap > grantsUsed ? grantsCap - grantsUsed : 0n;
+          const opsLeft = gasGrant > 0n ? Number(balance / gasGrant) : 0;
+          const note =
+            reserve === 0n && grantsUsed < grantsCap
+              ? "lazy grants unavailable: GasTank reserve is unfunded"
+              : opsLeft > 0
+                ? "lazy grants available"
+                : "no ops coverable by the tank balance or lazy grants";
           return {
             ok: true as const,
             content: JSON.stringify({
               address: owner,
-              balance: balance.toString(),
+              tankBalance: balance.toString(),
               grantsUsed: grantsUsed.toString(),
               grantsCap: grantsCap.toString(),
               grantsLeft: grantsLeft.toString(),
               gasGrant: gasGrant.toString(),
-              opsLeft: gasGrant > 0n ? Number(balance / gasGrant) : 0,
+              reserve: reserve.toString(),
+              opsLeft,
+              note,
               // Lazy grant: a depleted tank still sponsors the next op while grants remain.
               sponsored: balance === 0n ? grantsLeft > 0n : true,
             }),

@@ -353,13 +353,14 @@ describe("gas_tank_status read tool", () => {
         if (req.functionName === "grantsUsed") return 1n;
         if (req.functionName === "grantsCap") return 3n;
         if (req.functionName === "gasGrant") return 10_000_000_000_000_000n;
+        if (req.functionName === "reserve") return 5n;
         throw new Error("unexpected read " + req.functionName);
       },
     });
     const result = await runReadTool("gas_tank_status", {}, ctx);
     const parsed = JSON.parse(result.content) as Record<string, unknown>;
     assert.equal(result.ok, true);
-    assert.equal(parsed.balance, "20000000000000000");
+    assert.equal(parsed.tankBalance, "20000000000000000");
     assert.equal(parsed.grantsLeft, "2");
     assert.equal(parsed.opsLeft, 2);
     assert.equal(parsed.sponsored, true);
@@ -376,12 +377,13 @@ describe("gas_tank_status read tool", () => {
         if (req.functionName === "grantsUsed") return 1n;
         if (req.functionName === "grantsCap") return 3n;
         if (req.functionName === "gasGrant") return 10_000_000_000_000_000n;
+        if (req.functionName === "reserve") return 5n;
         throw new Error("unexpected read");
       },
     });
     const result = await runReadTool("gas_tank_status", {}, ctx);
     const parsed = JSON.parse(result.content) as Record<string, unknown>;
-    assert.equal(parsed.balance, "0");
+    assert.equal(parsed.tankBalance, "0");
     assert.equal(parsed.sponsored, true);
   });
 
@@ -392,6 +394,7 @@ describe("gas_tank_status read tool", () => {
         if (req.functionName === "grantsUsed") return 3n;
         if (req.functionName === "grantsCap") return 3n;
         if (req.functionName === "gasGrant") return 10_000_000_000_000_000n;
+        if (req.functionName === "reserve") return 5n;
         throw new Error("unexpected read");
       },
     });
@@ -496,11 +499,9 @@ describe("W9 DeFi encode tools (swap_tokens / add_liquidity / borrow)", () => {
     };
     base.ctx.chain = {
       chainId: 16602,
-      readContract: async (req: {
-        functionName: string;
-        address: string;
-      }) => {
-        if (req.functionName === "allowance") return opts.allowance ?? BigInt(2n ** 96n);
+      readContract: async (req: { functionName: string; address: string }) => {
+        if (req.functionName === "allowance")
+          return opts.allowance ?? BigInt(2n ** 96n);
         throw new Error("unexpected read " + req.functionName);
       },
     } as ToolRuntime["chain"];
@@ -538,7 +539,11 @@ describe("W9 DeFi encode tools (swap_tokens / add_liquidity / borrow)", () => {
             WALLET,
             0n,
             0n,
-            { permitted: { token: WALLET, amount: 0n }, nonce: 0n, deadline: 0n },
+            {
+              permitted: { token: WALLET, amount: 0n },
+              nonce: 0n,
+              deadline: 0n,
+            },
             "0x",
           ],
         }).slice(0, 10),

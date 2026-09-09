@@ -75,22 +75,57 @@ function ageLabel(
   return time.daysAgo(Math.floor(hours / 24));
 }
 
-function eventToTransaction(
+/* Off-chain tick row content straight from the orchestrator payload:
+ * act/hold, the amount when the recommendation carries one, and the model's
+ * reason (clipped so a paragraph never breaks the row). */
+function offchainTickDetail(event: AxiomEvent, label: string): string {
+  const payload = (event.payload ?? {}) as Record<string, unknown>;
+  const parts: string[] = [];
+  if (typeof payload.action === "string" && payload.action) {
+    parts.push(payload.action);
+  }
+  if (payload.amount !== null && payload.amount !== undefined) {
+    parts.push(`amount ${String(payload.amount)}`);
+  }
+  if (typeof payload.reason === "string" && payload.reason) {
+    parts.push(
+      payload.reason.length > 80
+        ? `${payload.reason.slice(0, 80)}…`
+        : payload.reason,
+    );
+  }
+  if (typeof payload.durationMs === "number" && payload.durationMs >= 0) {
+    parts.push(`${payload.durationMs}ms`);
+  }
+  return parts.length > 0 ? `${label}: ${parts.join(", ")}` : label;
+}
+
+/** Row mapper: AxiomEvent → v2 Transaction row. Exported for the guard test
+ * (the off-chain tick contract lives there). */
+export function eventToTransaction(
   event: AxiomEvent,
   time: ReturnType<typeof getCopy>["time"],
   tx: ReturnType<typeof getCopy>["transactions"],
 ): Transaction {
   const tokenId = eventTokenId(event);
-  return {
-    id: `${event.txHash}:${event.logIndex}`,
-    kind: event.eventName || tx.chainEvent,
-    detail: tokenId
+  // blockNumber 0 marks a synthetic orchestrator tick (appended by the tick
+  // endpoint, never mined): the payload carries the real recommendation and
+  // the txHash is a digest, so no explorer link can resolve it.
+  const isOffchainTick = event.blockNumber === 0;
+  const detail = isOffchainTick
+    ? offchainTickDetail(event, tx.eventsOffchainTick)
+    : tokenId
       ? interpolate(tx.eventDetail, {
           agent: tokenId,
           block: event.blockNumber,
         })
-      : interpolate(tx.eventDetailBlockOnly, { block: event.blockNumber }),
+      : interpolate(tx.eventDetailBlockOnly, { block: event.blockNumber });
+  return {
+    id: `${event.txHash}:${event.logIndex}`,
+    kind: event.eventName || tx.chainEvent,
+    detail,
     hash: event.txHash || "—",
+    blockNumber: event.blockNumber,
     age: event.timestamp
       ? ageLabel(
           Math.max(
@@ -205,7 +240,9 @@ function ReceiptDrawer({
   const drawerRef = useRef<HTMLElement>(null);
   useModalDismiss(onClose, drawerRef, { scrollLock: true });
   // U5: chain rows without a txHash synthesize "—" — no explorer link for those.
-  const explorerHref = explorerTx(tx.hash);
+  // Off-chain ticks (blockNumber 0) carry a digest "hash", never a mined one —
+  // an explorer link would 404, so the drawer skips the leg for them too.
+  const explorerHref = tx.blockNumber === 0 ? undefined : explorerTx(tx.hash);
   const recover = isRecoverableTx(tx.state);
   // The receipt's chain readout names the chain the app is configured for —
   // the same source the flow review sheets interpolate (never a second
@@ -357,7 +394,9 @@ function ReceiptDrawer({
                 }
               >
                 {tx.state === "confirmed"
-                  ? txCopy.decodedIndexed
+                  ? tx.blockNumber === 0
+                    ? tx.detail
+                    : txCopy.decodedIndexed
                   : txCopy.awaitingFinalEvidence}
               </dd>
             </div>

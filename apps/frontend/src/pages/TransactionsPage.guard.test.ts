@@ -79,3 +79,92 @@ test("R3: agent cell prints #id for real token ids (0 included), dash otherwise"
     "bare digits are real ids; sentinels and empty print the dash",
   );
 });
+
+// ui-audit event-history fix: blockNumber 0 rows are synthetic orchestrator
+// ticks (appended by /v1/orchestrator/tick, never mined). The row must carry
+// the honest off-chain label plus the real payload content, and the drawer
+// must drop its explorer leg — a digest "hash" would 404 on any explorer.
+import { eventToTransaction } from "./TransactionsPage";
+import { getCopy } from "../lib/copy";
+
+const txCopy = getCopy("en").transactions;
+
+function tickEvent(
+  payload: Record<string, unknown>,
+  blockNumber = 0,
+): Parameters<typeof eventToTransaction>[0] {
+  return {
+    blockNumber,
+    logIndex: 0,
+    txHash: `0x${"ab".repeat(32)}`,
+    chainId: 16661,
+    receivedAt: 0,
+    eventName: "Tick",
+    timestamp: Math.floor(Date.now() / 1000),
+    payload,
+  };
+}
+
+test("blockNumber 0 row renders the off-chain tick label with payload content", () => {
+  const row = eventToTransaction(
+    tickEvent({
+      tokenId: "7",
+      action: "act",
+      amount: 250,
+      reason:
+        "Momentum signal crossed the entry threshold; vault balance covers the position.",
+      durationMs: 1834,
+    }),
+    getCopy("en").time,
+    txCopy,
+  );
+  assert.ok(
+    row.detail.startsWith(txCopy.eventsOffchainTick),
+    `row detail must open with the off-chain label, got: ${row.detail}`,
+  );
+  assert.ok(row.detail.includes("act"), "action present");
+  assert.ok(row.detail.includes("amount 250"), "amount present");
+  assert.ok(
+    row.detail.includes("Momentum signal crossed the entry threshold"),
+    "reason present",
+  );
+  assert.ok(row.detail.includes("1834ms"), "duration present");
+  assert.ok(row.blockNumber === 0, "provenance block 0 carried to the drawer");
+  assert.equal(row.kind, "Tick");
+});
+
+test("off-chain tick reason is clipped at ~80 chars", () => {
+  const long = "x".repeat(200);
+  const row = eventToTransaction(
+    tickEvent({ action: "hold", reason: long }),
+    getCopy("en").time,
+    txCopy,
+  );
+  const reasonPart = row.detail.slice(row.detail.indexOf("x".repeat(10)) - 5);
+  assert.ok(reasonPart.includes("…"), "reason ends with an ellipsis");
+  assert.ok(!row.detail.includes("x".repeat(90)), "reason never fully printed");
+});
+
+test("blockNumber > 0 row rendering is unchanged (agent/block detail)", () => {
+  const row = eventToTransaction(
+    tickEvent({ tokenId: "7" }, 4213),
+    getCopy("en").time,
+    txCopy,
+  );
+  assert.equal(row.detail, "agent #7, block 4213");
+  assert.ok(row.blockNumber === 4213);
+});
+
+test("drawer suppresses the explorer leg for block-0 rows only", () => {
+  // Source guard: the drawer's explorerHref must gate on the synthetic block.
+  assert.match(
+    src,
+    /tx\.blockNumber === 0 \? undefined : explorerTx\(tx\.hash\)/,
+    "explorer leg skipped for off-chain ticks, kept for real txs",
+  );
+  // The Event proof row shows the payload detail instead of the generic
+  // "decoded" line for confirmed off-chain ticks.
+  const eventRow = src.match(/<dt>\{txCopy\.event\}<\/dt>[\s\S]*?<\/dd>/);
+  assert.ok(eventRow, "event proof row present");
+  assert.match(eventRow![0], /tx\.blockNumber === 0/);
+});
