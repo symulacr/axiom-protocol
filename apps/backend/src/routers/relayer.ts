@@ -133,7 +133,7 @@ export interface RelayerRouteDeps {
   queue: RelayerQueue;
   gate: SponsorGate;
   reconcile: ReconcileEngine;
-  /** First-relay axmUSDC faucet (V3 W6-B); optional — routes 503 without it. */
+  /** First-relay W0G wrap-drip faucet (V3 W6-B); optional — routes 503 without it. */
   faucet?: Faucet;
   /** Broadcast leg (relayer key signs relay()); injected for test mocking. */
   submit: RelaySubmitter;
@@ -501,8 +501,8 @@ export function registerRelayerRoutes(
       }
 
       // V3 W6-B: first sponsored relay from this address → enqueue the one-time
-      // axmUSDC drip (relayer-initiated mint, no user signature). Fire-and-
-      // forget: a failure here never blocks the user op.
+      // W0G wrap-drip (relayer wraps native → transfers W0G, no user signature).
+      // Fire-and-forget: a failure here never blocks the user op.
       if (deps.faucet) {
         void deps.faucet.dripOnFirstRelay(recovered);
       }
@@ -530,7 +530,7 @@ export function registerRelayerRoutes(
     config,
   );
 
-  // ── V3 W6-B faucet (testnet mock-token drip) ──────────────────────────
+  // ── V3 W6-B faucet (W0G wrap-drip) ─────────────────────────────────────
   // Two registrations: createRoute's routeFn mounts ONE method per call, so
   // GET and POST are separate createRoute invocations on the same path.
   const faucetGuard = (): Faucet => {
@@ -546,7 +546,7 @@ export function registerRelayerRoutes(
       // routes); malformed addresses are rejected in the handler below.
       "/v1/relayer/faucet/:address",
       "relayer",
-      "Testnet axmUSDC faucet eligibility for an address (read route)",
+      "W0G wrap-drip faucet eligibility for an address (read route)",
       { method: "get" },
     ),
     async (_parsed, req, res) => {
@@ -555,14 +555,14 @@ export function registerRelayerRoutes(
         faucet = faucetGuard();
       } catch {
         // deps absent = relayer mode off; deps.faucet absent = relayer up but
-        // the payment-token address was never configured, so the Faucet dep
-        // was never constructed (see server.ts).
+        // the W0G address was never configured (neither paymentToken nor
+        // swapPairToken), so the Faucet dep was never constructed (see server.ts).
         return sendError(
           res,
           HTTP.SERVICE_UNAVAILABLE,
           !deps
             ? "relayer not enabled (AXIOM_RELAYER_MODE=off or gasTank unset)"
-            : "faucet unavailable (payment token address not configured — set AXIOM_PAYMENT_TOKEN)",
+            : "faucet unavailable (W0G token address not configured — set AXIOM_PAYMENT_TOKEN or AXIOM_SWAP_PAIR_TOKEN)",
           "ADDRESS_NOT_CONFIGURED",
         );
       }
@@ -584,7 +584,7 @@ export function registerRelayerRoutes(
     routeMeta(
       "/v1/relayer/faucet/:address",
       "relayer",
-      "Claim the one-time axmUSDC drip (relayer-initiated mint; no user signature)",
+      "Claim the one-time W0G wrap-drip (relayer wraps native → transfers W0G; no user signature)",
       {},
     ),
     async (_parsed, req, res) => {
@@ -598,7 +598,7 @@ export function registerRelayerRoutes(
           HTTP.SERVICE_UNAVAILABLE,
           !deps
             ? "relayer not enabled (AXIOM_RELAYER_MODE=off or gasTank unset)"
-            : "faucet unavailable (payment token address not configured — set AXIOM_PAYMENT_TOKEN)",
+            : "faucet unavailable (W0G token address not configured — set AXIOM_PAYMENT_TOKEN or AXIOM_SWAP_PAIR_TOKEN)",
           "ADDRESS_NOT_CONFIGURED",
         );
       }

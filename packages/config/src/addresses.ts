@@ -7,6 +7,7 @@ export type AddressName =
   | "paymentProcessor"
   | "paymentToken"
   | "delegationRegistry"
+  | "swapPairToken"
   | "gasTank";
 
 const ENV_VAR_NAMES: Record<AddressName, string[]> = {
@@ -20,6 +21,7 @@ const ENV_VAR_NAMES: Record<AddressName, string[]> = {
   ],
   paymentToken: ["AXIOM_PAYMENT_TOKEN", "AXIOM_MOCK_USDC_ADDRESS"],
   delegationRegistry: ["AXIOM_DELEGATION_REGISTRY_ADDRESS"],
+  swapPairToken: ["AXIOM_SWAP_PAIR_TOKEN", "AXIOM_WRAPPED_OG"],
   gasTank: ["AXIOM_GAS_TANK_ADDRESS"],
 };
 
@@ -51,6 +53,7 @@ export function resolveAddress(
 const OPTIONAL_ADDRESS_NAMES: readonly AddressName[] = [
   "delegationRegistry",
   "gasTank",
+  "swapPairToken",
 ];
 
 export function resolveAddressOptional(
