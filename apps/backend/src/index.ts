@@ -58,6 +58,9 @@ async function resolveLiveAddresses(
     // V3 W5-B: GasTank is optional until lane A's deploy lane publishes it —
     // omitted keeps relayer routes 503ing cleanly instead of failing boot.
     gasTank: resolveAddressOptional("gasTank", backendEnv),
+    // W0G wrap-drip faucet (2026-09): the faucet resolves paymentToken ??
+    // swapPairToken — optional, empty-code omission keeps the honest 503.
+    swapPairToken: resolveAddressOptional("swapPairToken", backendEnv),
   };
   const live: Partial<typeof resolved> = {};
   // Sequential with one retry: drpc's free plan rejects JSON-RPC batches >3, and
