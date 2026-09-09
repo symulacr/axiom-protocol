@@ -259,7 +259,15 @@ test("settlementSkipReason reports no strategy set for zero root", () => {
 
 test("settlementSkipReason reports Merkle proof producer requirement for non-zero root", () => {
   const reason = settlementSkipReason("0xabc");
-  assert.ok(reason.includes("Merkle proof producer"), `reason was: ${reason}`);
+  assert.ok(reason.includes("no execution plan"), `reason was: ${reason}`);
+  assert.ok(reason.includes("strategy root is set"), `reason was: ${reason}`);
+});
+
+test("settlementSkipReason distinguishes missing plan from missing strategy", () => {
+  const noPlan = settlementSkipReason("0x" + "cd".repeat(32));
+  const noStrategy = settlementSkipReason(ZERO_ROOT);
+  assert.notEqual(noPlan, noStrategy);
+  assert.ok(noStrategy.includes("no strategy"), `reason was: ${noStrategy}`);
 });
 
 test("StrategyRunner.runTick with manual:e2e-mock skips inference and reports a hold tick", async () => {
@@ -322,7 +330,7 @@ test(
       assert.equal(result.onchain.vaultBalance, 1n);
       assert.equal(result.execution?.status, "skipped");
       assert.ok(
-        result.execution?.reason?.includes("Merkle proof producer"),
+        result.execution?.reason?.includes("no execution plan"),
         `reason was: ${result.execution?.reason}`,
       );
     });
@@ -346,7 +354,7 @@ test(
       const result = await runner.runTick(strategy, signal);
       assert.equal(result.recommendation.action, "act");
       assert.equal(result.execution?.status, "skipped");
-      assert.equal(result.execution?.reason, "no strategy root set on vault");
+      assert.equal(result.execution?.reason, "no strategy set on vault");
     });
   }),
 );
@@ -376,6 +384,33 @@ test(
       );
       assert.equal(result.execution?.action, "act");
       assert.equal(result.execution?.target, NFT_ADDR);
+    });
+  }),
+);
+
+test(
+  "StrategyRunner.runTick accepts an EMPTY merkleProof for a leaf-as-root strategy",
+  withDirectComputeEnv(async () => {
+    const runner = makeVaultRunner();
+    const strategy = makeStrategy({
+      executionPlan: {
+        target: NFT_ADDR,
+        value: 0n,
+        data: "0x1234",
+        merkleProof: [],
+      },
+    });
+    const signal = marketSignal({ trend: "up" });
+    await withHttpStub(vaultRpc(NON_ZERO_ROOT), ACT_OUTPUT, async () => {
+      const result = await runner.runTick(strategy, signal);
+      assert.equal(result.recommendation.action, "act");
+      assert.equal(result.execution?.status, "executed");
+      assert.equal(result.execution?.success, true);
+      assert.match(
+        result.execution?.txHash ?? "",
+        /^0x[0-9a-fA-F]{64}$/,
+        "empty-proof plan broadcasts",
+      );
     });
   }),
 );

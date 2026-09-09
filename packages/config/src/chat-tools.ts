@@ -574,19 +574,33 @@ export const CHAT_TOOL_CATALOG = [
     name: "execute_tick",
     class: "orchestrate",
     label: "Execute Tick",
-    hint: "Run a live strategy tick for an agent through the orchestrator (executes the active strategy against the vault). tokenId optional; defaults to the session's last agent. Dry-run first with simulate_tick when unsure",
+    hint: "Run a live strategy tick for an agent through the orchestrator (executes the active strategy against the vault). tokenId optional; defaults to the session's last agent. Dry-run first with simulate_tick when unsure. Settlement requires the vault's strategy root to authorize this plan — for single-action (leaf-as-root) strategies pass plan with merkleProof implied empty; the server settles with the plan's exact target/value, and only if it matches the strategy root the owner signed",
     requiresTokenId: false,
     friction: "high",
-    parameters: params({ ...optionalTokenIdParam }),
+    parameters: params({
+      ...optionalTokenIdParam,
+      plan: {
+        type: "object",
+        description:
+          'Optional execution plan to settle on tick: target (address), value (human OG, e.g. "0.005"), data (optional calldata hex). Leaf-as-root strategies verify with an empty proof — implied, never sent',
+      },
+    }),
   }),
   tool({
     name: "simulate_tick",
     class: "orchestrate",
     label: "Simulate Tick",
-    hint: "Dry-run tick preflight (vault balance + strategy) without live compute. tokenId optional; defaults to the session's last agent",
+    hint: "Dry-run tick preflight (vault balance + strategy) without live compute. tokenId optional; defaults to the session's last agent. A passed plan is preflighted the same way but never settles",
     requiresTokenId: false,
     friction: "low",
-    parameters: params({ ...optionalTokenIdParam }),
+    parameters: params({
+      ...optionalTokenIdParam,
+      plan: {
+        type: "object",
+        description:
+          "Optional execution plan to preflight: target (address), value (human OG), data (optional calldata hex)",
+      },
+    }),
   }),
   tool({
     name: "mint_agent",

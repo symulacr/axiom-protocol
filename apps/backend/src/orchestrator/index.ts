@@ -346,13 +346,10 @@ export class StrategyRunner {
     const vaultStrategyRoot = vaultStrategy.root;
 
     const plan = strategy.executionPlan;
-    if (
-      !plan ||
-      !plan.target ||
-      !Array.isArray(plan.merkleProof) ||
-      plan.merkleProof.length === 0
-    ) {
-      log.info("settleOnChain skipped (no executionPlan / Merkle proof)", {
+    if (!plan || !plan.target) {
+      // Empty merkleProof is valid (leaf-as-root strategies verify with []); only a
+      // missing plan or missing plan.target skips here.
+      log.info("settleOnChain skipped (no executionPlan supplied)", {
         action,
         tokenId: strategy.agentTokenId.toString(),
         root: vaultStrategyRoot,
@@ -369,7 +366,7 @@ export class StrategyRunner {
     ) {
       return {
         status: "skipped",
-        reason: "no strategy root set on vault",
+        reason: settlementSkipReason(vaultStrategyRoot),
       };
     }
 
@@ -600,7 +597,7 @@ export function settlementSkipReason(root: string): string {
   if (root === ZERO_DATA_ROOT) {
     return "no strategy set on vault";
   }
-  return "settlement requires an off-chain Merkle proof producer (not available)";
+  return "no execution plan supplied — the strategy root is set but nothing authorized to settle was provided";
 }
 
 export function parseRecommendation(

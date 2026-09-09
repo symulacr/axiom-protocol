@@ -78,6 +78,39 @@ describe("buildTickBody", () => {
     assert.equal("computeModel" in result, false);
     assert.equal(result.computeModel, undefined);
   });
+
+  it("maps the plan arg to an executionPlan with an empty merkleProof (leaf-as-root)", () => {
+    const result = buildTickBody(
+      {
+        tokenId: "7",
+        plan: {
+          target: "0x" + "11".repeat(20),
+          value: "0.005",
+          data: "0x",
+        },
+      },
+      ctx,
+    );
+    const plan = result.executionPlan;
+    assert.ok(plan, "executionPlan present");
+    assert.equal(plan!.target, "0x" + "11".repeat(20));
+    assert.equal(plan!.value, "5000000000000000");
+    assert.equal(plan!.data, "0x");
+    assert.deepEqual(plan!.merkleProof, []);
+  });
+
+  it("omits executionPlan when no plan arg is passed", () => {
+    const result = buildTickBody({ tokenId: "7" }, ctx);
+    assert.equal("executionPlan" in result, false);
+  });
+
+  it("omits executionPlan when the plan arg is incomplete (no value)", () => {
+    const result = buildTickBody(
+      { tokenId: "7", plan: { target: "0x" + "11".repeat(20) } },
+      ctx,
+    );
+    assert.equal("executionPlan" in result, false);
+  });
 });
 
 describe("runOrchestrateTool", () => {
@@ -174,6 +207,52 @@ describe("runOrchestrateTool", () => {
     assert.equal(captured.body?.agentNft, AGENT_NFT);
     assert.equal(captured.body?.agentTokenId, "3");
     assert.equal(captured.body?.computeModel, "openai/gpt-4o");
+  });
+
+  it("execute_tick POSTs executionPlan with an empty merkleProof when a plan arg is given", async () => {
+    const captured: { body?: Record<string, unknown> } = {};
+    const res = await runOrchestrateTool(
+      "execute_tick",
+      {
+        tokenId: "3",
+        plan: { target: VAULT, value: "0.005" },
+      },
+      {
+        http: {
+          fetch: async (_path: string, init?: { body?: string }) => {
+            captured.body = JSON.parse(String(init?.body ?? "{}")) as Record<
+              string,
+              unknown
+            >;
+            return {
+              ok: true,
+              status: 200,
+              text: async () => JSON.stringify({ ok: true, executed: true }),
+              json: async () => ({ ok: true, executed: true }),
+            };
+          },
+        },
+        chain: readyChain(),
+        session: {
+          chainId: 1,
+          lastTokenId: "3",
+          addresses: { vault: VAULT, agentNft: AGENT_NFT },
+        },
+        mode: "encode-only",
+      } as unknown as ToolRuntime,
+    );
+    assert.equal(res.ok, true);
+    const plan = captured.body?.executionPlan as
+      | {
+          target: string;
+          value: string;
+          merkleProof: string[];
+        }
+      | undefined;
+    assert.ok(plan, "executionPlan in POST body");
+    assert.equal(plan.target, VAULT);
+    assert.equal(plan.value, "5000000000000000");
+    assert.deepEqual(plan.merkleProof, []);
   });
 
   it("execute_tick fails with the shared envelope when the HTTP call fails", async () => {
