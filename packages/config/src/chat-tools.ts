@@ -5,9 +5,16 @@ export type ChatToolClass =
 
 export type ChatToolFriction = "low" | "medium" | "high";
 
+type ToolParam = {
+  type: string;
+  description?: string;
+  /** Closed value set (JSON Schema `enum`); flows verbatim into the tools API payload. */
+  enum?: readonly string[];
+};
+
 type ChatToolJsonSchema = {
   type: "object";
-  properties: Record<string, { type: string; description?: string }>;
+  properties: Record<string, ToolParam>;
   required?: readonly string[];
 };
 
@@ -59,8 +66,6 @@ function tool<N extends string>(
 ): ChatToolSpec & { name: N } {
   return makeTool(def.class, def);
 }
-
-type ToolParam = { type: string; description?: string };
 
 function params(
   properties: Record<string, ToolParam>,
@@ -177,16 +182,26 @@ const SKILL_TOOL_DEFS = [
   skill({
     name: "evm_wallet",
     label: "EVM Wallet",
-    hint: "Manage EVM wallet balance/network for an EOA (you have the wallet address)",
+    hint: "Native balance for an EVM address, plus the ERC-20 balance when a token contract address is also passed",
     friction: "low",
-    parameters: params({ address: addressParam }, ["address"]),
+    parameters: params(
+      {
+        address: addressParam,
+        token: {
+          type: "string",
+          description:
+            "Optional ERC-20 contract address to also read balanceOf",
+        },
+      },
+      ["address"],
+    ),
     capabilities: ["evm", "wallet"],
     ...providerChainContext,
   }),
   skill({
     name: "evm_multichain",
     label: "EVM Multichain",
-    hint: "Query and interact across multiple EVM chains",
+    hint: "Native balances for one EVM address across several chains in one call (read-only)",
     friction: "medium",
     parameters: params({ address: addressParam }, ["address"]),
     capabilities: ["evm", "multichain"],
@@ -195,7 +210,7 @@ const SKILL_TOOL_DEFS = [
   skill({
     name: "evm_tx",
     label: "EVM Transaction",
-    hint: "Build, sign, and broadcast EVM transactions",
+    hint: "Fetch an EVM transaction and its receipt by hash (status, block, gas used). Read-only lookup; it cannot create, sign, or send transactions",
     requiresWallet: true,
     friction: "medium",
     parameters: params(
@@ -208,7 +223,7 @@ const SKILL_TOOL_DEFS = [
   skill({
     name: "evm_token",
     label: "EVM Token",
-    hint: "ERC-20/721 balances & transfers when you have the TOKEN contract address",
+    hint: "ERC-20 token metadata (name, symbol, decimals) plus an optional CoinGecko price via coingeckoId. For balances use evm_wallet",
     friction: "low",
     parameters: params(
       {
@@ -226,7 +241,7 @@ const SKILL_TOOL_DEFS = [
   skill({
     name: "evm_gas",
     label: "EVM Gas",
-    hint: "Estimate gas prices and optimize transaction fees",
+    hint: "Current gas price and estimated transaction cost (in wei and USD) for a gas limit",
     friction: "low",
     parameters: params(
       {
@@ -243,7 +258,7 @@ const SKILL_TOOL_DEFS = [
   skill({
     name: "evm_whale",
     label: "EVM Whale",
-    hint: "Track large EVM wallet movements and whale activity",
+    hint: "Scan a block range for ERC-20 Transfer events above a wei threshold (whale tracking)",
     friction: "medium",
     parameters: params(
       {
@@ -260,7 +275,7 @@ const SKILL_TOOL_DEFS = [
   skill({
     name: "evm_contract",
     label: "EVM Contract",
-    hint: "Read and write to EVM smart contracts via ABI",
+    hint: "Inspect an address for contract bytecode and resolve its EIP-1967 proxy implementation. Read-only; does not call contract methods",
     friction: "medium",
     parameters: params(
       { address: { type: "string", description: "Contract address" } },
@@ -272,7 +287,7 @@ const SKILL_TOOL_DEFS = [
   skill({
     name: "evm_allowance",
     label: "EVM Allowance",
-    hint: "ERC-20 approvals/allowances for a token+owner pair (owner address required)",
+    hint: "Check an owner address's ERC-20 allowances for known DEX spender contracts (approval audit)",
     requiresWallet: true,
     friction: "medium",
     parameters: params(
@@ -288,7 +303,7 @@ const SKILL_TOOL_DEFS = [
   skill({
     name: "unbroker_simulate",
     label: "Unbroker Simulate",
-    hint: "Simulate an unbroker trade before execution",
+    hint: "Simulate an ERC-7857 agent transfer (tokenId → to) without sending: reports the current owner and data hash",
     requiresTokenId: true,
     friction: "low",
     parameters: params({ ...tokenTransferProps }, ["tokenId", "to"]),
@@ -296,7 +311,7 @@ const SKILL_TOOL_DEFS = [
   skill({
     name: "unbroker_route",
     label: "Unbroker Route",
-    hint: "Find optimal swap routes across DEX aggregators",
+    hint: "Compare ERC-7857 transfer paths (direct vs oracle re-key) with gas estimates",
     requiresTokenId: true,
     friction: "low",
     parameters: params({ ...tokenTransferProps }, ["tokenId", "to"]),
@@ -304,7 +319,7 @@ const SKILL_TOOL_DEFS = [
   skill({
     name: "unbroker_analyze",
     label: "Unbroker Analyze",
-    hint: "Analyze swap quotes, slippage, and MEV risk",
+    hint: "Score a proposed ERC-7857 transfer for safety: validates the access proof against the agent's data hash and expiry",
     requiresTokenId: true,
     friction: "medium",
     parameters: params(
@@ -349,10 +364,12 @@ const SKILL_TOOL_DEFS = [
         range: {
           type: "string",
           description: "1d,5d,1mo,3mo,6mo,1y,5y,max (default 1y)",
+          enum: ["1d", "5d", "1mo", "3mo", "6mo", "1y", "5y", "max"],
         },
         interval: {
           type: "string",
           description: "1m,5m,15m,1d,1wk,1mo (default 1d)",
+          enum: ["1m", "5m", "15m", "1d", "1wk", "1mo"],
         },
       },
       ["symbol"],
@@ -376,7 +393,7 @@ const SKILL_TOOL_DEFS = [
   skill({
     name: "stocks_crypto",
     label: "Stocks Crypto",
-    hint: "Get cryptocurrency price quotes and market data",
+    hint: "Intraday crypto pair quote (1-day window, 5-minute bars; defaults to BTC-USD). For equities or daily bars use stocks_quote",
     friction: "low",
     parameters: params(
       {
@@ -470,6 +487,7 @@ const SKILL_TOOL_DEFS = [
         type: {
           type: "string",
           description: "o=opinions, r=recap (default o)",
+          enum: ["o", "r"],
         },
         limit: { type: "number", description: "1-20 (default 10)" },
       },
@@ -518,7 +536,7 @@ export const CHAT_TOOL_CATALOG = [
     name: "event_history",
     class: "read",
     label: "Event History",
-    hint: "Query recent on-chain events (Tick, Transfer, etc.)",
+    hint: "Query recent on-chain protocol events (Tick, Transfer, etc.), optionally filtered by event name. Protocol-wide feed, not scoped to one agent",
     context: "on-chain read (events)",
     capabilities: ["read", "events"],
     friction: "low",
@@ -556,7 +574,7 @@ export const CHAT_TOOL_CATALOG = [
     name: "execute_tick",
     class: "orchestrate",
     label: "Execute Tick",
-    hint: "Execute a strategy tick for an agent (simulation via orchestrator). tokenId optional; defaults to the session's last agent",
+    hint: "Run a live strategy tick for an agent through the orchestrator (executes the active strategy against the vault). tokenId optional; defaults to the session's last agent. Dry-run first with simulate_tick when unsure",
     requiresTokenId: false,
     friction: "high",
     parameters: params({ ...optionalTokenIdParam }),
@@ -615,6 +633,7 @@ export const CHAT_TOOL_CATALOG = [
         tokenIn: {
           type: "string",
           description: "Pool token paid in: 'usdc' or 'weth'",
+          enum: AXM_SWAP_SYMBOLS,
         },
         amountIn: {
           type: "string",
