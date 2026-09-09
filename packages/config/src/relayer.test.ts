@@ -22,12 +22,10 @@ describe("relayer config surface (V3 W5-B)", () => {
   });
 
   test("SPONSORED_TOOLS set is exactly {withdraw, pay_for_agent} + the W9 DeFi ops", () => {
-    assert.deepEqual([...SPONSORED_TOOLS], [
-      "withdraw",
-      "pay_for_agent",
-      "swap_tokens",
-      "borrow",
-    ]);
+    assert.deepEqual(
+      [...SPONSORED_TOOLS],
+      ["withdraw", "pay_for_agent", "swap_tokens", "borrow"],
+    );
     assert.equal(isSponsoredTool("withdraw"), true);
     assert.equal(isSponsoredTool("pay_for_agent"), true);
     assert.equal(isSponsoredTool("mint_agent"), false);
@@ -41,7 +39,10 @@ describe("relayer config surface (V3 W5-B)", () => {
       assert.equal(spec.class, "encode", `${name} is encode-class`);
       assert.equal(spec.requiresWallet, true, `${name} requires a wallet`);
       assert.equal(spec.friction, "medium", `${name} friction medium`);
-      assert.ok(spec.hint.includes("GasTank"), `${name} hint documents the GasTank lane`);
+      assert.ok(
+        spec.hint.includes("GasTank"),
+        `${name} hint documents the GasTank lane`,
+      );
     }
     assert.ok(getChatToolSpec("add_liquidity")!.hint.includes("Permit2"));
     assert.equal(isSponsoredTool("swap_tokens"), true);
@@ -62,13 +63,21 @@ describe("relayer config surface (V3 W5-B)", () => {
     const weth = "0x62e5ead40c2105d44a705e87f370776bd12bf6ec";
     assert.equal(resolveAxmTokenAddress("usdc", usdc), usdc);
     assert.equal(resolveAxmTokenAddress("USDC", usdc), usdc);
-    assert.equal(resolveAxmTokenAddress("weth", usdc, { AXIOM_SWAP_PAIR_TOKEN: weth }), weth);
+    assert.equal(
+      resolveAxmTokenAddress("weth", usdc, { AXIOM_SWAP_PAIR_TOKEN: weth }),
+      weth,
+    );
     // unconfigured sides → null, never a fabricated address
     assert.equal(resolveAxmTokenAddress("weth", usdc, {}), null);
     assert.equal(resolveAxmTokenAddress("usdc", undefined), null);
-    assert.equal(resolveAxmTokenAddress("btc", usdc, { AXIOM_SWAP_PAIR_TOKEN: weth }), null);
     assert.equal(
-      resolveAxmTokenAddress("weth", usdc, { AXIOM_SWAP_PAIR_TOKEN: "not-an-address" }),
+      resolveAxmTokenAddress("btc", usdc, { AXIOM_SWAP_PAIR_TOKEN: weth }),
+      null,
+    );
+    assert.equal(
+      resolveAxmTokenAddress("weth", usdc, {
+        AXIOM_SWAP_PAIR_TOKEN: "not-an-address",
+      }),
       null,
     );
   });
@@ -80,17 +89,17 @@ describe("relayer config surface (V3 W5-B)", () => {
     assert.equal(dflt.sponsorRatePerMin, 6);
     assert.equal(dflt.sponsorMaxGasCostWei, 1_000_000_000_000_000n);
     assert.equal(dflt.sponsorMaxInflightPerUser, 2);
-    assert.equal(dflt.faucetAmountUsdc, 1_000_000_000n);
+    assert.equal(dflt.faucetAmountWei, 10_000_000_000_000_000n);
     const env = getRelayerConfig({
       AXIOM_RELAYER_INTERVAL_MS: "5000",
       AXIOM_RELAYER_SPONSOR_RATE_PER_MIN: "10",
       AXIOM_RELAYER_SPONSOR_MAX_GAS_COST_WEI: "2000000000000000",
-      AXIOM_FAUCET_AMOUNT_USDC: "2000000000",
+      AXIOM_FAUCET_AMOUNT_WEI: "20000000000000000",
     });
     assert.equal(env.intervalMs, 5_000);
     assert.equal(env.sponsorRatePerMin, 10);
     assert.equal(env.sponsorMaxGasCostWei, 2_000_000_000_000_000n);
-    assert.equal(env.faucetAmountUsdc, 2_000_000_000n);
+    assert.equal(env.faucetAmountWei, 20_000_000_000_000_000n);
   });
 
   test("faucet kill-switch defaults on and honors AXIOM_FAUCET_ENABLED=false", () => {

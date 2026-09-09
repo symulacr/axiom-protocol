@@ -184,13 +184,22 @@ export async function runReadTool(
       return { ok: true as const, content: JSON.stringify(data) };
     }
     case "faucet_status": {
-      // Testnet axmUSDC faucet (V3 W6-B): eligibility read for the session wallet.
+      // W0G wrap-drip faucet: eligibility + already-granted report for the session wallet.
       const owner = ctx.session.walletAddress;
       if (!owner) return toolFail("Wallet not connected");
       const { ok: facuetOk, data } = await fetchJson<{
         eligible?: boolean;
+        alreadyGranted?: boolean;
+        grantedBalance?: string;
         amount?: string;
         token?: string;
+        tokenSymbol?: string;
+        relayGrants?: {
+          grantBalance?: string;
+          grantsUsed?: string;
+          grantsCap?: string;
+          gasGrant?: string;
+        };
       }>(ctx.http, `/v1/relayer/faucet/${owner}`);
       if (!facuetOk) {
         return toolFail(
