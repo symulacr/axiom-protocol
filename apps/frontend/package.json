@@ -4,13 +4,13 @@
   "private": true,
   "type": "module",
   "packageManager": "bun@1.4.0",
-  "description": "Axiom Protocol iNFT agent dashboard — Bun + React 19 + wagmi v3",
+  "description": "Axiom Protocol iNFT agent dashboard \u2014 Bun + React 19 + wagmi v3",
   "scripts": {
     "dev": "bun --hot run dev.mjs",
     "build": "tsc --project tsconfig.json && bun build.mjs",
     "preview": "bun dev.mjs",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint src",
+    "lint": "eslint --config ../../config/eslint.config.js src",
     "coverage-status": "bun run --filter @axiom/backend coverage-status --manifest frontend-prod",
     "test": "bun test src"
   },

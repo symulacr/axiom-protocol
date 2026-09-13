@@ -14,7 +14,7 @@
     "dev": "bun run src/index.ts",
     "test": "AXIOM_API_KEY= AXIOM_CLIENT_API_KEY= bun test --parallel --max-concurrency=1",
     "test:openapi": "bun test src/server/openapi-wiring.test.ts",
-    "lint": "eslint src",
+    "lint": "eslint --config ../../config/eslint.config.js src",
     "typecheck": "tsc --noEmit",
     "typecheck:e2e": "tsc --project tsconfig.e2e.json",
     "pre-run-e2e": "bun run --filter @axiom/chat-runtime build && bun run build",
