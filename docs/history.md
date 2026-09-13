@@ -6,7 +6,7 @@ narratives verbatim so nothing is lost when the README stays current-only.
 
 ## What V2 changed (2026-08 era)
 
-Fresh deploy per [ADR 004](adr/004-contract-rewrite-plan.md). Every item below is a
+Fresh deploy per ADR 004. Every item below is a
 closed audit finding, proven by test.
 
 | Surface | Before | Now |
