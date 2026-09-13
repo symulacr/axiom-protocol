@@ -28,7 +28,8 @@ evm_version = "cancun"
 # experimental SSA stack-spilling backend. Keep the Cancun pin: 0.8.31+ defaults to Osaka.
 solc = "0.8.36"
 
-# Min runs = smallest bytecode. 0G has zero gas fees, so runtime gas cost is irrelevant.
+# Min runs = smallest bytecode — cheapest deploy calldata and smallest on-chain code.
+# (The old "0G has zero gas fees" rationale was testnet-era; Aristotle mainnet charges real gas.)
 optimizer_runs = 1
 bytecode_hash = "none"
 

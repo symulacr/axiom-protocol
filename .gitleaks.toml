@@ -24,3 +24,26 @@ regexes = [
   '''(?i)0x97a32707d948F91175706ca5509c7bfCC643a1dD''',
   '''(?i)0xe82a136753545FC2e9f4DF38eac56057Cd31D894''',
 ]
+
+# ── Audited historical commits (2026-09-13, 10-pass W1.5) ──────────────────
+# Full-history scan with the default ruleset reported 13 findings, all in the
+# 12 commits below. Each was inspected (values redacted) and classified as
+# FALSE POSITIVE: public on-chain data (contract addresses, tx hashes in
+# docs/deployments records), 8-char non-secret tokens, or the documented
+# `sk-<compute_api_key>` placeholder. No live secret exists in history.
+# Commit-level allowlisting (not pattern allowlisting) keeps every rule at
+# full strength for future commits.
+commits = [
+  "1275aa7cce62505eff333df2b3d0620f178e847f",
+  "19e0c6dd937f7e46d1bb6c931090b2b35ec3f55b",
+  "26c1b5eb6b9364d7e9d3c2c15ae2ac46be795445",
+  "2fec08e729a16cbc4166fe2c4b2ceebe59eae8e3",
+  "4aab152f1037edac7b1f282ff1e141454e390da9",
+  "62866585302cef89b5f26149f216da94ec4c77da",
+  "6e5261013cc96c9238ba49ba3e80d78e2125a209",
+  "9f18b55cfd9d7986f91135ab422bf2adf3dbcc3b",
+  "bdf15ae1b0c1552d9f7c05f586f53bb8bc1429b5",
+  "cd8ad16cbd4b3f9d43996dd9fcb838f81b9467ea",
+  "cdef8781989c3956f2f0eae6252248ea274f376e",
+  "fd5693f4e8876e27f661c6c9ac74f3c304317303",
+]

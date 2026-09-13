@@ -4,6 +4,7 @@ import type { EncryptionOption } from "@0gfoundation/0g-storage-ts-sdk";
 import { getBytes, keccak256, toUtf8Bytes, type Signer } from "ethers";
 import type { Hex } from "viem";
 import { existsSync, readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
 import {
   dataFilePath,
   atomicWriteFileSync,
@@ -49,50 +50,6 @@ export class WrongKeyOrCorruptError extends Error {
  */
 const STORAGE_CANARY_PREFIX = toUtf8Bytes("AXIOM1");
 
-/**
- * Roots uploaded by a canary-era adapter (this file). A registered root whose downloaded
- * bytes LACK the canary is proof of a wrong key or corruption → typed error. Roots absent
- * from the registry are legacy blobs (uploaded before the canary existed) — their plaintext
- * (e.g. deploy-plane AES-GCM app ciphertext) is legitimately canary-free, so they pass
- * through rather than false-throwing. Same data dir as the transport key; single-instance
- * backend per docs. Persisted merges may drop roots under concurrent uploads (fail-open:
- * a dropped root is treated as legacy, never as a false wrong-key signal).
- */
-const CANARY_REGISTRY_FILE = dataFilePath("storage-canary-roots.json");
-
-/**
- * True under `bun test` (Bun.main is the .test.ts entry) or the explicit BUN_TEST=1
- * convention — the BUN_TEST env var alone is not set by bun ≥1.4 test runner.
- */
-function isTestRun(): boolean {
-  if (process.env.BUN_TEST === "1") return true;
-  const main = (globalThis as { Bun?: { main?: string } }).Bun?.main;
-  return /(\.test|\.spec)\.[cm]?[jt]sx?$/.test(main ?? "");
-}
-
-function loadCanaryRegistry(file: string): Set<string> {
-  try {
-    const parsed = JSON.parse(readFileSync(file, "utf-8")) as {
-      canaryRoots?: unknown;
-    };
-    if (!Array.isArray(parsed.canaryRoots)) return new Set();
-    return new Set(
-      parsed.canaryRoots
-        .filter((item): item is string => typeof item === "string")
-        .map((item) => item.toLowerCase()),
-    );
-  } catch {
-    return new Set();
-  }
-}
-
-function persistCanaryRegistry(file: string, roots: Set<string>): void {
-  // Re-read before writing so concurrently-uploading instances merge instead of clobber.
-  const merged = loadCanaryRegistry(file);
-  for (const root of roots) merged.add(root);
-  atomicWriteFileSync(file, JSON.stringify({ canaryRoots: [...merged] }));
-}
-
 /** True when `data` starts with the adapter's canary magic. */
 function hasCanaryPrefix(data: Uint8Array): boolean {
   if (data.length < STORAGE_CANARY_PREFIX.length) return false;
@@ -110,20 +67,22 @@ function withCanaryPrefix(blob: Uint8Array): Uint8Array {
 }
 
 /**
- * Wrong-key canary on a freshly decrypted download (RD2 S4). Semantics:
- * - Root registered as canary-era (uploaded via this adapter) and bytes lack the AXIOM1
- *   magic → wrong transport key or corrupted blob → WrongKeyOrCorruptError (the SDK's
- *   CTR decrypt has no authentication, so this content check is the only signal).
+ * Wrong-key canary on a freshly decrypted download (RD2 S4, made stateless by OPT-09).
+ * Semantics:
+ * - Blob carries an SDK encryption header (`peekHeader` non-null → uploaded transport-
+ *   encrypted by this adapter line) and the decrypted bytes lack the AXIOM1 magic →
+ *   wrong transport key or corrupted blob → WrongKeyOrCorruptError (the SDK's CTR
+ *   decrypt has no authentication, so this content check is the only signal).
  * - Bytes carry the magic → strip it; callers get the exact payload that was uploaded.
- * - Unregistered root → legacy blob, returned untouched (no false positives on
- *   deploy/e2e-plane app ciphertext).
+ * - Header-less blob → legacy upload (pre-canary era, or deploy/e2e-plane app
+ *   ciphertext encrypted outside this adapter), returned untouched — no false positives.
  */
 function verifyCanaryAndStrip(
   data: Uint8Array,
   rootHash: Hex,
-  canaryRoots: Set<string>,
+  uploadedEncrypted: boolean,
 ): Uint8Array {
-  if (!canaryRoots.has(rootHash.toLowerCase())) return data;
+  if (!uploadedEncrypted) return data;
   if (!hasCanaryPrefix(data)) {
     throw new WrongKeyOrCorruptError(
       rootHash,
@@ -157,7 +116,7 @@ interface UploadOptions {
   encryption?: Encryption;
   /** Explicit storage fee (wei) — see ZeroGStorageConfig.fee. */
   fee?: bigint;
-  /** Blob tags for DA/explorer attribution. Defaults to "axiom-protocol/1". */
+  /** Blob tags for storage-explorer attribution (metadata only — nothing is submitted to 0G DA). Defaults to "axiom-protocol/1". */
   tags?: Uint8Array;
 }
 
@@ -387,7 +346,25 @@ async function downloadFromStorage(
   return { data, rootHash, size: data.length };
 }
 
-/** Transport AES key resolution: env hex > persisted .data key (mode 600) > bun-test ephemeral. */
+/** Short non-reversible fingerprint for alarms — never log the key itself. */
+function keyFingerprint(key: Uint8Array): string {
+  return `sha256:${createHash("sha256").update(key).digest("hex").slice(0, 12)}`;
+}
+
+function readTransportKeyFile(file: string): string {
+  try {
+    return readFileSync(file, "utf-8").trim();
+  } catch {
+    return "";
+  }
+}
+
+/**
+ * Transport AES key resolution: env hex > persisted .data key (mode 600) > bun-test ephemeral.
+ * Every resolution logs a fingerprint (never key material); a first-time generation or an env
+ * override of a persisted key is a loud alarm, because either silently makes previously
+ * uploaded blobs undecryptable (client-side encryption has no server-side recovery).
+ */
 function resolveTransportKey(): Uint8Array {
   const raw = process.env.AXIOM_STORAGE_TRANSPORT_KEY?.trim();
   if (raw) {
@@ -397,19 +374,30 @@ function resolveTransportKey(): Uint8Array {
         "AXIOM_STORAGE_TRANSPORT_KEY must be a 32-byte hex string (64 hex chars, optional 0x prefix)",
       );
     }
-    return getBytes(`0x${hex}`);
+    const key = getBytes(`0x${hex}`);
+    const fileHex = readTransportKeyFile(dataFilePath("storage-transport-key"));
+    if (fileHex && fileHex !== hex) {
+      console.warn(
+        `[0g-storage] AXIOM_STORAGE_TRANSPORT_KEY overrides persisted key file (file=${keyFingerprint(getBytes(`0x${fileHex}`))} env=${keyFingerprint(key)}) — blobs encrypted under the file key become undecryptable until the env var is cleared`,
+      );
+    }
+    console.log(
+      `[0g-storage] transport key loaded (source=env) fingerprint=${keyFingerprint(key)}`,
+    );
+    return key;
   }
   if (process.env.BUN_TEST === "1") {
     return crypto.getRandomValues(new Uint8Array(32));
   }
   const file = dataFilePath("storage-transport-key");
-  let hex = "";
-  try {
-    hex = readFileSync(file, "utf-8").trim();
-  } catch {
-    /* unreadable → regenerate below */
+  const hex = readTransportKeyFile(file);
+  if (/^[0-9a-f]{64}$/.test(hex)) {
+    const key = getBytes(`0x${hex}`);
+    console.log(
+      `[0g-storage] transport key loaded (source=file) fingerprint=${keyFingerprint(key)}`,
+    );
+    return key;
   }
-  if (/^[0-9a-f]{64}$/.test(hex)) return getBytes(`0x${hex}`);
   if (hex !== "" || existsSync(file)) {
     console.warn(
       `[0g-storage] discarding corrupt transport-key file ${file} — blobs encrypted under the lost key become undecryptable`,
@@ -418,6 +406,9 @@ function resolveTransportKey(): Uint8Array {
   }
   const key = crypto.getRandomValues(new Uint8Array(32));
   atomicWriteFileSync(file, Buffer.from(key).toString("hex"), { mode: 0o600 });
+  console.warn(
+    `[0g-storage] generated NEW transport key fingerprint=${keyFingerprint(key)} (persisted at ${file}) — blobs uploaded under any previous key are now undecryptable; back this key file up immediately`,
+  );
   return key;
 }
 
@@ -426,10 +417,8 @@ export class ZeroGStorage extends SeenHashesMixin implements StorageAdapter {
   readonly config: ZeroGStorageConfig;
   // 32-byte transport AES key: env hex wins verbatim, else load-or-create from AXIOM_DATA_DIR/.data (bun test: ephemeral).
   private readonly storageKey: Uint8Array;
-  /** Roots uploaded by a canary-era adapter — see CANARY_REGISTRY_FILE. */
-  private readonly canaryRoots: Set<string>;
-  /** Registry file backing canaryRoots; undefined = memory-only (bun test). */
-  private readonly canaryFile: string | undefined;
+  /** root → blob-is-transport-encrypted (from peekHeader). Roots are immutable; failures are not cached. */
+  private readonly headerCache = new Map<string, boolean>();
 
   /** Exposes the transport AES key so a verify step on the same instance can decrypt. */
   get transportKey(): Uint8Array {
@@ -444,9 +433,6 @@ export class ZeroGStorage extends SeenHashesMixin implements StorageAdapter {
     this.config = config;
     this.indexer = new Indexer(config.indexerRpc);
     this.storageKey = resolveTransportKey();
-    // Same test hygiene as the transport key: bun tests stay memory-only (no .data writes).
-    this.canaryFile = isTestRun() ? undefined : CANARY_REGISTRY_FILE;
-    this.canaryRoots = loadCanaryRegistry(this.canaryFile ?? "");
   }
 
   async upload(
@@ -458,13 +444,38 @@ export class ZeroGStorage extends SeenHashesMixin implements StorageAdapter {
     if (this.config.fee !== undefined) options.fee = this.config.fee;
     // Canary prefix travels inside the encrypted envelope; download() verifies + strips it.
     const result = await this.uploadData(withCanaryPrefix(blob), options);
-    this.registerCanaryRoot(result.rootHash);
     return { rootHash: result.rootHash };
   }
 
   async download(rootHash: Hex): Promise<Uint8Array> {
+    // Stateless wrong-key detection (OPT-09): the blob's own encryption header decides
+    // whether the canary is mandatory — detection travels with the blob on 0G instead
+    // of a fail-open sidecar registry file.
+    const uploadedEncrypted = await this.peekEncrypted(rootHash);
     const result = await this.downloadWithOpts(rootHash, { withProof: true });
-    return verifyCanaryAndStrip(result.data, rootHash, this.canaryRoots);
+    return verifyCanaryAndStrip(result.data, rootHash, uploadedEncrypted);
+  }
+
+  /**
+   * True when the root's blob has an SDK encryption header (aes256/ecies). Header-less
+   * = legacy plaintext-plane blob. peekHeader errors are transient indexer failures:
+   * fail-open (treated as legacy, never false-throwing) and NOT cached so the next
+   * download re-checks.
+   */
+  private async peekEncrypted(rootHash: Hex): Promise<boolean> {
+    const key = rootHash.toLowerCase();
+    const cached = this.headerCache.get(key);
+    if (cached !== undefined) return cached;
+    const [header, err] = await this.indexer.peekHeader(rootHash);
+    if (err) {
+      console.warn(
+        `[0g-storage] peekHeader failed for ${rootHash} — treating as legacy (fail-open): ${err.message ?? String(err)}`,
+      );
+      return false;
+    }
+    const encrypted = header !== null;
+    this.headerCache.set(key, encrypted);
+    return encrypted;
   }
 
   async uploadData(
@@ -483,18 +494,6 @@ export class ZeroGStorage extends SeenHashesMixin implements StorageAdapter {
       { ...options, encryption },
     );
     return result;
-  }
-
-  /** Persist the root as canary-era, in-memory first, disk merge best-effort. */
-  private registerCanaryRoot(rootHash: Hex): void {
-    const key = rootHash.toLowerCase();
-    this.canaryRoots.add(key);
-    if (this.canaryFile === undefined) return;
-    try {
-      persistCanaryRegistry(this.canaryFile, this.canaryRoots);
-    } catch {
-      /* fail-open: registry loss only downgrades to legacy handling, never false-throws */
-    }
   }
 
   async downloadWithOpts(

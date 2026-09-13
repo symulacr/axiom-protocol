@@ -1,6 +1,7 @@
 // env helpers stay in the Node-only @axiom/config/env subpath (not re-exported here) so browser bundles skip node:fs/node:path
 export {
   pickOGNetwork,
+  resolveRpcAllowlist,
   resolveRpcUrl,
   resolveStorageRpc,
   ARISTOTLE_CHAIN_ID,

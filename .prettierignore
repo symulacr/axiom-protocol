@@ -1,9 +1,0 @@
-node_modules
-dist
-*.md
-report
-wallets
-.env
-apps/backend/docs/openapi.json
-# generated ABI blocks — canonical format comes from the generator/checker
-packages/config/src/abis/

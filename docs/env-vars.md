@@ -81,7 +81,7 @@ The backend hosts the oracle in-process; one `StorageAdapter` (`ZeroGStorage` wh
 - `AXIOM_STORAGE_INDEXER_RPC`: 0G indexer RPC (`https://indexer-storage-turbo.0g.ai`). Enables real 0G storage; **required in production** (fail-loud per storage-real M2). When unset, the backend boots with a warning and chat/oracle storage stays in-memory (data lost on restart).
 - `AXIOM_STORAGE_EVM_RPC`: 0G EVM RPC used by the storage flow contract; falls back to `AXIOM_EVM_RPC` when unset.
 - `AXIOM_STORAGE_FEE`: explicit upload fee in wei, hex (`0x…`) or decimal. Galileo's flow contract lacks `market()`, so set this to skip market pricing on testnet (otherwise uploads error).
-- `AXIOM_STORAGE_TRANSPORT_KEY`: 32-byte hex AES key (optional `0x` prefix) seeding the SDK transport key. Without it a per-instance random key is used: blobs uploaded now become **undecryptable after this process exits**. Set it for cross-restart decrypt.
+- `AXIOM_STORAGE_TRANSPORT_KEY`: 32-byte hex AES key (optional `0x` prefix) seeding the SDK transport key. Without it a per-instance random key is used: blobs uploaded now become **undecryptable after this process exits**. Set it for cross-restart decrypt. Every resolution logs a `sha256:<12-hex>` fingerprint of the loaded key (never key material); a first-time generation or an env override of a different persisted key file logs a loud alarm, because either makes previously uploaded blobs undecryptable and there is no server-side recovery.
 - `AXIOM_STORAGE_PRIVATE_KEY`: optional signer key (hex) for storage uploads. Use a dedicated storage signer, distinct from the TEE signer, in production.
 
 Legacy: `AXIOM_STORAGE_RPC` (still listed in `.env.example`) is no longer read by any schema. The backend uses the `AXIOM_STORAGE_*` vars above.
@@ -104,20 +104,19 @@ Legacy: `AXIOM_STORAGE_RPC` (still listed in `.env.example`) is no longer read b
 16:    DEPLOYER_PK: hexString,
 17:    AXIOM_RUNTIME_SIGNER_PK: z.string().optional(),
 18:    AXIOM_OPERATOR_PK: z.string().optional(),
-19:    AXIOM_COMPUTE_SIGNER_PK: z.string().optional(),
-20:    AXIOM_SENTRY_DSN: z.string().optional(),
-21:    AXIOM_COMPUTE_MODEL: z.string().optional(),
-22:    AXIOM_PORT: z.coerce.number().int().positive().default(3000),
-23:    PORT: z.coerce.number().int().positive().optional(),
-24:    AXIOM_BIND: z.string().default("0.0.0.0"),
-25:    AXIOM_AGENT_NFT_ADDRESS: z.string().optional(),
-26:    AXIOM_STRATEGY_VAULT_ADDRESS: z.string().optional(),
-27:    AXIOM_TEE_VERIFIER_ADDRESS: z.string().optional(),
-28:    AXIOM_PAYMENT_PROCESSOR_ADDRESS: z.string().optional(),
-29:    AGENT_NFT_ADDRESS: z.string().optional(),
-30:    VAULT_ADDRESS: z.string().optional(),
-31:    AXIOM_TEE_VERIFIER: z.string().optional(),
-32:    PAYMENT_PROCESSOR_ADDRESS: z.string().optional(),
+19:    AXIOM_SENTRY_DSN: z.string().optional(),
+20:    AXIOM_COMPUTE_MODEL: z.string().optional(),
+21:    AXIOM_PORT: z.coerce.number().int().positive().default(3000),
+22:    PORT: z.coerce.number().int().positive().optional(),
+23:    AXIOM_BIND: z.string().default("0.0.0.0"),
+24:    AXIOM_AGENT_NFT_ADDRESS: z.string().optional(),
+25:    AXIOM_STRATEGY_VAULT_ADDRESS: z.string().optional(),
+26:    AXIOM_TEE_VERIFIER_ADDRESS: z.string().optional(),
+27:    AXIOM_PAYMENT_PROCESSOR_ADDRESS: z.string().optional(),
+28:    AGENT_NFT_ADDRESS: z.string().optional(),
+29:    VAULT_ADDRESS: z.string().optional(),
+30:    AXIOM_TEE_VERIFIER: z.string().optional(),
+31:    PAYMENT_PROCESSOR_ADDRESS: z.string().optional(),
 ```
 
 ## Oracle schema
@@ -135,6 +134,11 @@ Legacy: `AXIOM_STORAGE_RPC` (still listed in `.env.example`) is no longer read b
 16:    AXIOM_STORAGE_PRIVATE_KEY: hexString.optional(),
 17:    AXIOM_SENTRY_DSN: z.string().optional(),
 ```
+
+Behavior flags (boolean `"true"`/`"false"`, both default `false`):
+
+- `AXIOM_DEK_CUSTODY`: sealed-DEK custody vault — the caller may store the ECIES-sealed DEK at mint time; the oracle re-keys senderless transfers from custody and burns the row on success.
+- `AXIOM_MINT_PROOF_OF_POSSESSION`: the oracle refuses to register a mint dataHash that is not a downloadable 0G storage root (merkle-verified download + transport-key canary must pass). Rejects the hashless `keccak(name)` synthetic hash outright. Default off (testnet UX); set `"true"` for mainnet strictness. Enforced on both `POST /oracle/v1/agents/mint` and the `POST /v1/agents/mint/encode` fold.
 
 ## Indexer schema
 

@@ -16,6 +16,7 @@ import { TRANSFER_TOPIC } from "@axiom/config/constants";
 import {
   signOwnership,
   transferValidity,
+  mintPossessionFailure,
   OracleRequestError,
   type OracleRouteDeps,
 } from "../oracle/routes.js";
@@ -642,6 +643,23 @@ export function registerAgentRoutes(
           HTTP.BAD_REQUEST,
           "dataHash must be a 32-byte hex string (0x + 64 hex chars)",
         );
+      }
+      if (cfg.env?.AXIOM_MINT_PROOF_OF_POSSESSION === "true") {
+        // OPT-03: with possession enforcement on, the hashless (name-derived)
+        // shape is rejected outright - its synthetic hash cannot be a root.
+        if ("name" in parsed) {
+          return sendError(
+            res,
+            HTTP.BAD_REQUEST,
+            "AXIOM_MINT_PROOF_OF_POSSESSION is on: hashless (name-derived) mints are rejected - upload the agent intelligence blob and pass its 0G storage root as dataHash",
+          );
+        }
+        const possessionFail = await mintPossessionFailure(
+          oracle.storage,
+          dataHash,
+        );
+        if (possessionFail !== null)
+          return sendError(res, HTTP.BAD_REQUEST, possessionFail);
       }
       oracle.storage.markDataHashSeen(dataHash);
       const nftTc = new TypedContract<AgentNftMintEncodeMethods>(

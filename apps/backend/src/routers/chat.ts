@@ -32,6 +32,7 @@ function resolveTracePayload(
   terminalChunk: unknown,
   response: { headers?: unknown } | undefined,
   lastUsage?: unknown,
+  requestedTrustMode?: string,
 ): Record<string, unknown> | null {
   const headers = response?.headers as
     { get?(name: string): string | null } | Record<string, string> | undefined;
@@ -49,6 +50,7 @@ function resolveTracePayload(
     }
     const providerHeader = headerValue("x-provider");
     if (providerHeader) trace.providerHeader = providerHeader;
+    stampVerifiability(trace, requestedTrustMode);
     return trace;
   }
   const traceHeader = headerValue("x_0g_trace");
@@ -57,15 +59,71 @@ function resolveTracePayload(
       const parsed =
         typeof traceHeader === "string" ? JSON.parse(traceHeader) : traceHeader;
       if (parsed && typeof parsed === "object") {
-        return lastUsage !== undefined
-          ? { usage: lastUsage, ...(parsed as Record<string, unknown>) }
-          : (parsed as Record<string, unknown>);
+        const trace =
+          lastUsage !== undefined
+            ? { usage: lastUsage, ...(parsed as Record<string, unknown>) }
+            : (parsed as Record<string, unknown>);
+        stampVerifiability(trace, requestedTrustMode);
+        return trace;
       }
     } catch {
       return null;
     }
   }
   return lastUsage !== undefined ? { usage: lastUsage } : null;
+}
+
+// OPT-13 (10b P-C2): surface TEE verifiability on the trace frame. The client
+// receives the requested trust floor plus the serving tier the router echoes, and
+// a violation flag (+ ops log) when the served tier ranks BELOW the floor. Fields
+// are additive; the two-terminal-chunk merge cannot drop them because the stamp
+// happens at resolve time, after the merge.
+const TRUST_TIER_RANK: Record<string, number> = {
+  standard: 0,
+  verified: 1,
+  private: 2,
+};
+
+function stampVerifiability(
+  trace: Record<string, unknown>,
+  requestedTrustMode: string | undefined,
+): void {
+  if (requestedTrustMode) trace.requestedTrustMode = requestedTrustMode;
+  // Normalize the echoed tier with the same vocabulary the providers catalog
+  // uses (compute.ts trustModeFromVerifiability): private > tee* > standard.
+  const rawEcho =
+    typeof trace.trust_mode === "string"
+      ? trace.trust_mode.toLowerCase()
+      : typeof trace.verifiability === "string"
+        ? trace.verifiability.toLowerCase()
+        : "";
+  const serving =
+    rawEcho === ""
+      ? undefined
+      : rawEcho.includes("private")
+        ? "private"
+        : rawEcho.includes("verified") || rawEcho.includes("tee")
+          ? "verified"
+          : "standard";
+  if (serving !== undefined) trace.servingTrustMode = serving;
+  const servingRank =
+    serving !== undefined && serving in TRUST_TIER_RANK
+      ? TRUST_TIER_RANK[serving]
+      : undefined;
+  const requestedRank =
+    requestedTrustMode !== undefined && requestedTrustMode in TRUST_TIER_RANK
+      ? TRUST_TIER_RANK[requestedTrustMode]
+      : undefined;
+  if (
+    servingRank !== undefined &&
+    requestedRank !== undefined &&
+    servingRank < requestedRank
+  ) {
+    trace.trustViolation = true;
+    console.warn(
+      `[chat] trust-tier violation: requested ${requestedTrustMode}, router served ${serving}`,
+    );
+  }
 }
 
 // Map the optional `provider` routing body to the canonical X-0G-Provider-* request headers.
@@ -379,7 +437,12 @@ export function registerChatRoutes(
               `data: ${JSON.stringify({ choices: [{ delta: { content: EMPTY_RESPONSE_FALLBACK } }] })}\n\n`,
             );
           }
-          const trace = resolveTracePayload(terminalChunk, response, lastUsage);
+          const trace = resolveTracePayload(
+            terminalChunk,
+            response,
+            lastUsage,
+            providerHeaders["X-0G-Provider-Trust-Mode"],
+          );
           if (trace) {
             writeChunk(`data: ${JSON.stringify({ type: "trace", trace })}\n\n`);
           }

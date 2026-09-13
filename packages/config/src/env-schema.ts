@@ -20,15 +20,8 @@ export const sharedEnvSchema = z.object({
   AXIOM_SENTRY_DSN: z.string().optional(),
   AXIOM_COMPUTE_BASE_URL: z.string().url().optional(),
   AXIOM_DISABLE_AUTH: z.string().optional(),
-  AXIOM_COMPUTE_DIRECT_KEY: z.string().optional(),
-  // Direct-path shim (W-2): direct compute mode (AXIOM_COMPUTE_DIRECT_KEY) falls
-  // back to this hardcoded proxy when AXIOM_COMPUTE_DIRECT_URL is unset. Declared
-  // here so the constant lives with its sibling env knobs, not at the call site.
-  AXIOM_COMPUTE_DIRECT_PROXY_URL: z
-    .string()
-    .url()
-    .default("https://compute-network-6.integratenetwork.work/v1/proxy"),
-  AXIOM_COMPUTE_DIRECT_URL: z.string().url().optional(),
+  // Direct-compute mode (AXIOM_COMPUTE_DIRECT_KEY/_URL/_PROXY_URL) was deleted
+  // 2026-09-13 (L6-P1 option 2, router-only). Vars are intentionally absent.
   // Router per-request price caps (X-0G-Provider-Max-Price-Usd-Prompt/-Completion, USD/1M tokens)
   // and TEE tier floor (X-0G-Provider-Trust-Mode) — see providers.ts createRouterClient.
   AXIOM_COMPUTE_MAX_PRICE_USD: z.string().optional(),
@@ -78,6 +71,10 @@ export const sharedEnvSchema = z.object({
   // oracle stores ECIES-sealed DEKs keyed by tokenId and re-keys transfers from
   // custody. Default OFF — prod trust geometry unchanged (BYOK stays the default).
   AXIOM_DEK_CUSTODY: z.enum(["true", "false"]).default("false"),
+  // OPT-03 (10d P5): mint-time proof-of-possession. "true" = the oracle refuses
+  // to register a dataHash that is not a downloadable 0G root (hashless
+  // keccak(name) mints rejected). Default off; set "true" for mainnet strictness.
+  AXIOM_MINT_PROOF_OF_POSSESSION: z.enum(["true", "false"]).default("false"),
   // GasTank relayer (V3 W5-B). Mode default OFF — zero behavior change for
   // existing deploys; when ON, AXIOM_GAS_TANK_ADDRESS + AXIOM_RELAYER_PK are
   // mandatory (fail-start enforced by the backend relayer wiring).

@@ -425,6 +425,31 @@ export async function signOwnership(
  * express.json, helmet, cors, and API-key auth globally before route registrars. The /oracle
  * prefix preserves the frontend same-origin proxy contract (VITE_ORACLE_URL ?? "/oracle").
  */
+/**
+ * OPT-03 (10d P5): mint-time proof-of-possession, gated by AXIOM_MINT_PROOF_OF_POSSESSION.
+ * Axiom's on-chain dataHash IS the 0G storage root of the encrypted blob (the transfer
+ * path marks upload rootHashes seen), so possession is proven mechanically: the declared
+ * root must download through the SDK's merkle-verified path AND pass the transport-key
+ * canary gate (a root uploaded under a different key throws WrongKeyOrCorruptError).
+ * The hashless-mint synthetic keccak(name) is not a resolvable root and fails naturally.
+ * Returns null when possession is demonstrated; a rejection reason otherwise.
+ */
+export async function mintPossessionFailure(
+  storage: StorageAdapter,
+  dataHash: string,
+): Promise<string | null> {
+  let blob: Uint8Array;
+  try {
+    blob = await downloadBlobCached(storage, dataHash);
+  } catch (err) {
+    return `proof-of-possession failed: dataHash ${dataHash} is not a downloadable 0G root (${extractErrorMessage(err)}) - upload the agent intelligence blob and pass its 0G storage root as dataHash`;
+  }
+  if (blob.length === 0) {
+    return `proof-of-possession failed: blob for ${dataHash} is empty`;
+  }
+  return null;
+}
+
 export function registerOracleRoutes(
   app: Express,
   deps: OracleRouteDeps,
@@ -440,7 +465,7 @@ export function registerOracleRoutes(
     });
   });
 
-  app.post("/oracle/v1/agents/mint", (req: Request, res: Response) => {
+  app.post("/oracle/v1/agents/mint", async (req: Request, res: Response) => {
     try {
       // Optional custody fields (proto option C): the caller may upload the
       // ECIES-sealed DEK alongside mint registration. Opaque bytes to the
@@ -455,6 +480,10 @@ export function registerOracleRoutes(
         /^0x[0-9a-fA-F]{64}$/.test(dataHash),
         "dataHash must be a 32-byte hex string (0x + 64 hex chars)",
       );
+      if (deps.env?.AXIOM_MINT_PROOF_OF_POSSESSION === "true") {
+        const possessionFail = await mintPossessionFailure(storage, dataHash);
+        if (possessionFail !== null) reject(HTTP.BAD_REQUEST, possessionFail);
+      }
       requireCond(
         sealedDataEncryptionKey === undefined || tokenId !== undefined,
         "sealedDataEncryptionKey requires tokenId (the vault is keyed by token)",

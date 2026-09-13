@@ -124,33 +124,28 @@ export function getComputeBaseUrl(): string {
   return resolveComputeRouterUrl(resolveChainId());
 }
 
-// Direct proxy base used when AXIOM_COMPUTE_DIRECT_KEY is set without a URL —
-// declared/validated in @axiom/config env-schema (AXIOM_COMPUTE_DIRECT_PROXY_URL, W-2);
-// this literal mirrors the schema default so resolution works even when callers
-// construct config without running the full env parse (e.g. unit tests).
-// L6-P1 (waves-ledger): this direct-proxy shim is the second of two compute ingress
-// paths, gated behind AXIOM_COMPUTE_DIRECT_KEY. Decision pending (ledger L6-P1):
-// (1) if direct-provider mode ships, adopt @0gfoundation/0g-compute-ts-sdk@0.9.0 —
-// its broker API makes direct mode first-class and replaces this shim while adding
-// ledger/auto-fund/TEE-verify (R3 §5, npm-verified latest 0.9.0, 2026-07-17);
-// (2) if router-only, delete the shim and this literal. Either way it should not
-// survive as a third way.
-const DIRECT_PROXY_BASE_URL =
-  "https://compute-network-6.integratenetwork.work/v1/proxy";
+// L6-P1 resolution (waves-ledger, executed 2026-09-13): the direct-proxy shim
+// (AXIOM_COMPUTE_DIRECT_KEY → compute-network-6.integratenetwork.work) was DELETED
+// per the pre-committed option (2) — router-only compute, one ingress, one auth model.
 
 /** Boot log: effective compute wiring (router, model, key prefix — never the full key). */
 export function logEffectiveComputeConfig(
   chainId: number,
   modelOverride?: string,
 ): void {
+  if (process.env.AXIOM_COMPUTE_DIRECT_KEY) {
+    // Tombstone for the deleted direct mode (removed 2026-09-13) — drop this
+    // warning in a later cleanup once operators could not still be relying on it.
+    console.warn(
+      "[boot] AXIOM_COMPUTE_DIRECT_KEY is no longer supported — compute routes exclusively via AXIOM_COMPUTE_API_KEY + the chain router",
+    );
+  }
   const router = getComputeBaseUrl();
   const model = resolveChatModel(modelOverride, chainId);
-  const directKey = process.env.AXIOM_COMPUTE_DIRECT_KEY;
   const routerKey =
     process.env.AXIOM_COMPUTE_API_KEY ?? process.env.OG_COMPUTE_API_KEY;
-  const key = directKey ?? routerKey;
-  const keyDesc = key
-    ? `${key.slice(0, 8)}…${key.slice(-4)} (${directKey ? "direct" : "router"})`
+  const keyDesc = routerKey
+    ? `${routerKey.slice(0, 8)}…${routerKey.slice(-4)} (router)`
     : "MISSING (set AXIOM_COMPUTE_API_KEY)";
   console.log(
     `[boot] compute: chain=${chainId} router=${router} model=${model} key=${keyDesc}`,
@@ -185,35 +180,12 @@ let cachedClient: OpenAI | null = null;
 let cachedClientKey: string | null = null;
 
 export async function createRouterClient(model?: string): Promise<OpenAI> {
-  const directKey = process.env.AXIOM_COMPUTE_DIRECT_KEY;
   const routerKey =
     process.env.AXIOM_COMPUTE_API_KEY ?? process.env.OG_COMPUTE_API_KEY;
   // Lazy: the openai SDK (~1MB parsed) joins the graph only when a compute
   // client is actually created, not at boot.
   const { default: OpenAI } = await import("openai");
   const timeout = ROUTER_TIMEOUT_MS;
-
-  if (directKey) {
-    const directBase =
-      process.env.AXIOM_COMPUTE_DIRECT_URL ??
-      process.env.AXIOM_COMPUTE_DIRECT_PROXY_URL ??
-      DIRECT_PROXY_BASE_URL;
-    const key = `direct:${directBase}:${directKey}`;
-    if (cachedClient && cachedClientKey === key) return cachedClient;
-    logRouter.info("Using direct compute provider", { directBase, model });
-    cachedClientKey = key;
-    // `fetch` resolved lazily so the OpenAI constructor doesn't pin a stale
-    // reference (matters for anything that swaps globalThis.fetch).
-    cachedClient = new OpenAI({
-      baseURL: directBase,
-      apiKey: directKey,
-      timeout,
-      maxRetries: 0,
-      defaultHeaders: routerDefaultHeaders(),
-      fetch: (input, init) => globalThis.fetch(input, init),
-    });
-    return cachedClient;
-  }
 
   // Prefer the API-key router path over the wallet-signed path when a key is configured
   if (routerKey) {

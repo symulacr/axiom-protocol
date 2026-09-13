@@ -2,8 +2,8 @@
 
 **Deployed:** *attempted* 2026-06-14 (broadcast failed: operator wallet drained)
 **Network:** 0G Galileo Testnet (chainId 16602)
-**RPC:** https://evmrpc-testnet.0g.ai
-**Explorer:** https://chainscan-galileo.0g.ai
+**RPC:** <https://evmrpc-testnet.0g.ai>
+**Explorer:** <https://chainscan-galileo.0g.ai>
 **Operator wallet:** `0x437371dB1FBD534Bd01BD3f4E66DfA1675952F91` (PK in `wallets/deployer.json`)
 
 ## Status: BUG-PAY-FIX-01 PENDING — operator wallet needs refuel
@@ -15,7 +15,7 @@ that also failed, this time because the operator wallet is drained.
 ## Pre-flight (on-chain)
 
 | Address | Expected | `cast code` | Length |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `0xEf1bA81...` (pre-recorded docs target) | AxiomPaymentProcessor | `0x` | 0 bytes (empty) |
 | `0x61D039...` (AxiomAgentNFT proxy) | runtime | `0x60806040527f3608...` | > 24 bytes ✓ |
 | `0x437371...` (operator EOA) | empty | `0x` | 0 bytes ✓ (EOA) |
@@ -51,7 +51,7 @@ What it does, in order:
 ## Pre-computed parameters (canonical, do not change between runs)
 
 | Field | Value | Source |
-|---|---|---|
+| --- | --- | --- |
 | `TARGET_ADDRESS` (docs) | `0xEf1bA81ba3A9c37a3A6efF46BB2B029d4068fd8D` | `docs/deployments/galileo-2026-06-14.md:16` |
 | `NFT_PROXY` | `0x61D0390577A6c3a37d91B307C5fCbb77A8A883E2` | `docs/deployments/galileo-2026-06-14.md:13` |
 | `OPERATOR` (broadcaster + treasury + owner) | `0x437371dB1FBD534Bd01BD3f4E66DfA1675952F91` | `wallets/ADDRESSES.md` |
@@ -88,7 +88,7 @@ Computed with `cast compute-address 0x437371... --nonce N` against the operator'
 current on-chain nonce `0x9c = 156` (`cast nonce 0x437371... --rpc-url ...` returns `156`).
 
 | Nonce | Contract | Predicted address |
-|---|---|---|
+| --- | --- | --- |
 | 156 | AxiomMockUSDC (mock payment token) | `0x4AC34dc641A7f760FfdDb53b101509321752f817` |
 | 157 | AxiomPaymentProcessor (plain CREATE fallback) | `0xa1A6431dbF03332755CD0A217A1F530b397f17a8` |
 
@@ -103,7 +103,7 @@ The `forge script ... --broadcast --priority-gas-price 2000000000 --legacy --slo
 command returned the following RPC error (verbatim, from
 `/home/eya/og/apps/contracts/broadcast/DeployPaymentProcessor.s.sol/16602/run-latest.json`):
 
-```
+```text
 Error: Failed to send transaction after 4 attempts
 Err(server returned an error response: error code -32000: 
     insufficient funds for gas * price + value: 
@@ -113,13 +113,14 @@ Err(server returned an error response: error code -32000:
 ```
 
 Estimated tx cost breakdown (from the same `forge script` run):
+
 - `gas_estimate: 1923496` (two CREATEs: mock ERC-20 + PaymentProcessor)
 - `gas_price: 4.000000007 gwei` (Galileo base fee + the 2 gwei priority we asked for)
 - `total: 0.007693984013464472 ETH` (read as the simulation's amount, before priority
   bumping) — actual cost ~0.0027 OG once the priority-gas-price flag is respected.
 
 **Fix**: refuel `0x437371...` from `https://faucet.0g.ai` (0.1 OG/day per address,
-https://docs.0g.ai/ai-context), then re-run the exact command:
+<https://docs.0g.ai/ai-context>), then re-run the exact command:
 
 ```bash
 cd ~/og/apps/contracts
@@ -152,18 +153,18 @@ cast call 0xa1A6431dbF03332755CD0A217A1F530b397f17a8 \
 ## Acceptance checklist
 
 | Step | Result |
-|---|---|
+| --- | --- |
 | (a) Script syntax check (`forge build`) | ✅ Clean (lint warnings only, none in the new file) |
 | (b) Predicted address computation | ✅ `0x65Bb43F6...` ≠ `0xEf1bA81...` (MISMATCH; documented) |
 | (c) Live broadcast result | ⚠️ Attempted, failed: `insufficient funds ... overshot 2639087234040833` wei |
 | (d) Post-deploy `cast code 0xEf1bA81...` | ✅ `0x` (empty — same as before; broadcast didn't go through) |
 | BUG-PAY-13C-01 marked FIXED in BUGS.md | ⏳ Pending refuel; entry added with `STATUS: PENDING REFUND → BROADCAST` |
-| Canonical source URL in script | ✅ Foundry CREATE2 guide: https://getfoundry.sh/guides/deterministic-deployments-using-create2 ; OZ ERC-20: https://docs.openzeppelin.com/contracts/5.x/api/token/erc20#ERC20 ; EIP-20: https://eips.ethereum.org/EIPS/eip-20 |
+| Canonical source URL in script | ✅ Foundry CREATE2 guide: <https://getfoundry.sh/guides/deterministic-deployments-using-create2> ; OZ ERC-20: <https://docs.openzeppelin.com/contracts/5.x/api/token/erc20#ERC20> ; EIP-20: <https://eips.ethereum.org/EIPS/eip-20> |
 
 ## Canonical sources cited in the deploy script
 
-- Foundry CREATE2 deterministic deployments: https://getfoundry.sh/guides/deterministic-deployments-using-create2
-- OpenZeppelin ERC-20: https://docs.openzeppelin.com/contracts/5.x/api/token/erc20#ERC20
-- EIP-20 (ERC-20 standard): https://eips.ethereum.org/EIPS/eip-20
-- 0G Galileo testnet reference: https://docs.0g.ai/ai-context
-- 0G Chain: https://docs.0g.ai/developer-hub/mainnet/mainnet-overview
+- Foundry CREATE2 deterministic deployments: <https://getfoundry.sh/guides/deterministic-deployments-using-create2>
+- OpenZeppelin ERC-20: <https://docs.openzeppelin.com/contracts/5.x/api/token/erc20#ERC20>
+- EIP-20 (ERC-20 standard): <https://eips.ethereum.org/EIPS/eip-20>
+- 0G Galileo testnet reference: <https://docs.0g.ai/ai-context>
+- 0G Chain: <https://docs.0g.ai/developer-hub/mainnet/mainnet-overview>

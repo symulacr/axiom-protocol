@@ -1,0 +1,9 @@
+{
+  "extends": "solhint:recommended",
+  "rules": {
+    "compiler-version": ["error", "^0.8.20"],
+    "import-path-check": "off",
+    "no-empty-blocks": "off"
+  },
+  "plugins": []
+}

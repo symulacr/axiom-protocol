@@ -18,13 +18,13 @@ Axiom tokenizes AI trading strategies as **ERC-7857 Intelligent NFTs (iNFTs)** o
 
 ## 0G SDK integration (verified 2026-07-27)
 
-| Component    | SDK / library                           | Version   | Status                                                                                                                                          |
-| ------------ | --------------------------------------- | --------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| Storage      | `@0gfoundation/0g-storage-ts-sdk`       | 1.2.11    | Current — used in `packages/config`, `apps/bench`                                                                                               |
-| Compute      | `openai` npm (API-key router path)      | 4.104.0   | SDK-recommended path for 0G Router. `@0gfoundation/0g-compute-ts-sdk` (0.9.0) is for the wallet-signed broker path, which the repo does NOT use |
-| ERC-7857     | `lib/0g-agent-nft` (forge git dep, CC0) | —         | Canonical reference. No npm package exists                                                                                                      |
-| Chain config | viem `zeroGMainnet`                     | ≥2.22     | Available in installed 2.52.2, not yet imported (custom `defineChain` in use)                                                                   |
-| DA           | `@foundryprotocol/0gkit-da` (community) | 1.5.0     | Official `@0gfoundation/0g-da-ts-sdk` is 404 (Rust only). Community `0gkit-da` exists but not adopted — future opportunity                      |
+| Component    | SDK / library                           | Version              | Status                                                                                                                                                      |
+| ------------ | --------------------------------------- | -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Storage      | `@0gfoundation/0g-storage-ts-sdk`       | 1.2.12               | Current — used in `packages/config` (re-exported via `@axiom/config`), `apps/bench`                                                                                                           |
+| Compute      | `openai` npm (API-key router path)      | 7.8.0 (pinned)       | SDK-recommended path for 0G Router. Exact pin: OpenAI surfaces used by `providers.ts` are pinned per `providers.headers.test.ts`; broker SDK (0.9.0) is NOT used |
+| ERC-7857     | `lib/0g-agent-nft` (CC0)                | b86e108 (2026-02-02) | Canonical reference; vendored `forge install --no-git`, rev-pinned in `scripts/ci-forge-install.sh` (audited byte-exact 2026-09-13). No npm package exists  |
+| Chain config | viem `zeroGMainnet` + local Galileo def | ≥2.22                | Mainnet imported in `wagmi.tsx`; Galileo 16602 defined locally (no viem chain def exists) + registry entry in `packages/config/src/networks.ts`             |
+| DA           | `@foundryprotocol/0gkit-da` (community) | 1.5.0                | Official `@0gfoundation/0g-da-ts-sdk` is 404 (Rust only). Community `0gkit-da` exists but not adopted — future opportunity                                  |
 
 **Note:** A prior analysis (2026-07-21) claimed ~220-250 LOC of SDK-replacement savings. Three independent discovery agents (2026-07-27) verified this was largely fictional — the referenced files/functions/packages do not exist. The repo already uses SDK-recommended patterns. Real cleanup opportunities (~122 LOC) are documented in `docs/refactor/0G-INTEGRATION-CLEANUP.md`.
 

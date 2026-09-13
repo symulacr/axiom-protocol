@@ -1,44 +1,129 @@
-# Dependencies (rebuilt inside Docker)
-node_modules
-apps/*/node_modules
-packages/*/node_modules
+# ─────────────────────────────────────────────────────────────────────────────
+# .dockerignore — keep the build context to core runtime code only.
+#
+# Deploy reality (verified 2026-09-13; no Dockerfile exists in the repo or in
+# git history on consolidation/10 — the old pnpm-era one was deleted):
+#   * Backend deploys via railway.json: buildCommand runs tsc for
+#     @axiom/config, @axiom/chat-runtime, @axiom/backend; startCommand is
+#     `bun apps/backend/dist/index.js`. The standalone-binary path is
+#     `bun scripts/build-binaries.mjs` (bun build --compile of
+#     apps/backend/src/index.ts -> dist/axiom-backend). Backend ABIs live in
+#     packages/config/src/abis/*.ts — apps/contracts sources are NOT needed.
+#   * Frontend is built separately by Vercel (vercel.json: --filter
+#     @axiom/frontend build, outputDirectory apps/frontend/dist).
+#
+# A future Dockerfile must therefore provide: package.json, bun.lock,
+# bunfig.toml, tsconfig.base.json (every package tsconfig extends it),
+# scripts/build-binaries.mjs, apps/backend/{package.json,tsconfig.json,src},
+# packages/config/**, packages/chat-runtime/** — plus every workspace
+# package.json, because bun.lock pins the whole workspace graph
+# (apps/backend, apps/bench, apps/contracts, apps/frontend,
+# packages/chat-runtime, packages/config) and `bun install --frozen-lockfile`
+# fails if any of them is missing. Those manifests are re-included below even
+# where their parent directories are excluded.
+# ─────────────────────────────────────────────────────────────────────────────
 
-# Git
+# Dependencies (always installed inside the image)
+**/node_modules
+
+# VCS / CI / git tooling
 .git
 .gitignore
+.github
+.husky
+.turbo
 
-# Foundry build artifacts (rebuilt in foundry-builder stage)
-apps/contracts/out
-apps/contracts/cache
-apps/contracts/broadcast
-apps/contracts/artifacts
-
-# Node build artifacts (rebuilt in builder stage)
-apps/*/dist
-packages/*/dist
-
-# IDE / editor
-.vscode
-.idea
-*.swp
-*.swo
-*~
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Environment / secrets
+# CRITICAL: secrets — must never enter a build context.
+# Covers .env, .env.bak-compute-key, .env.secrets-local and nested variants
+# (e.g. apps/frontend/.env.*). DECISION ON .env.example: it is excluded too —
+# nothing in any build path reads it (no Dockerfile exists; the historical
+# Dockerfile never COPYed it) and runtime config belongs in deploy env vars,
+# not image layers. Re-add `!.env.example` below only if a future Dockerfile
+# deliberately COPYs it as a template.
 .env
 .env.*
-!.env.example
+**/.env
+**/.env.*
+# Raw key material: wallets/ holds deployer/oracle/tee-signer JSON keyfiles.
+wallets
+wallets/*
+**/*.pem
+**/*.key
+**/*.secret
 
-# Test / fuzz output
-apps/contracts/cache
-coverage
-*.log
+# AI-agent / IDE / local-tool state (not source)
+.agents
+.antigravitycli
+.claude
+.design-audit
+.firecrawl
+.grok
+.hoplite
+.impeccable
+.kimchi
+.omc
+.vercel
+.zcode
 
-# CI / docs
-.github
-*.md
+# Audit / report / docs-as-consumable output
+_agent_reports
+analysis_reports
+frontend_analysis_reports
+audit
+audit-reports
+report
+artifacts
+docs
+rules
+**/*.md
 LICENSE
+
+# Build outputs and test/coverage artifacts (regenerated during build)
+dist
+**/dist
+**/coverage
+**/.nyc_output
+**/*.tsbuildinfo
+*.log
+**/*.log
+**/.DS_Store
+**/Thumbs.db
+
+# Workspaces not needed for the backend image.
+# frontend -> built by Vercel; contracts -> Foundry sources (ABIs the backend
+# uses are TS files in packages/config/src/abis); bench -> dev benchmarking.
+# Keep each workspace's package.json: bun.lock requires the full workspace
+# graph. Relax the apps/contracts rule if a Foundry builder stage ever
+# returns (the deleted historical Dockerfile had one and COPYed
+# apps/contracts/ into it).
+apps/frontend/*
+!apps/frontend/package.json
+apps/contracts/*
+!apps/contracts/package.json
+apps/bench/*
+!apps/bench/package.json
+
+# Backend sub-trees that no build step needs (safe to COPY apps/backend/
+# wholesale after these):
+# main tsconfig.json does not reference e2e; e2e has its own tsconfig.
+apps/backend/e2e
+apps/backend/tsconfig.e2e.json
+apps/backend/scripts
+apps/backend/data
+
+# Runtime checkpoints at the repo root (never build input)
+data
+
+# Dev-tooling configs (linters, formatters, scanners, deploy ignores)
+.gitleaks.toml
+.gitmessage
+.markdownlint-cli2.jsonc
+.mise.toml
+.prettierignore
+.prettierrc.json
+.railwayignore
+.solhint.json
+.vercelignore
+eslint.config.js
+sgconfig.yml
+skills-lock.json
